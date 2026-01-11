@@ -46,20 +46,31 @@
 
     .modal-body {
         grid-template-columns: 1fr;
-        max-height: 95vh;
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     .modal-img-container {
         height: 200px;
         margin: 15px;
+        flex-shrink: 0;
     }
 
     .modal-form {
         padding: 20px;
+        overflow-y: visible;
     }
 
     .form-row {
         grid-template-columns: 1fr;
+    }
+
+    /* Prevent body scroll when modal is open */
+    body.modal-open {
+        overflow: hidden;
+        position: fixed;
+        width: 100%;
     }
 }
 

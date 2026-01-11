@@ -43,6 +43,18 @@ El Backend de KEPLER es un servicio robusto construido en **Python** con **FastA
     2.  Consulta a la base de datos vectorial de Supabase (`pgvector`).
     3.  Encuentra objetos previamente analizados que sean visualmente similares.
 
+### 5. Objetos del Mapa (`/api/objects/map`)
+*   **Método:** GET
+*   **Parámetros:** `?scope=mine|all`
+*   **Función:** Obtiene objetos para visualización en el mapa.
+*   **scope=mine:** Solo objetos del usuario actual.
+*   **scope=all:** Todos los objetos con info del propietario (avatar, nombre, bio).
+
+### 6. Perfil de Usuario (`/api/objects/user/{user_id}/profile`)
+*   **Método:** GET
+*   **Función:** Obtiene perfil público y estadísticas de un usuario.
+*   **Datos:** avatar, username, bio, stats (objetos, misiones, puntos), fecha de registro.
+
 ---
 
 ## 📦 Dependencias Clave

@@ -1,13 +1,18 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.deps import get_current_user
+from pathlib import Path
 from dotenv import load_dotenv
 import os
 
-# Import Routers
-from app.api.endpoints import dashboard, chat, telemetry, missions, objects, ai, taxonomia
+# 1. Load Env BEFORE local imports
+env_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(env_path)
+print(f"KEPLER Backend: Loading .env from {env_path}")
+print(f"KEPLER Backend: SUPABASE_URL set: {bool(os.getenv('SUPABASE_URL'))}")
 
-load_dotenv()
+from app.api.deps import get_current_user
+# Import Routers AFTER env load
+from app.api.endpoints import dashboard, chat, telemetry, missions, objects, ai, taxonomia
 
 app = FastAPI(
     title="Mars-Sight AR API",

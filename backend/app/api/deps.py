@@ -1,8 +1,24 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from dotenv import load_dotenv
 import os
+
+# Robust loading using CWD (Project Root)
+# If running from Root: "backend/.env"
+# If running from Backend: ".env"
+cwd = os.getcwd()
+env_path = os.path.join(cwd, "backend", ".env")
+if not os.path.exists(env_path):
+    # Try local .env (if running from backend/)
+    env_path = os.path.join(cwd, ".env")
+
+print(f"DEPS: CWD={cwd}")
+print(f"DEPS: Loading env from {env_path}, Exists={os.path.exists(env_path)}")
+load_dotenv(env_path, override=True)
+
 import jwt
 from supabase import create_client, Client
+
 
 security = HTTPBearer()
 
@@ -12,7 +28,10 @@ JWT_SECRET = os.getenv("JWT_SECRET", "55a6dca744ee4e41c5c59be899a1fd185fb12c76b8
 def get_supabase_client() -> Client:
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_ANON_KEY") or os.getenv("SUPABASE_KEY")
+    
     if not url or not key:
+        # Debugging Info
+        print(f"CRITICAL: Supabase Creds Missing. Env dump: URL={bool(url)}, Key={bool(key)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Supabase credentials not configured in backend"

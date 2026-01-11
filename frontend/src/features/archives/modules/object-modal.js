@@ -51,10 +51,12 @@ export class ObjectModal {
         this.renderTagsSelector([]);
 
         this.dom.modal.style.display = 'flex';
+        document.body.classList.add('modal-open');
     }
 
     closeModal() {
         this.dom.modal.style.display = 'none';
+        document.body.classList.remove('modal-open');
         this.selectedObject = null;
     }
 

@@ -174,8 +174,8 @@ async def chat_with_llama(
 
     # 2. Prepare Prompt
     system_prompt = (
-        "Eres 'Llama 3.8', una IA avanzada integrada en el traje espacial 'Mars-Sight AR'. "
-        "Tu misión es asistir al astronauta con información científica, técnica y de supervivencia en Marte. "
+        "Eres 'Llama 3.8', una IA avanzada integrada en el traje espacial 'KEPLER'. "
+        "Tu misión es asistir al explorador con información científica, técnica y de supervivencia. "
         "Respuestas concisas, útiles y en español. "
         "Si te preguntan por datos del traje, inventa valores realistas dentro de parámetros seguros."
     )
@@ -189,13 +189,20 @@ async def chat_with_llama(
     if req.context:
         messages.append({'role': 'system', 'content': f"Contexto actual del sistema: {req.context}"})
         
-    messages.append({'role': 'user', 'content': req.message})
-
     try:
-        # 3. Inference
-        client = ollama.AsyncClient(host=OLLAMA_API_URL)
-        response = await client.chat(model='llama3:8b-instruct-q6_K', messages=messages)
-        ai_text = response['message']['content']
+        # 3. Inference via LangChain Agent
+        from app.agent.core import run_agent
+        from langchain_core.messages import HumanMessage, AIMessage
+
+        # Convert simple history to LangChain objects
+        lc_history = []
+        for msg in history_messages:
+            if msg['role'] == 'user':
+                lc_history.append(HumanMessage(content=msg['content']))
+            elif msg['role'] == 'assistant':
+                lc_history.append(AIMessage(content=msg['content']))
+
+        ai_text = await run_agent(user.id, req.message, lc_history)
         
         # 4. Save to DB (Background-like)
         if supabase and user:

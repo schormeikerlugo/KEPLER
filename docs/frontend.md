@@ -30,7 +30,9 @@ frontend/src/
 │   ├── login/            # Autenticación y Entrada
 │   ├── dashboard/        # Panel Principal y Widgets
 │   ├── ar/               # Vista de Realidad Aumentada (YOLO)
-│   └── archives/         # Galería y Base de Datos (Supabase)
+│   ├── archives/         # Galería y Base de Datos (Supabase)
+│   ├── map/              # Mapa de Exploración (Leaflet.js)
+│   └── taxonomia/        # Sistema de Clasificación
 ├── js/                   # Lógica Transversal
 │   ├── auth.js           # Cliente Supabase Auth
 │   ├── utils/            # Utilidades (Kalman Filter, Tracker)
@@ -83,3 +85,4 @@ El diseño es completamente responsivo (**Mobile-First**):
 3.  **Dashboard:** Vista central de telemetría y acceso a módulos.
 4.  **AR Mode:** Activación de cámara y detección de objetos.
 5.  **Archives:** Gestión de hallazgos guardados.
+6.  **Mapa:** Visualización geográfica de objetos detectados.

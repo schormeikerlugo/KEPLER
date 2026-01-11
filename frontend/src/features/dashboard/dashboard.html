@@ -29,6 +29,12 @@
         <span>Start mission</span>
       </button>
 
+
+
+      <button id="nav-btn-map" class="btn-nav-item" data-view="map">
+        🗺️ MAPA
+      </button>
+
       <button id="btn-archives" class="btn-nav-item">
         📦 ARCHIVOS
       </button>
@@ -58,7 +64,7 @@
             <div style="font-size:0.85rem; color:#888;">Conectado como</div>
             <div style="font-weight:bold; color:#3fa8ff;" id="dropdown-email">user@email.com</div>
           </div>
-          <button id="btn-profile" 
+          <button id="btn-profile"
             style="width:100%; padding:12px 15px; background:transparent; border:none; color:#3fa8ff; font-family:'Jura',sans-serif; font-size:0.95rem; cursor:pointer; text-align:left; transition:background 0.2s; border-bottom:1px solid rgba(63,168,255,0.1);">
             👤 Mi Perfil
           </button>
@@ -103,6 +109,9 @@
         🔔 <span>Notificaciones</span>
         <span class="mobile-badge">3</span>
       </button>
+      <button class="mobile-nav-item" id="mobile-btn-map">
+        🗺️ <span>Mapa</span>
+      </button>
     </div>
 
     <div class="mobile-nav-footer">
@@ -140,7 +149,8 @@
       </div>
     </aside>
 
-    <!-- Center: AI Chat with Llama 3 -->
+    <!-- Center: Interactive Central Panel -->
+    <!-- Center: AI Chat -->
     <section class="dash-ai-chat">
       <div class="chat-header">
         <img src="/icons/dashboard/IA.svg" alt="IA" class="chat-icon-img" />
@@ -238,6 +248,30 @@
 
   </div>
 
+  <!-- Map View Section (Fullscreen Overlay with own header) -->
+  <div id="map-view-section" class="map-view-section"
+    style="display:none; width:100%; height:100vh; position:fixed; top:0; left:0; background:#050a14; z-index:150;">
+
+    <!-- Map Header Bar -->
+    <div class="map-header-bar" style="
+      position:absolute; top:0; left:0; right:0; height:70px; z-index:200;
+      background:rgba(10,15,25,0.95); backdrop-filter:blur(10px);
+      display:flex; align-items:center; padding:0 20px; gap:20px;
+      border-bottom:1px solid rgba(63,168,255,0.3);
+    ">
+      <button id="btn-close-map" style="
+        background:none; border:1px solid rgba(63,168,255,0.5); color:#3fa8ff;
+        padding:10px 20px; border-radius:6px; cursor:pointer; font-family:'Jura',sans-serif;
+        font-weight:bold; display:flex; align-items:center; gap:8px;
+      ">← VOLVER</button>
+      <h2 style="margin:0; color:#fff; font-family:'Rajdhani',sans-serif; font-size:1.4rem; letter-spacing:2px;">
+        🗺️ MAPA DE EXPLORACIÓN
+      </h2>
+    </div>
+
+    <!-- Map Container (below header) -->
+    <div id="map-view-container" style="width:100%; height:calc(100vh - 70px); margin-top:70px;"></div>
+  </div>
 </div>
 
 <!-- Mission Modal -->
@@ -253,6 +287,8 @@
         <input type="text" id="inp-dash-mission-title" placeholder="Ej: Exploración Sector 7"
           style="width:100%; padding:12px 15px; background:rgba(0,0,0,0.3); border:1px solid #0055aa; color:white; border-radius:8px; box-sizing:border-box; font-family:'Jura',sans-serif;">
       </div>
+
+
 
       <div>
         <label style="display:block; margin-bottom:8px; color:#00aaff; font-weight:bold;">ZONA / OBJETIVO</label>
@@ -311,6 +347,9 @@
       </button>
       <button class="chat-menu-item" id="modal-history">
         <span>📜</span> Historial
+      </button>
+      <button class="chat-menu-item" id="modal-open-map">
+        <span>🗺️</span> Mapa
       </button>
       <button class="chat-menu-item danger" id="modal-exit">
         <span>🚪</span> Volver al Dashboard

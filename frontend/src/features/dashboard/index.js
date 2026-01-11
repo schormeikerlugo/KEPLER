@@ -13,6 +13,7 @@ import { initMission } from './modules/mission.js';
 import { initTelemetry } from './modules/telemetry.js';
 import { initChat } from './modules/chat.js';
 import { loadDashboardData } from './modules/dashboard-data.js';
+import { MapController } from '../../features/map/MapController.js';
 
 /**
  * Main render function - initializes the dashboard
@@ -24,6 +25,12 @@ export async function render(container) {
 
     // Inject template
     container.innerHTML = template;
+
+    // Initialize Map Controller (Singleton for this view)
+    const mapController = new MapController('map-view-container');
+
+    // Setup Navigation (Map Toggle)
+    setupNavigation(mapController);
 
     // Bind Notification Bell
     const btnBell = document.getElementById('btn-notifications-header');
@@ -162,6 +169,76 @@ function setupProfileDropdown() {
     if (myProfileBtn) {
         myProfileBtn.addEventListener('click', () => {
             window.location.href = '/profile';
+        });
+    }
+}
+
+/**
+ * Sets up Dashboard Navigation (Main vs Map Section)
+ * @param {MapController} mapController 
+ */
+function setupNavigation(mapController) {
+    const btnMap = document.getElementById('nav-btn-map');
+    const btnCloseMap = document.getElementById('btn-close-map');
+    const dashMain = document.querySelector('.dash-main');
+    const mapSection = document.getElementById('map-view-section');
+
+    const closeMap = () => {
+        if (btnMap) btnMap.classList.remove('active');
+        if (mapSection) mapSection.style.display = 'none';
+        if (dashMain) dashMain.style.display = 'grid';
+    };
+
+    const openMap = async () => {
+        console.log('🗺️ openMap called');
+        console.log('🗺️ dashMain:', !!dashMain, 'mapSection:', !!mapSection);
+
+        if (btnMap) btnMap.classList.add('active');
+        if (dashMain) dashMain.style.display = 'none';
+        if (mapSection) mapSection.style.display = 'block';
+
+        console.log('🗺️ Calling mapController.init()...');
+        await mapController.init();
+        console.log('🗺️ mapController.init() complete');
+
+        mapController.invalidateSize();
+        console.log('🗺️ openMap complete');
+    };
+
+    // Expose map functions globally for mobile menu - MUST be before any return!
+    window.kepler = window.kepler || {};
+    window.kepler.map = { openMap, closeMap };
+
+    // If desktop nav button doesn't exist, just return (functions are still exposed)
+    if (!btnMap || !dashMain || !mapSection) return;
+
+    const toggleMap = async () => {
+        const isMapActive = btnMap.classList.contains('active');
+        if (isMapActive) {
+            closeMap();
+        } else {
+            await openMap();
+        }
+    };
+
+    btnMap.addEventListener('click', toggleMap);
+
+    // Back button in map header
+    if (btnCloseMap) {
+        btnCloseMap.addEventListener('click', closeMap);
+    }
+
+    // Mobile Menu Map Option
+    const modalOpenMap = document.getElementById('modal-open-map');
+    const chatModalOverlay = document.getElementById('chat-modal-overlay');
+    if (modalOpenMap) {
+        modalOpenMap.addEventListener('click', () => {
+            // Close chat modal first
+            if (chatModalOverlay) {
+                chatModalOverlay.classList.remove('active');
+            }
+            // Then open map
+            openMap();
         });
     }
 }

@@ -91,4 +91,25 @@ export function initMobileMenu(user, missionModal) {
             }
         });
     }
+
+    // Mobile map button - open map view
+    const mobileBtnMap = document.getElementById('mobile-btn-map');
+    console.log('📱 Mobile menu: map button found?', !!mobileBtnMap);
+
+    if (mobileBtnMap) {
+        mobileBtnMap.addEventListener('click', () => {
+            console.log('📱 Mobile map button clicked');
+            closeMobileMenu();
+
+            console.log('📱 window.kepler:', window.kepler);
+            console.log('📱 window.kepler.map:', window.kepler?.map);
+
+            if (window.kepler && window.kepler.map) {
+                console.log('📱 Calling openMap...');
+                window.kepler.map.openMap();
+            } else {
+                console.error('📱 ERROR: window.kepler.map not available!');
+            }
+        });
+    }
 }

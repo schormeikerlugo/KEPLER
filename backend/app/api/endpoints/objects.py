@@ -1,7 +1,8 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
 from app.services.ai_service import ai_service
+from app.api.deps import get_current_user
 from supabase import create_client
 import os
 from datetime import datetime
@@ -87,6 +88,119 @@ class ObjectUpdateRequest(BaseModel):
 
 # --- ENDPOINTS ---
 
+@router.get("/map")
+async def get_map_objects(scope: str = "mine", user: dict = Depends(get_current_user)):
+    """
+    Get objects for the map view.
+    - scope=mine: Only user's objects (default)
+    - scope=all: All objects with owner info
+    """
+    try:
+        supabase = get_supabase()
+        if not supabase:
+            return {"error": "Database not configured", "objects": []}
+        
+        user_id = user.id if hasattr(user, 'id') else user.get("sub")
+        print(f"🗺️ MAP: scope={scope}, user_id={user_id}")
+        
+        if scope == "all":
+            # Fetch all objects with owner info
+            res = supabase.table("objetos_exploracion").select(
+                "id, nombre, tipo, descripcion, posicion, metadata, created_at, user_id"
+            ).order("created_at", desc=True).limit(200).execute()
+            
+            objects = res.data or []
+            
+            # Get unique user_ids
+            user_ids = list(set(obj.get("user_id") for obj in objects if obj.get("user_id")))
+            
+            # Fetch profiles for these users
+            profiles = {}
+            if user_ids:
+                profiles_res = supabase.table("profiles").select(
+                    "id, username, display_name, avatar_url, bio"
+                ).in_("id", user_ids).execute()
+                
+                for p in (profiles_res.data or []):
+                    profiles[p["id"]] = p
+            
+            # Add owner info to each object
+            for obj in objects:
+                owner_id = obj.get("user_id")
+                profile = profiles.get(owner_id, {})
+                obj["owner_id"] = owner_id
+                obj["owner_name"] = profile.get("display_name") or profile.get("username") or "Usuario"
+                obj["owner_avatar"] = profile.get("avatar_url")
+                obj["owner_bio"] = profile.get("bio")
+                obj["is_mine"] = (owner_id == user_id)
+            
+            print(f"🗺️ MAP: Found {len(objects)} total objects")
+            return {"objects": objects, "scope": "all"}
+        else:
+            # Fetch only user's objects
+            res = supabase.table("objetos_exploracion").select(
+                "id, nombre, tipo, descripcion, posicion, metadata, created_at"
+            ).eq("user_id", user_id).order("created_at", desc=True).limit(100).execute()
+            
+            print(f"🗺️ MAP: Found {len(res.data or [])} objects for user")
+            return {"objects": res.data or [], "scope": "mine"}
+            
+    except Exception as e:
+        print(f"🗺️ MAP ERROR: {e}")
+        return {"error": str(e), "objects": []}
+
+
+@router.get("/user/{user_id}/profile")
+async def get_user_profile(user_id: str, user: dict = Depends(get_current_user)):
+    """
+    Get public profile and stats for a user.
+    """
+    try:
+        supabase = get_supabase()
+        if not supabase:
+            return {"error": "Database not configured"}
+        
+        # Get profile info
+        profile_res = supabase.table("profiles").select(
+            "id, username, display_name, avatar_url, bio, created_at"
+        ).eq("id", user_id).single().execute()
+        
+        profile = profile_res.data if profile_res.data else {}
+        
+        # Count objects
+        objects_res = supabase.table("objetos_exploracion").select(
+            "id", count="exact"
+        ).eq("user_id", user_id).execute()
+        objects_count = objects_res.count or 0
+        
+        # Count missions (optional - table may not exist)
+        missions_count = 0
+        try:
+            missions_res = supabase.table("missions").select(
+                "id", count="exact"
+            ).eq("user_id", user_id).execute()
+            missions_count = missions_res.count or 0
+        except:
+            pass  # Table doesn't exist, skip
+        
+        return {
+            "id": user_id,
+            "username": profile.get("username") or profile.get("display_name") or "Usuario",
+            "display_name": profile.get("display_name"),
+            "avatar_url": profile.get("avatar_url"),
+            "bio": profile.get("bio"),
+            "created_at": profile.get("created_at"),
+            "stats": {
+                "objects": objects_count,
+                "missions": missions_count,
+                "points": objects_count * 10 + missions_count * 50  # Simple point calc
+            }
+        }
+    except Exception as e:
+        print(f"Profile error: {e}")
+        return {"error": str(e)}
+
+
 @router.get("/nearby")
 async def get_nearby_objects(lat: float, lng: float, radius: int = 500):
     """
@@ -142,9 +256,10 @@ async def get_nearby_objects(lat: float, lng: float, radius: int = 500):
         print(f"Nearby objects error: {e}")
         return []
 
+
 @router.post("/create")
-async def create_object(req: ObjectCreateRequest):
-    """Create a new AR object (from Sentinel, Teach, or Marker modes)"""
+async def create_object(req: ObjectCreateRequest, user = Depends(get_current_user)):
+    """Create a new AR object. Requires Auth."""
     try:
         supabase = get_supabase()
         if not supabase: 
@@ -154,7 +269,7 @@ async def create_object(req: ObjectCreateRequest):
         lat = req.location.get('lat', 0)
         lng = req.location.get('lng', 0)
         
-        # AI embedding generation (optional, if image provided)
+        # AI embedding generation (optional)
         embedding = None
         if req.image_base64 and len(req.image_base64) > 100:
             try:
@@ -162,19 +277,19 @@ async def create_object(req: ObjectCreateRequest):
             except Exception as e:
                 print(f"Embedding gen failed: {e}")
         
-        # Prepare data for insert
+        # Prepare data for insert WITH USER_ID
         insert_data = {
+            "user_id": user.id,  # Assign ownership
             "nombre": req.name,
             "tipo": req.object_class,
             "descripcion": req.metadata.get('description', ''),
-            "posicion": f"POINT({lng} {lat})",  # PostGIS format
+            "posicion": f"POINT({lng} {lat})",
             "metadata": {
                 **req.metadata,
                 "source": req.source,
                 "confidence": req.confidence,
                 "heading": req.heading,
                 "timestamp": req.timestamp,
-                # Store image for display in Archives - crop if bbox provided
                 "image_base64": (
                     crop_image_base64(req.image_base64, req.bbox)[:500000] 
                     if req.bbox and req.image_base64 and len(req.image_base64) > 100 
@@ -183,11 +298,9 @@ async def create_object(req: ObjectCreateRequest):
             }
         }
         
-        # Add mission_id if provided
         if req.mission_id:
             insert_data["mission_id"] = req.mission_id
             
-        # Add embedding if generated
         if embedding:
             insert_data["embedding"] = embedding
             
@@ -203,7 +316,7 @@ async def create_object(req: ObjectCreateRequest):
         return {"success": False, "error": str(e)}
 
 @router.put("/{object_id}")
-async def update_object(object_id: str, req: ObjectUpdateRequest):
+async def update_object(object_id: str, req: ObjectUpdateRequest, user = Depends(get_current_user)):
     try:
         supabase = get_supabase()
         if not supabase: return {"success": False}
@@ -216,21 +329,30 @@ async def update_object(object_id: str, req: ObjectUpdateRequest):
         if req.tipo:
             update_data["tipo"] = req.tipo
             
-        res = supabase.table("objetos_exploracion").update(update_data).eq("id", object_id).execute()
+        # Ensure user owns the object
+        res = supabase.table("objetos_exploracion").update(update_data).eq("id", object_id).eq("user_id", user.id).execute()
         
         if not res.data:
-            return {"success": False, "error": "Object not found or not modified"}
+            return {"success": False, "error": "Object not found or permission denied"}
             
         return {"success": True}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
 @router.delete("/{object_id}")
-async def delete_object(object_id: str):
+async def delete_object(object_id: str, user = Depends(get_current_user)):
     try:
         supabase = get_supabase()
         if not supabase: return {"success": False}
-        supabase.table("objetos_exploracion").delete().eq("id", object_id).execute()
+        
+        # Ensure user owns the object
+        res = supabase.table("objetos_exploracion").delete().eq("id", object_id).eq("user_id", user.id).execute()
+        
+        # Check if deletion happened? Supabase delete returns data if successful and select set? 
+        # But if checks fail (policy), it might return empty.
+        # Since we use Service Role (get_supabase), we MUST manually check user_id if we want RLS logic behavior.
+        # I added .eq("user_id", user.id) above, so it will only delete if matches.
+        
         return {"success": True}
     except Exception as e:
         return {"success": False, "error": str(e)}

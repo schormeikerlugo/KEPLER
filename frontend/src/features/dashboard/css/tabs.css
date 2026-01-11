@@ -1,0 +1,74 @@
+/* DASHBOARD TABS (Chat vs Map) */
+
+.dash-central-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    height: 100%;
+    /* Occupies the 2nd grid column automatically */
+}
+
+.dash-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 5px;
+}
+
+.dash-tab {
+    background: rgba(10, 20, 30, 0.6);
+    border: 1px solid rgba(63, 168, 255, 0.3);
+    color: var(--color-primary-400);
+    padding: 10px 24px;
+    font-family: 'Jura', sans-serif;
+    font-weight: bold;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.dash-tab:hover {
+    background: rgba(63, 168, 255, 0.15);
+    transform: translateY(-2px);
+    border-color: var(--color-primary);
+}
+
+.dash-tab.active {
+    background: rgba(63, 168, 255, 0.2);
+    border-color: var(--color-primary);
+    color: #fff;
+    box-shadow: 0 0 15px rgba(63, 168, 255, 0.3);
+    text-shadow: 0 0 5px var(--color-primary);
+}
+
+.dash-view {
+    flex: 1;
+    position: relative;
+    display: none;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.dash-view.active {
+    display: block;
+    /* Can be flex depending on child */
+    height: 100%;
+}
+
+/* Adjust Chat Container to fit inside View */
+.dash-view .dash-ai-chat {
+    height: 100%;
+    margin: 0;
+    width: 100%;
+}
+
+/* Ensure Map fills height */
+#map-view-container {
+    height: 100%;
+    width: 100%;
+    min-height: 500px;
+}
