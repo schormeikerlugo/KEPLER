@@ -7,19 +7,17 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Fase-Entrenamiento_Terrestre-cyan?style=for-the-badge&logo=target&logoColor=black" alt="Fase">
   <img src="https://img.shields.io/badge/Estado-Activo-green?style=for-the-badge&logo=statuspage&logoColor=black" alt="Estado">
-  <img src="https://img.shields.io/badge/Versión-0.2.0_Beta-blue?style=for-the-badge&logo=semver&logoColor=white" alt="Versión">
+  <img src="https://img.shields.io/badge/Versión-0.3.0_Beta-blue?style=for-the-badge&logo=semver&logoColor=white" alt="Versión">
 </p>
 
 ```
-  _  __  ______   _____    _        ______   _____  
- | |/ / |  ____| |  __ \  | |      |  ____| |  __ \ 
- | ' /  | |__    | |__) | | |      | |__    | |__) |
- |  <   |  __|   |  ___/  | |      |  __|   |  _  / 
- | . \  | |____  | |      | |____  | |____  | | \ \ 
- |_|\_\ |______| |_|      |______| |______| |_|  \_\
-                                                    
+██╗  ██╗███████╗██████╗ ██╗     ███████╗██████╗ 
+██║ ██╔╝██╔════╝██╔══██╗██║     ██╔════╝██╔══██╗
+█████╔╝ █████╗  ██████╔╝██║     █████╗  ██████╔╝
+██╔═██╗ ██╔══╝  ██╔═══╝ ██║     ██╔══╝  ██╔══██╗
+██║  ██╗███████╗██║     ███████╗███████╗██║  ██║
+╚═╝  ╚═╝╚══════╝╚═╝     ╚══════╝╚══════╝╚═╝  ╚═╝
 ```
-
 </div>
 
 ---
@@ -38,10 +36,10 @@
 |--------|--------|-------------|
 | 🔭 **Visual Core** | ✅ Activo | Detección de objetos en tiempo real (YOLOv11 Nano en browser). |
 | 🧠 **Cortex AI** | ✅ Activo | Análisis semántico profundo (CLIP + Llama 3). |
-| 📊 **Dashboard** | ✅ Activo | Telemetría vital y gestión de misiones. |
-| 🔐 **Access** | ✅ Activo | Autenticación biométrica simulada (Supabase Auth). |
+| �️ **HoloMap** | ✅ Activo | Mapa táctico 3D (MapLibre) con filtros Odradek y tracking GPS. |
+| � **Dashboard** | ✅ Activo | Telemetría vital y gestión de misiones. |
 | 📂 **Archives** | ✅ Activo | Base de datos vectorial de hallazgos. |
-| 🔔 **Realtime Notifications** | ✅ Activo | Alertas en tiempo real vía WebSocket (Supabase Realtime). |
+| 🔔 **Realtime** | ✅ Activo | Alertas en tiempo real vía WebSocket (Supabase Realtime). |
 
 ---
 
@@ -83,6 +81,7 @@ KEPLER incluye un sistema de notificaciones en tiempo real para mantener a los u
 La documentación ha sido reorganizada para facilitar el desarrollo:
 
 *   **[🎨 Frontend Architecture](docs/frontend.md)**: UI Design, Animaciones Holográficas, Vite.
+*   **[🗺️ Map System](docs/map.md)**: MapLibre, Odradek Theme, Tile Proxy & Layers.
 *   **[⚙️ Backend & AI Services](docs/backend.md)**: FastAPI, Python, Llama 3, CLIP.
 *   **[⚡ Database & Cloud](docs/supabase.md)**: Esquema PostgreSQL, Auth, Vector Search.
 *   **[🧠 Hybrid AI System](docs/ia.md)**: Detalles sobre la integración Edge-Cloud AI.

@@ -38,6 +38,10 @@ app.include_router(objects.router, prefix="/api/objects", tags=["objects"])
 app.include_router(ai.router, prefix="/api", tags=["ai"]) 
 app.include_router(taxonomia.router, prefix="/api/taxonomia", tags=["taxonomia"])
 
+# Utility/Proxy routes (no auth required for tiles)
+from app.api.endpoints import utils
+app.include_router(utils.router, prefix="/api/utils", tags=["utils"])
+
 @app.get("/")
 async def root():
     return {

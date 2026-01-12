@@ -1,0 +1,66 @@
+/* ========== RESPONSIVE MOBILE FIXES ========== */
+@media (max-width: 768px) {
+
+    /* Force Map Container Height */
+    #map-view-container {
+        position: fixed !important;
+        top: 60px;
+        /* Below header */
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100% !important;
+        height: auto !important;
+        border-radius: 0;
+        border: none;
+        z-index: 100;
+        display: block;
+        /* Ensure it's not hidden */
+    }
+
+    /* Adjust Object Panel to be collapsible/smaller */
+    .map-object-panel {
+        top: 10px;
+        left: 10px;
+        width: 200px;
+        max-height: 40vh;
+        opacity: 0.9;
+        /* Make it collapsible in future phases, for now smaller */
+        transform: scale(0.9);
+        transform-origin: top left;
+        display: none;
+        /* Hide object panel on mobile initially to see map */
+    }
+
+    /* Ensure Controls are visible above everything */
+    .map-controls {
+        z-index: 2000 !important;
+        bottom: 30px !important;
+        left: 20px !important;
+    }
+
+    .map-control-fab {
+        width: 56px;
+        height: 56px;
+        display: flex !important;
+        /* Force visible */
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Force visible tiles on mobile (remove complex filters to debug) */
+    .leaflet-tile-pane {
+        filter: none !important;
+        opacity: 1 !important;
+    }
+
+    /* Hide desktop quick actions */
+    .map-quick-actions {
+        display: none !important;
+    }
+
+    /* Leaflet controls adjust */
+    .leaflet-control-zoom {
+        display: none !important;
+        /* Pitch zoom is better on mobile */
+    }
+}

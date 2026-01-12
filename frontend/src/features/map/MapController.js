@@ -1,27 +1,66 @@
 /**
  * MapController.js
- * Manages Leaflet map instance and object rendering.
- * Includes object sidebar panel with click-to-locate functionality.
+ * Manages MapLibre GL JS map instance and object rendering.
+ * Migrated from Leaflet (Phase 4 Optimization).
  */
 
 import { supabase } from '../../js/auth.js';
+import { MapLocation } from './modules/MapLocation.js';
+import { MapControls } from './modules/MapControls.js';
+import { MapSearch } from './modules/MapSearch.js';
+import { MapFilters } from './modules/MapFilters.js';
 
 export class MapController {
     constructor(containerId) {
         this.containerId = containerId;
         this.map = null;
-        this.layerGroup = null;
         this.isInitialized = false;
         this.objects = []; // Store loaded objects
         this.markers = {}; // Map object ID to marker
         this.viewScope = 'mine'; // 'mine' or 'all'
 
-        // Base coords (default view)
-        this.baseCoords = [10.1833, -67.0000]; // Venezuela default
+        // Feature modules
+        this.location = null;
+        this.controls = null;
+        this.searchMod = null;
+        this.filtersMod = null;
+        this.searchTerm = '';
+
+        // Inject Styles
+        this.injectStyles();
+
+        // Base coords (Venezuela) [Lng, Lat] for MapLibre
+        this.baseCoords = [-67.0000, 10.1833];
+    }
+
+    injectStyles() {
+        const styles = [
+            { id: 'map-controls-css', href: 'src/features/map/css/controls.css' },
+            { id: 'map-responsive-css', href: 'src/features/map/css/responsive_fix.css' },
+            { id: 'map-search-css', href: 'src/features/map/css/search_filters.css' }
+        ];
+
+        styles.forEach(s => {
+            if (!document.getElementById(s.id)) {
+                const link = document.createElement('link');
+                link.id = s.id;
+                link.rel = 'stylesheet';
+                link.href = s.href;
+                document.head.appendChild(link);
+            }
+        });
     }
 
     /**
-     * Parse PostGIS WKB Hex to [lat, lon]
+     * Compatibility shim for Leaflet code calling invalidateSize
+     */
+    invalidateSize() {
+        if (this.map) this.map.resize();
+    }
+
+    /**
+     * Parse PostGIS WKB Hex to [Lat, Lng]
+     * Note: Returns [Lat, Lng] consistent with backend, but MapLibre needs [Lng, Lat]
      */
     parseWKBPoint(wkbHex) {
         if (!wkbHex || typeof wkbHex !== 'string') return null;
@@ -48,8 +87,6 @@ export class MapController {
             const lat = hexToDouble(yHex);
 
             if (isNaN(lat) || isNaN(lon)) return null;
-            if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
-
             return [lat, lon];
         } catch (e) {
             console.warn('Failed to parse WKB:', e);
@@ -57,9 +94,6 @@ export class MapController {
         }
     }
 
-    /**
-     * Get icon emoji based on object type
-     */
     getTypeIcon(tipo) {
         const icons = {
             'tech': '💻',
@@ -74,53 +108,295 @@ export class MapController {
         return icons[tipo?.toLowerCase()] || '📦';
     }
 
+    getTypeColor(tipo) {
+        const colors = {
+            'tech': '#00f7ff',      // Cyan
+            'marker': '#ff0055',    // Red
+            'rock': '#aaaaaa',      // Grey
+            'crater': '#ffaa00',    // Orange
+            'artifact': '#bd00ff',  // Purple
+            'structure': '#00ffaa', // Mint
+            'flora': '#39ff14',     // Neon Green
+            'unknown': '#ffffff'    // White
+        };
+        return colors[tipo?.toLowerCase()] || '#ffffff';
+    }
+
     /**
-     * Initialize the map
+     * Initialize MapLibre GL
      */
     async init() {
         if (this.isInitialized) return;
 
-        if (typeof L === 'undefined') {
-            console.error('Leaflet not loaded');
+        if (typeof maplibregl === 'undefined') {
+            console.error('MapLibre GL not loaded');
             return;
         }
 
-        console.log('🗺️ Initializing Holographic Map...');
+        console.log('🗺️ Initializing MapLibre Engine...');
 
         // 1. Create Map Instance
-        this.map = L.map(this.containerId, {
+        this.map = new maplibregl.Map({
+            container: this.containerId,
+            style: {
+                version: 8,
+                sources: {
+                    'osm': {
+                        type: 'raster',
+                        tiles: [window.location.origin + '/api/utils/tiles/{z}/{x}/{y}.png?source=osm'],
+                        tileSize: 256,
+                        attribution: 'OpenStreetMap'
+                    }
+                },
+                layers: [
+                    {
+                        id: 'simple-tiles',
+                        type: 'raster',
+                        source: 'osm',
+                        minzoom: 0,
+                        maxzoom: 22
+                    }
+                ]
+            },
             center: this.baseCoords,
             zoom: 13,
-            zoomControl: false,
             attributionControl: false
         });
 
-        // 2. Add Tile Layer
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap',
-            className: 'holo-tiles',
-            crossOrigin: true
-        }).addTo(this.map);
+        // 2. Add Controls
+        this.map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
-        // 3. Add Layer Group for Markers
-        this.layerGroup = L.layerGroup().addTo(this.map);
+        // Compatibility for MapControls
+        this.layers = {
+            setLayer: (id) => this.setLayer(id),
+            cycleLayer: () => { /* implement if needed */ }
+        };
 
-        // 4. Add Zoom Control
-        L.control.zoom({ position: 'topright' }).addTo(this.map);
+        // 3. Wait for load
+        this.map.on('load', async () => {
+            console.log('✅ Map Engine Loaded');
 
-        // 5. Create Object Panel
-        this.createObjectPanel();
+            // Set Default Theme: Dark (Odradek)
+            this.setLayer('dark');
 
-        this.isInitialized = true;
+            // Initialize Modules
+            this.location = new MapLocation(this);
+            this.controls = new MapControls(this);
+            this.controls.createControls();
 
-        // Initial Fetch
-        await this.loadObjects();
+            // Search & Filters
+            this.searchMod = new MapSearch(this);
+            const searchContainer = this.searchMod.createUI();
+            this.filtersMod = new MapFilters(this);
+            this.filtersMod.createUI(searchContainer);
+
+            // Object Panel
+            this.createObjectPanel();
+
+            this.isInitialized = true;
+
+            // Load Objects
+            await this.loadObjects();
+        });
+    }
+
+    async loadObjects() {
+        try {
+            const { data: sessionData } = await supabase.auth.getSession();
+            const token = sessionData?.session?.access_token;
+            if (!token) return;
+
+            const url = this.viewScope === 'all'
+                ? '/api/objects/map?scope=all'
+                : '/api/objects/map?scope=mine';
+
+            const response = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+
+            if (data.objects) {
+                this.objects = data.objects;
+                // Update filters options
+                this.filtersMod.updateTypeOptions(this.objects);
+                // Apply filters (which calls renderMarkers)
+                this.applyFilters();
+            }
+        } catch (error) {
+            console.error('Error loading objects:', error);
+        }
+    }
+
+    // --- Search & Filter Handlers ---
+
+    handleSearch(term) {
+        this.searchTerm = term.toLowerCase();
+        this.applyFilters();
+    }
+
+    handleFilterChange() {
+        this.applyFilters();
+    }
+
+    applyFilters() {
+        const filters = this.filtersMod.getFilters();
+
+        const filtered = this.objects.filter(obj => {
+            // 1. Text Search
+            if (this.searchTerm) {
+                const matchName = obj.nombre?.toLowerCase().includes(this.searchTerm);
+                const matchType = obj.tipo?.toLowerCase().includes(this.searchTerm);
+                if (!matchName && !matchType) return false;
+            }
+
+            // 2. Type Filter
+            if (filters.types.length > 0) {
+                if (!filters.types.includes(obj.tipo)) return false;
+            }
+
+            // 3. Confidence Filter
+            // filters.minConfidence is 0-100 from MapFilters.js
+            const confidence = (obj.metadata?.confidence || 0) * 100;
+            if (confidence < filters.minConfidence) return false;
+
+            return true;
+        });
+
+        this.renderMarkers(filtered);
+        this.updateObjectPanel(filtered);
     }
 
     /**
-     * Create the object sidebar panel
+     * Render Markers on the Map
      */
+    renderMarkers(objectsToRender) {
+        // Clear existing markers
+        Object.values(this.markers).forEach(marker => marker.remove());
+        this.markers = {};
+
+        objectsToRender.forEach(obj => {
+            const coords = this.parseWKBPoint(obj.posicion);
+            if (!coords) return; // [Lat, Lng]
+
+            // Convert to [Lng, Lat] for MapLibre
+            const lngLat = [coords[1], coords[0]];
+
+            // Custom HTML Marker using the same CSS classes as before
+            const el = document.createElement('div');
+            el.className = 'custom-marker';
+
+            const color = this.getTypeColor(obj.tipo);
+            const delay = Math.random() * 3; // Staggered pulsing
+
+            el.style.setProperty('--marker-color', color);
+
+            el.innerHTML = `
+                <div class="marker-pin">${this.getTypeIcon(obj.tipo)}</div>
+                <div class="marker-pulse" style="animation-delay: -${delay.toFixed(2)}s"></div>
+            `;
+
+            // Click Handler
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.flyToObject(obj.id);
+            });
+
+            // Create Marker
+            const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+                .setLngLat(lngLat)
+                .addTo(this.map);
+
+            // Create Popup Content DOM
+            const popupNode = document.createElement('div');
+            popupNode.className = 'popup-content';
+
+            // 1. Image (if exists)
+            const imgSrc = obj.metadata?.image_base64 || obj.imagen;
+            if (imgSrc && imgSrc.length > 50) {
+                const img = document.createElement('img');
+                img.src = imgSrc;
+                img.className = 'popup-image';
+                img.style.width = '100%';
+                img.style.borderRadius = '4px';
+                img.style.marginBottom = '8px';
+                img.style.height = 'auto';
+                img.style.maxHeight = '250px';
+                img.style.objectFit = 'contain';
+                img.style.backgroundColor = 'rgba(0,0,0,0.3)';
+                popupNode.appendChild(img);
+            }
+
+            // 2. Info
+            const info = document.createElement('div');
+            const confVal = obj.metadata?.confidence ? (obj.metadata.confidence * 100).toFixed(0) : '0';
+
+            info.innerHTML = `
+                <h3>${obj.nombre || 'Sin nombre'}</h3>
+                <div>
+                    <span class="popup-type-tag" style="background:rgba(63,168,255,0.2); color:#4db8ff; padding:2px 6px; border-radius:4px; font-size:0.7rem; text-transform:uppercase;">
+                        ${obj.tipo || 'DESCONOCIDO'}
+                    </span>
+                </div>
+                <p style="margin-top:8px;">${obj.descripcion || 'Sin descripción'}</p>
+                <div class="popup-meta" style="margin-top:5px; font-size:0.8rem; color:#888;">
+                    <span>Confianza: ${confVal}%</span>
+                </div>
+            `;
+            popupNode.appendChild(info);
+
+            // 3. Owner (if applicable)
+            if (obj.owner_id && !obj.is_mine) {
+                const owner = document.createElement('div');
+                owner.className = 'popup-owner';
+                owner.style.marginTop = '10px';
+                owner.style.paddingTop = '8px';
+                owner.style.borderTop = '1px solid rgba(255,255,255,0.1)';
+                owner.style.display = 'flex';
+                owner.style.alignItems = 'center';
+                owner.style.gap = '8px';
+                owner.style.cursor = 'pointer';
+
+                owner.innerHTML = `
+                    <img src="${obj.owner_avatar || 'src/assets/icons/default-avatar.svg'}" style="width:24px; height:24px; border-radius:50%; object-fit:cover;">
+                    <span style="color:var(--color-primary); font-size:0.85rem;">@${obj.owner_name || 'Explorador'}</span>
+                `;
+
+                owner.onclick = (e) => {
+                    e.stopPropagation();
+                    this.showProfileModal(obj.owner_id);
+                };
+
+                popupNode.appendChild(owner);
+            }
+
+            const popup = new maplibregl.Popup({ offset: 25, className: 'custom-popup', maxWidth: '300px' })
+                .setDOMContent(popupNode);
+
+            marker.setPopup(popup);
+
+            this.markers[obj.id] = marker;
+        });
+    }
+
+    flyToObject(objectId) {
+        const marker = this.markers[objectId];
+        if (!marker) return;
+
+        const lngLat = marker.getLngLat();
+
+        this.map.flyTo({
+            center: lngLat,
+            zoom: 17,
+            pitch: 60,
+            bearing: -20,
+            speed: 1.2,
+            curve: 1.4
+        });
+
+        marker.togglePopup();
+    }
+
+    // --- Object Panel ---
     createObjectPanel() {
         const container = document.getElementById(this.containerId);
         if (!container) return;
@@ -144,350 +420,184 @@ export class MapController {
 
         container.appendChild(panel);
 
+        // Prevent map interaction
+        ['mousedown', 'touchstart', 'click', 'scroll', 'wheel'].forEach(evt => {
+            panel.addEventListener(evt, (e) => e.stopPropagation());
+        });
+
         // Bind toggle events
         panel.querySelectorAll('.scope-btn').forEach(btn => {
             btn.addEventListener('click', () => this.setScope(btn.dataset.scope));
         });
     }
 
-    /**
-     * Change scope and reload objects
-     */
-    async setScope(newScope) {
-        if (this.viewScope === newScope) return;
-
-        this.viewScope = newScope;
-
-        // Update button states
-        document.querySelectorAll('.scope-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.scope === newScope);
-        });
-
-        // Reload objects
-        await this.loadObjects();
-    }
-
-    /**
-     * Update the object panel with loaded objects
-     */
-    updateObjectPanel() {
+    updateObjectPanel(filteredList = null) {
         const listEl = document.getElementById('map-object-list');
         const countEl = document.getElementById('object-count');
-
         if (!listEl) return;
 
-        countEl.textContent = this.objects.length;
+        const objectsToShow = filteredList || this.objects;
+        countEl.textContent = objectsToShow.length;
 
-        if (this.objects.length === 0) {
+        if (objectsToShow.length === 0) {
             listEl.innerHTML = '<p style="color:#666; text-align:center; padding:20px;">Sin objetos</p>';
             return;
         }
 
-        listEl.innerHTML = this.objects.map(obj => {
+        listEl.innerHTML = objectsToShow.map(obj => {
             const confidence = obj.metadata?.confidence || 0;
-            const ownerHtml = (this.viewScope === 'all' && !obj.is_mine)
-                ? `<div class="map-object-owner" data-owner-id="${obj.owner_id}">
-                     <img src="${obj.owner_avatar || '/icons/default-avatar.svg'}" alt="" class="owner-avatar">
-                     <span>@${obj.owner_name || 'usuario'}</span>
-                   </div>`
-                : '';
-
             return `
                 <div class="map-object-item" data-id="${obj.id}">
                     <div class="map-object-icon">${this.getTypeIcon(obj.tipo)}</div>
                     <div class="map-object-info">
                         <div class="name">${obj.nombre || 'Sin nombre'}</div>
                         <div class="type">${obj.tipo || 'Desconocido'}</div>
-                        ${ownerHtml}
                     </div>
                     <div class="map-object-confidence">${(confidence * 100).toFixed(0)}%</div>
                 </div>
             `;
         }).join('');
 
-        // Add click handlers
         listEl.querySelectorAll('.map-object-item').forEach(item => {
             item.addEventListener('click', () => {
                 const id = item.dataset.id;
                 this.flyToObject(id);
-
-                // Update active state
                 listEl.querySelectorAll('.map-object-item').forEach(i => i.classList.remove('active'));
                 item.classList.add('active');
             });
         });
+    }
 
-        // Add click handlers for owner elements
-        listEl.querySelectorAll('.map-object-owner').forEach(owner => {
-            owner.addEventListener('click', (e) => {
-                e.stopPropagation(); // Don't trigger parent item click
-                const ownerId = owner.dataset.ownerId;
-                if (ownerId) this.showProfileModal(ownerId);
-            });
+    async setScope(newScope) {
+        if (this.viewScope === newScope) return;
+        this.viewScope = newScope;
+        document.querySelectorAll('.scope-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.scope === newScope);
         });
+        await this.loadObjects();
     }
 
-    /**
-     * Fly to a specific object and open its popup
-     */
-    flyToObject(objectId) {
-        const marker = this.markers[objectId];
-        if (!marker) {
-            console.warn('Marker not found for object:', objectId);
-            return;
-        }
+    // --- Profile Modal ---
+    async showProfileModal(userId) {
+        // Remove existing
+        const existing = document.querySelector('.user-profile-modal');
+        if (existing) existing.remove();
 
-        // Fly to the marker location
-        const latLng = marker.getLatLng();
-        this.map.flyTo(latLng, 17, {
-            duration: 1.5
-        });
-
-        // Open the popup after flying
-        setTimeout(() => {
-            marker.openPopup();
-        }, 1600);
-    }
-
-    /**
-     * Fetch objects from Backend API (bypasses RLS)
-     */
-    async loadObjects() {
-        if (!this.isInitialized) return;
-
-        try {
-            console.log('📍 Map: Fetching objects from backend API...');
-
-            // Get auth token
-            const { data: sessionData } = await supabase.auth.getSession();
-            const token = sessionData?.session?.access_token;
-
-            if (!token) {
-                console.warn('📍 Map: No auth token available');
-                this.updateObjectPanel();
-                return;
-            }
-
-            const response = await fetch(`/api/objects/map?scope=${this.viewScope}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-
-            const result = await response.json();
-
-            if (result.error) {
-                console.error('📍 Map: API error:', result.error);
-            }
-
-            console.log('📍 Map: Loaded', result.objects?.length || 0, 'objects', result.objects);
-            this.objects = result.objects || [];
-            this.renderMarkers(this.objects);
-            this.updateObjectPanel();
-
-        } catch (e) {
-            console.error('📍 Map: Failed to load objects:', e);
-            const listEl = document.getElementById('map-object-list');
-            if (listEl) {
-                listEl.innerHTML = '<p style="color:#ff6666; text-align:center; padding:20px;">Error al cargar objetos</p>';
-            }
-        }
-    }
-
-    /**
-     * Render markers on the map
-     */
-    renderMarkers(objects) {
-        this.layerGroup.clearLayers();
-        this.markers = {};
-
-        let validCount = 0;
-
-        objects.forEach(obj => {
-            const coords = this.parseWKBPoint(obj.posicion);
-            if (!coords) {
-                console.warn('Skipping object without valid coords:', obj.nombre);
-                return;
-            }
-
-            validCount++;
-            const [lat, lon] = coords;
-            const confidence = obj.metadata?.confidence || 0.5;
-
-            const color = confidence > 0.8 ? '#00d4aa' : '#3fa8ff';
-
-            const customIcon = L.divIcon({
-                className: 'holo-marker',
-                html: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2">
-                        <circle cx="12" cy="12" r="10" fill="rgba(0,0,0,0.6)" />
-                        <circle cx="12" cy="12" r="4" fill="${color}" />
-                       </svg>`,
-                iconSize: [28, 28],
-                iconAnchor: [14, 14],
-                popupAnchor: [0, -14]
-            });
-
-            const marker = L.marker([lat, lon], { icon: customIcon });
-
-            const imageData = obj.metadata?.image_base64;
-
-            // Owner section for objects from other users
-            const ownerSection = (this.viewScope === 'all' && !obj.is_mine && obj.owner_name)
-                ? `<div class="popup-owner" data-owner-id="${obj.owner_id}">
-                     <img src="${obj.owner_avatar || '/icons/default-avatar.svg'}" class="popup-owner-avatar">
-                     <div class="popup-owner-info">
-                       <span class="popup-owner-name">@${obj.owner_name}</span>
-                       ${obj.owner_bio ? `<span class="popup-owner-bio">${obj.owner_bio.substring(0, 50)}...</span>` : ''}
-                     </div>
-                   </div>`
-                : '';
-
-            const popupContent = `
-                <div class="holo-popup-content">
-                    <h3>${obj.nombre || 'Sin nombre'}</h3>
-                    <p><strong>Tipo:</strong> ${obj.tipo || 'Desconocido'}</p>
-                    <p><strong>Confianza:</strong> ${(confidence * 100).toFixed(1)}%</p>
-                    <p><strong>Detectado:</strong> ${new Date(obj.created_at).toLocaleDateString()}</p>
-                    ${obj.descripcion ? `<p>${obj.descripcion}</p>` : ''}
-                    ${imageData ? `<img src="${imageData}" style="width:100%; margin-top:5px; border-radius:4px; max-height:150px; object-fit:cover;">` : ''}
-                    ${ownerSection}
-                </div>
-            `;
-
-            marker.bindPopup(popupContent, {
-                className: 'holo-popup',
-                maxWidth: 250
-            });
-
-            // Add click handler for owner in popup when popup opens
-            marker.on('popupopen', () => {
-                const popupOwner = document.querySelector('.popup-owner');
-                if (popupOwner) {
-                    popupOwner.addEventListener('click', () => {
-                        const ownerId = popupOwner.dataset.ownerId;
-                        if (ownerId) this.showProfileModal(ownerId);
-                    });
-                }
-            });
-
-            this.layerGroup.addLayer(marker);
-            this.markers[obj.id] = marker; // Store reference
-        });
-
-        console.log('📍 Rendered', validCount, 'markers on map');
-
-        if (validCount > 0) {
-            const group = new L.featureGroup(this.layerGroup.getLayers());
-            this.map.fitBounds(group.getBounds().pad(0.1));
-        }
-    }
-
-    /**
-     * Refresh map size
-     */
-    invalidateSize() {
-        if (this.map) {
-            setTimeout(() => {
-                this.map.invalidateSize();
-            }, 100);
-        }
-    }
-
-    /**
-     * Create user profile modal (called once)
-     */
-    createProfileModal() {
-        if (document.getElementById('user-profile-modal')) return;
-
+        // Show loading state
         const modal = document.createElement('div');
-        modal.className = 'user-profile-modal';
-        modal.id = 'user-profile-modal';
+        modal.className = 'user-profile-modal active';
+        modal.style.zIndex = '9999'; // Ensure top
         modal.innerHTML = `
             <div class="profile-modal-content">
                 <button class="profile-modal-close">&times;</button>
-                <div class="profile-modal-header">
-                    <img class="profile-modal-avatar" src="" alt="">
-                    <div class="profile-modal-name"></div>
-                </div>
-                <div class="profile-modal-bio"></div>
-                <div class="profile-modal-stats">
-                    <div class="stat-item">
-                        <span class="stat-value" id="stat-objects">0</span>
-                        <span class="stat-label">📦 Objetos</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-value" id="stat-missions">0</span>
-                        <span class="stat-label">🗺️ Misiones</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-value" id="stat-points">0</span>
-                        <span class="stat-label">⭐ Puntos</span>
-                    </div>
-                </div>
-                <div class="profile-modal-since"></div>
+                <div style="text-align:center; padding:20px;">Cargando perfil...</div>
             </div>
         `;
-
         document.body.appendChild(modal);
 
-        // Close handlers
-        modal.querySelector('.profile-modal-close').addEventListener('click', () => this.hideProfileModal());
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) this.hideProfileModal();
-        });
-    }
-
-    /**
-     * Show user profile modal
-     */
-    async showProfileModal(userId) {
-        this.createProfileModal();
-
-        const modal = document.getElementById('user-profile-modal');
-        if (!modal) return;
-
+        // Fetch Data
         try {
-            const { data: sessionData } = await supabase.auth.getSession();
-            const token = sessionData?.session?.access_token;
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', userId)
+                .single();
 
-            const response = await fetch(`/api/objects/user/${userId}/profile`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const userData = data || { username: 'Desconocido', bio: 'No encontrado' };
 
-            const profile = await response.json();
+            // Update Content
+            modal.innerHTML = `
+                <div class="profile-modal-content">
+                    <button class="profile-modal-close">&times;</button>
+                    <div class="profile-modal-header">
+                        <img src="${userData.avatar_url || 'src/assets/icons/default-avatar.svg'}" class="profile-modal-avatar">
+                        <div class="profile-modal-name">@${userData.username || 'Usuario'}</div>
+                        <div class="profile-modal-since">Nivel ${userData.level || 1} • ${userData.faction || 'Neutro'}</div>
+                    </div>
+                    <div class="profile-modal-bio">${userData.bio || 'Sin biografía disponible.'}</div>
+                    <div class="profile-modal-stats">
+                        <div class="stat-item">
+                            <div class="stat-val">${userData.objects_count || 0}</div>
+                            <div class="stat-label">Hallazgos</div>
+                        </div>
+                         <div class="stat-item">
+                            <div class="stat-val">${userData.reputation || 0}</div>
+                            <div class="stat-label">Reputación</div>
+                        </div>
+                    </div>
+                </div>
+            `;
 
-            if (profile.error) {
-                console.error('Profile error:', profile.error);
-                return;
-            }
+            // Re-bind events
+            const closeBtn = modal.querySelector('.profile-modal-close');
+            if (closeBtn) closeBtn.onclick = () => modal.remove();
 
-            // Populate modal
-            modal.querySelector('.profile-modal-avatar').src = profile.avatar_url || '/icons/default-avatar.svg';
-            modal.querySelector('.profile-modal-name').textContent = `@${profile.username}`;
-            modal.querySelector('.profile-modal-bio').textContent = profile.bio || 'Sin descripción';
-            modal.querySelector('#stat-objects').textContent = profile.stats?.objects || 0;
-            modal.querySelector('#stat-missions').textContent = profile.stats?.missions || 0;
-            modal.querySelector('#stat-points').textContent = profile.stats?.points || 0;
-
-            const since = profile.created_at ? new Date(profile.created_at).toLocaleDateString('es', { month: 'short', year: 'numeric' }) : '';
-            modal.querySelector('.profile-modal-since').textContent = since ? `📅 Miembro desde ${since}` : '';
-
-            modal.classList.add('active');
         } catch (e) {
-            console.error('Failed to load profile:', e);
+            console.error(e);
+            modal.innerHTML = `
+                <div class="profile-modal-content">
+                    <p style="color:red; text-align:center;">Error al cargar perfil</p>
+                    <button class="profile-modal-close">&times;</button>
+                </div>
+            `;
+            const closeBtn = modal.querySelector('.profile-modal-close');
+            if (closeBtn) closeBtn.onclick = () => modal.remove();
         }
+
+        modal.onclick = (e) => {
+            if (e.target === modal) modal.remove();
+        };
     }
 
     /**
-     * Hide profile modal
+     * Switch Base Layer
+     * @param {string} layerId - 'street', 'dark', 'satellite', 'terrain'
      */
-    hideProfileModal() {
-        const modal = document.getElementById('user-profile-modal');
-        if (modal) modal.classList.remove('active');
+    setLayer(layerId) {
+        console.log('Switching layer to:', layerId);
+
+        const sources = {
+            'street': { url: '/api/utils/tiles/{z}/{x}/{y}.png?source=osm', attrib: 'OSM' },
+            'dark': { url: '/api/utils/tiles/{z}/{x}/{y}.png?source=osm', attrib: 'OSM' }, // Use OSM base for inversion
+            'satellite': { url: '/api/utils/tiles/{z}/{x}/{y}.png?source=esri', attrib: 'ESRI World Imagery' },
+            'terrain': { url: '/api/utils/tiles/{z}/{x}/{y}.png?source=opentopo', attrib: 'OpenTopoMap' }
+        };
+
+        const config = sources[layerId] || sources['street'];
+        const mapContainer = document.getElementById(this.containerId);
+
+        // Toggle Odradek Mode (Holographic Blue)
+        if (layerId === 'dark') {
+            mapContainer?.classList.add('map-mode-odradek');
+        } else {
+            mapContainer?.classList.remove('map-mode-odradek');
+        }
+
+        let paint = {};
+        // For Odradek, we utilize CSS filters on the canvas, so we keep the raster raw.
+        // If we wanted pure maplibre dark mode without CSS:
+        /* if (layerId === 'dark') { paint = { ... } } */
+
+        this.map.setStyle({
+            version: 8,
+            sources: {
+                'base-source': {
+                    type: 'raster',
+                    tiles: [window.location.origin + config.url],
+                    tileSize: 256,
+                    attribution: config.attrib
+                }
+            },
+            layers: [
+                {
+                    id: 'base-layer',
+                    type: 'raster',
+                    source: 'base-source',
+                    minzoom: 0,
+                    maxzoom: 22,
+                    paint: paint
+                }
+            ]
+        });
     }
 }

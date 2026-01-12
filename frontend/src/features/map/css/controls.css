@@ -1,0 +1,320 @@
+/**
+ * Map Controls CSS
+ * Floating controls, menu, and quick actions
+ */
+
+/* ========== CONTROLS CONTAINER ========== */
+.map-controls {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    z-index: 1000;
+}
+
+/* ========== FLOATING ACTION BUTTON ========== */
+.map-control-fab {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3FA8FF, #00d4aa);
+    border: none;
+    color: #000;
+    font-size: 1.3rem;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(63, 168, 255, 0.4);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.map-control-fab:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 25px rgba(63, 168, 255, 0.6);
+}
+
+.map-control-fab.active .fab-icon {
+    transform: rotate(90deg);
+}
+
+.fab-icon {
+    transition: transform 0.3s ease;
+}
+
+/* ========== QUICK ACTION BUTTONS (Desktop) ========== */
+.map-quick-actions {
+    position: absolute;
+    bottom: 60px;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.map-quick-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(10, 15, 25, 0.9);
+    border: 1px solid rgba(63, 168, 255, 0.3);
+    color: #fff;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.map-quick-btn:hover {
+    background: rgba(63, 168, 255, 0.2);
+    border-color: #3FA8FF;
+    transform: scale(1.05);
+}
+
+.map-quick-btn.loading {
+    opacity: 0.6;
+    pointer-events: none;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 0.6;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
+/* ========== MOBILE MENU OVERLAY ========== */
+.map-menu-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+    z-index: 1001;
+    display: none;
+    align-items: flex-end;
+    justify-content: flex-start;
+    padding: 20px;
+}
+
+.map-menu-overlay.active {
+    display: flex;
+}
+
+.map-menu {
+    background: linear-gradient(135deg, rgba(10, 20, 35, 0.98), rgba(5, 15, 25, 0.98));
+    border: 1px solid rgba(63, 168, 255, 0.3);
+    border-radius: 16px;
+    width: 260px;
+    max-height: 70vh;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.map-menu-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 18px;
+    border-bottom: 1px solid rgba(63, 168, 255, 0.2);
+    font-weight: bold;
+    color: #3FA8FF;
+}
+
+.map-menu-close {
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.map-menu-close:hover {
+    color: #fff;
+}
+
+.map-menu-items {
+    padding: 10px 0;
+}
+
+.map-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 14px 18px;
+    background: none;
+    border: none;
+    color: #fff;
+    font-family: var(--font-jura);
+    font-size: 0.95rem;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.map-menu-item:hover {
+    background: rgba(63, 168, 255, 0.1);
+}
+
+.menu-icon {
+    font-size: 1.2rem;
+}
+
+.map-menu-divider {
+    height: 1px;
+    background: rgba(63, 168, 255, 0.15);
+    margin: 8px 15px;
+}
+
+/* ========== LAYERS DROPDOWN ========== */
+.map-layers-dropdown {
+    position: absolute;
+    bottom: 110px;
+    left: 50px;
+    background: rgba(10, 20, 35, 0.98);
+    border: 1px solid rgba(63, 168, 255, 0.3);
+    border-radius: 10px;
+    overflow: hidden;
+    display: none;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+}
+
+.map-layers-dropdown.active {
+    display: block;
+}
+
+.layer-option {
+    padding: 12px 18px;
+    color: #aaa;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+}
+
+.layer-option:hover {
+    background: rgba(63, 168, 255, 0.1);
+    color: #fff;
+}
+
+.layer-option.active {
+    background: rgba(63, 168, 255, 0.2);
+    color: #3FA8FF;
+}
+
+/* ========== USER LOCATION MARKER ========== */
+.user-location-marker {
+    position: relative;
+}
+
+.user-marker-dot {
+    width: 14px;
+    height: 14px;
+    background: #3FA8FF;
+    border: 3px solid #fff;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.user-marker-pulse {
+    width: 40px;
+    height: 40px;
+    background: rgba(63, 168, 255, 0.3);
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation: locationPulse 2s infinite;
+}
+
+@keyframes locationPulse {
+    0% {
+        transform: translate(-50%, -50%) scale(0.5);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translate(-50%, -50%) scale(1.5);
+        opacity: 0;
+    }
+}
+
+/* ========== TOAST NOTIFICATIONS ========== */
+.map-toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(10, 20, 35, 0.95);
+    border: 1px solid rgba(63, 168, 255, 0.4);
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    z-index: 1002;
+}
+
+.map-toast.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.map-toast.error {
+    border-color: rgba(255, 68, 68, 0.5);
+    background: rgba(255, 68, 68, 0.2);
+}
+
+.map-toast.success {
+    border-color: rgba(0, 212, 170, 0.5);
+    background: rgba(0, 212, 170, 0.2);
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+    .map-quick-actions {
+        display: none;
+    }
+
+    .map-control-fab {
+        width: 56px;
+        height: 56px;
+        font-size: 1.4rem;
+    }
+}
+
+@media (min-width: 769px) {
+    .map-control-fab {
+        display: none;
+    }
+}

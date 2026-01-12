@@ -2,123 +2,91 @@
 
 ## 🌌 Visión General
 
-El **Mapa de Exploración** permite visualizar geográficamente todos los objetos detectados durante las misiones de exploración. Utiliza Leaflet.js con un estilo holográfico personalizado que coincide con la estética cyberpunk de KEPLER.
+El **Mapa de Exploración** visualiza geográficamente los objetos detectados. Ha sido migrado a **MapLibre GL JS** para ofrecer renderizado por GPU de alto rendimiento, manteniendo la estética cyberpunk holográfica característica de KEPLER.
 
 ---
 
 ## 🛠️ Stack Tecnológico
 
-- **Librería de Mapas:** [Leaflet.js](https://leafletjs.com/)
-- **Tiles:** OpenStreetMap con filtros CSS personalizados
-- **Estilos:** CSS custom con efecto holográfico (grayscale + hue-rotate)
+- **Motor de Renderizado:** [MapLibre GL JS](https://maplibre.org/) (WebGL)
+- **Tiles:** Proxy propio `/api/utils/tiles` (soporta OSM, ESRI, OpenTopoMap)
+- **Tema:** Estilo CSS "Odradek" (inversión de color + saturación neón)
+- **Animaciones:** CSS puro acelerado por hardware para pulsos y transiciones.
 
 ---
 
-## 🧩 Componentes
+## 🧩 Componentes Principales
 
-### Frontend
 ```
 frontend/src/features/map/
-├── MapController.js    # Controlador principal del mapa
-├── map.css             # Estilos holográficos y responsive
-└── (integrado en dashboard)
-```
-
-### Backend
-- **Endpoint:** `GET /api/objects/map?scope=mine|all`
-- **Endpoint:** `GET /api/objects/user/{user_id}/profile`
-
----
-
-## 📱 Funcionalidades
-
-### 1. Toggle de Objetos
-- **👤 Míos:** Solo muestra objetos del usuario actual
-- **🌍 Todos:** Muestra objetos de todos los usuarios
-
-### 2. Panel de Objetos
-- Lista scrolleable de objetos detectados
-- Click en objeto → Vuela al marcador en el mapa
-- Muestra icono, nombre, tipo y confianza
-
-### 3. Marcadores Holográficos
-- Círculos SVG con color según confianza:
-  - `#00d4aa` (verde) → Confianza > 80%
-  - `#3fa8ff` (cyan) → Confianza < 80%
-
-### 4. Popups Informativos
-- Nombre, tipo, confianza, fecha
-- Imagen del objeto (si existe)
-- Descripción
-- Sección de propietario (en modo "Todos")
-
-### 5. Modal de Perfil de Usuario
-Al hacer click en el propietario de un objeto:
-- Avatar y nombre de usuario
-- Bio/descripción
-- Estadísticas: Objetos, Misiones, Puntos
-- Fecha de registro
-
----
-
-## 🔌 API Endpoints
-
-### Obtener Objetos del Mapa
-```
-GET /api/objects/map?scope=mine|all
-Authorization: Bearer <token>
-
-Response:
-{
-  "objects": [...],
-  "scope": "mine" | "all"
-}
-```
-
-### Obtener Perfil de Usuario
-```
-GET /api/objects/user/{user_id}/profile
-Authorization: Bearer <token>
-
-Response:
-{
-  "id": "uuid",
-  "username": "string",
-  "avatar_url": "string",
-  "bio": "string",
-  "stats": {
-    "objects": 42,
-    "missions": 15,
-    "points": 1250
-  },
-  "created_at": "timestamp"
-}
+├── MapController.js       # Controlador de MapLibre (Estilos, Capas, Marcadores)
+├── modules/
+│   ├── MapLocation.js     # Geolocalización GPS
+│   ├── MapControls.js     # Botones flotantes y menú móvil
+│   ├── MapSearch.js       # Búsqueda en tiempo real
+│   └── MapFilters.js      # Panel de filtros (Tipo, Confianza)
+└── map.css                # Estilos del contenedor, popups y efectos holográficos
 ```
 
 ---
 
-## 🎨 Estilos CSS
+## 📱 Funcionalidades Nuevas
 
-### Filtro Holográfico para Tiles
+### 1. Modos de Visualización (Capas)
+Selector flotante (`🌙`) para cambiar el estilo del mapa en tiempo real:
+- **� Dark (Odradek):** Estilo por defecto. Inversión holográfica azul/cian inspirada en *Death Stranding*.
+- **🗺️ Street:** Mapa de calles estándar (OSM).
+- **🛰️ Satellite:** Imágenes satelitales de alta resolución (ESRI).
+- **⛰️ Terrain:** Mapa topográfico (OpenTopoMap).
+
+### 2. Animaciones de Objetos ("Pulsos Vivos")
+Los marcadores emiten una onda de pulso cuyo color depende del tipo de objeto, con un desfase aleatorio para dar sensación orgánica:
+- **Tecnología:** 🟦 Cian (`#00f7ff`)
+- **Flora:** 🟩 Verde Neón (`#39ff14`)
+- **Estructuras:** ❇️ Menta (`#00ffaa`)
+- **Marcadores:** 🟥 Rojo (`#ff0055`)
+- **Cráteres:** 🟧 Naranja (`#ffaa00`)
+- **Artefactos:** 🟪 Púrpura (`#bd00ff`)
+
+### 3. Popups Enriquecidos
+Al hacer clic en un objeto, el popup renderizado en el DOM muestra:
+- **Imagen:** Miniatura automática (ajustada con `object-fit: contain`).
+- **Datos:** Nombre, Tipo, Descripción, Barra de Confianza.
+- **Propietario:** Enlace interactivo (`@Usuario`) que abre el modal de perfil.
+
+### 4. Búsqueda y Filtrado
+- **Barra de Búsqueda:** Filtra por nombre o tipo en tiempo real.
+- **Panel Lateral:** Slider de confianza mínima y checkboxes por tipo de objeto.
+
+---
+
+## 🔌 Backend Proxy
+
+Para evitar problemas de CORS y COEP (Cross-Origin Embedder Policy), los tiles se sirven a través de un proxy local:
+`GET /api/utils/tiles/{z}/{x}/{y}.png?source=[osm|esri|opentopo]`
+
+Esto permite cambiar la fuente de datos (source) dinámicamente sin violar políticas de seguridad del navegador.
+
+---
+
+## 🎨 Guía de Estilos (CSS)
+
+### Efecto Odradek (Modo Dark)
+Se aplica un filtro al canvas del mapa para transformar los tiles estándar en un holograma:
 ```css
-.leaflet-tile-pane {
-    filter: grayscale(100%) brightness(0.35) 
-            sepia(100%) hue-rotate(180deg) 
-            saturate(3) contrast(1.2);
+.map-mode-odradek .maplibregl-canvas {
+    filter: invert(100%) sepia(100%) 
+            saturate(400%) hue-rotate(190deg) 
+            brightness(90%) contrast(130%);
 }
 ```
 
-### Responsive (Mobile)
-- Panel de objetos: Ancho completo, altura limitada
-- Marcadores: Tamaño aumentado para touch (36px)
-- Modal de perfil: Scrolleable con max-height 90vh
-
----
-
-## 🚀 Flujo de Usuario
-
-1. **Acceso:** Dashboard → Botón "Mapa" o Menú móvil → 🗺️ Mapa
-2. **Visualización inicial:** Objetos propios (scope=mine)
-3. **Exploración comunitaria:** Toggle a "🌍 Todos"
-4. **Interacción:** Click en objeto → Popup con detalles
-5. **Perfiles:** Click en propietario → Modal con stats
+### Marcadores Dinámicos
+Se usan variables CSS inyectadas por JS para el color del pulso:
+```css
+.marker-pulse {
+    border: 1px solid var(--marker-color);
+    box-shadow: 0 0 10px var(--marker-color);
+    animation: pulse-ring 3s infinite;
+}
+```
