@@ -1,102 +1,173 @@
-<div class="profile-container">
-    <!-- Header -->
-    <header class="profile-header">
-        <button id="btn-back" class="btn-back">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M19 12H5M12 19l-7-7 7-7" />
-            </svg>
-            <span>Volver</span>
-        </button>
-        <h1 class="profile-title">Mi Perfil</h1>
-        <div class="header-spacer"></div>
-    </header>
+<!DOCTYPE html>
+<html lang="es">
 
-    <!-- Main Content -->
-    <main class="profile-main">
-        <!-- Profile Card -->
-        <section class="profile-card glass-panel">
-            <div class="profile-avatar-section">
-                <div class="profile-avatar-large">
-                    <span id="profile-avatar-letter">S</span>
-                </div>
-                <button class="btn-change-avatar">Cambiar Avatar</button>
-            </div>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KEPLER | Mi Perfil</title>
+    <link href="https://fonts.googleapis.com/css2?family=Jura:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/reset.css">
+    <link rel="stylesheet" href="../../css/tokens.css">
+    <link rel="stylesheet" href="../../css/global.css">
+    <link rel="stylesheet" href="../../css/notifications.css">
+    <link rel="stylesheet" href="./profile.css">
+</head>
 
-            <div class="profile-info">
-                <h2 id="profile-display-name" class="display-name">Usuario</h2>
-                <p id="profile-email" class="profile-email">user@email.com</p>
-                <div class="profile-badge">
-                    <span class="badge explorador">🚀 Explorador</span>
-                </div>
-                <p class="member-since">Miembro desde: <span id="profile-member-since">--</span></p>
-            </div>
-        </section>
+<body>
+    <div class="profile-container">
+        <!-- Header -->
+        <header class="profile-header">
+            <button id="btn-back" class="btn-back">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                <span>Volver</span>
+            </button>
+            <h1 class="profile-title">Mi Perfil</h1>
+            <div class="header-spacer"></div>
+        </header>
 
-        <!-- Edit Form -->
-        <section class="profile-form-section glass-panel">
-            <h3 class="section-title">Información Personal</h3>
-
-            <form id="profile-form" class="profile-form">
-                <div class="form-group">
-                    <label for="inp-display-name">Nombre de Usuario</label>
-                    <input type="text" id="inp-display-name" placeholder="Tu nombre de usuario" />
+        <!-- Main Content -->
+        <main class="profile-main">
+            <!-- Profile Card -->
+            <section class="profile-card glass-panel">
+                <div class="profile-avatar-section">
+                    <div class="profile-avatar-large">
+                        <span id="profile-avatar-letter">S</span>
+                    </div>
+                    <button class="btn-change-avatar">Cambiar Avatar</button>
                 </div>
 
-                <div class="form-group">
-                    <label for="inp-bio">Biografía</label>
-                    <textarea id="inp-bio" rows="4"
-                        placeholder="Cuéntanos sobre ti y tu experiencia en exploración..."></textarea>
+                <div class="profile-info">
+                    <h2 id="profile-display-name" class="display-name">Usuario</h2>
+                    <p id="profile-email" class="profile-email">user@email.com</p>
+                    <div class="profile-badge">
+                        <span class="badge explorador">🚀 Explorador</span>
+                    </div>
+                    <p class="member-since">Miembro desde: <span id="profile-member-since">--</span></p>
                 </div>
+            </section>
 
-                <div class="form-group">
-                    <label for="inp-location">Ubicación / Base</label>
-                    <input type="text" id="inp-location" placeholder="Ej: Base Alpha, Sector 7" />
+            <!-- Edit Form -->
+            <section class="profile-form-section glass-panel">
+                <h3 class="section-title">Información Personal</h3>
+
+                <form id="profile-form" class="profile-form">
+                    <div class="form-group">
+                        <label for="inp-display-name">Nombre de Usuario</label>
+                        <input type="text" id="inp-display-name" placeholder="Tu nombre de usuario" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="inp-bio">Biografía</label>
+                        <textarea id="inp-bio" rows="4"
+                            placeholder="Cuéntanos sobre ti y tu experiencia en exploración..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="inp-location">Ubicación / Base</label>
+                        <input type="text" id="inp-location" placeholder="Ej: Base Alpha, Sector 7" />
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-save">
+                            💾 Guardar Cambios
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Stats Section -->
+            <section class="profile-stats-section glass-panel">
+                <h3 class="section-title">Estadísticas de Exploración</h3>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-value">--</span>
+                        <span class="stat-label">Misiones</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value">--</span>
+                        <span class="stat-label">Objetos</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value">--</span>
+                        <span class="stat-label">POIs</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value">--</span>
+                        <span class="stat-label">Horas</span>
+                    </div>
                 </div>
+            </section>
 
-                <div class="form-actions">
-                    <button type="submit" class="btn-save">
-                        💾 Guardar Cambios
+            <!-- AI Avatar Section -->
+            <section class="profile-ai-avatar-section glass-panel">
+                <h3 class="section-title">🤖 Avatar del Asistente IA</h3>
+                <p class="section-description">Personaliza la imagen del asistente de chat.</p>
+
+                <div class="ai-avatar-options">
+                    <!-- Current Avatar Preview -->
+                    <div class="ai-avatar-preview">
+                        <img id="ai-avatar-current" src="/icons/dashboard/IA.svg" alt="AI Avatar"
+                            class="ai-avatar-preview-img" />
+                        <span class="ai-avatar-label">Avatar actual</span>
+                    </div>
+
+                    <!-- Preset Avatars -->
+                    <div class="ai-avatar-presets">
+                        <button class="ai-avatar-option selected" data-avatar="/icons/dashboard/IA.svg" title="Default">
+                            <img src="/icons/dashboard/IA.svg" alt="Default" />
+                        </button>
+                        <button class="ai-avatar-option" data-avatar="emoji:🤖" title="Robot">
+                            <span class="avatar-emoji">🤖</span>
+                        </button>
+                        <button class="ai-avatar-option" data-avatar="emoji:🛸" title="UFO">
+                            <span class="avatar-emoji">🛸</span>
+                        </button>
+                        <button class="ai-avatar-option" data-avatar="emoji:👽" title="Alien">
+                            <span class="avatar-emoji">👽</span>
+                        </button>
+                        <button class="ai-avatar-option" data-avatar="emoji:🌌" title="Galaxy">
+                            <span class="avatar-emoji">🌌</span>
+                        </button>
+                        <button class="ai-avatar-option" data-avatar="emoji:🔭" title="Telescope">
+                            <span class="avatar-emoji">🔭</span>
+                        </button>
+                    </div>
+
+                    <!-- Custom URL Input -->
+                    <div class="ai-avatar-custom">
+                        <label for="inp-ai-avatar-url">O ingresa una URL personalizada:</label>
+                        <div class="ai-avatar-url-input">
+                            <input type="url" id="inp-ai-avatar-url" placeholder="https://example.com/avatar.png" />
+                            <button id="btn-save-ai-avatar" class="btn-save-avatar">Guardar</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Security Section -->
+            <section class="profile-security-section glass-panel">
+                <h3 class="section-title">Seguridad</h3>
+
+                <div class="security-actions">
+                    <button class="btn-security" id="btn-change-password">
+                        🔐 Cambiar Contraseña
+                    </button>
+                    <button class="btn-security danger" id="btn-logout-all">
+                        🚪 Cerrar Sesión en Todos los Dispositivos
                     </button>
                 </div>
-            </form>
-        </section>
+            </section>
+        </main>
+    </div>
 
-        <!-- Stats Section -->
-        <section class="profile-stats-section glass-panel">
-            <h3 class="section-title">Estadísticas de Exploración</h3>
+    .<!-- Initialization Script -->
+    <script type="module">
+        import { init } from './index.js';
+        init();
+    </script>
+</body>
 
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <span class="stat-value">--</span>
-                    <span class="stat-label">Misiones</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-value">--</span>
-                    <span class="stat-label">Objetos</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-value">--</span>
-                    <span class="stat-label">POIs</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-value">--</span>
-                    <span class="stat-label">Horas</span>
-                </div>
-            </div>
-        </section>
-
-        <!-- Security Section -->
-        <section class="profile-security-section glass-panel">
-            <h3 class="section-title">Seguridad</h3>
-
-            <div class="security-actions">
-                <button class="btn-security" id="btn-change-password">
-                    🔐 Cambiar Contraseña
-                </button>
-                <button class="btn-security danger" id="btn-logout-all">
-                    🚪 Cerrar Sesión en Todos los Dispositivos
-                </button>
-            </div>
-        </section>
-    </main>
-</div>
+</html>

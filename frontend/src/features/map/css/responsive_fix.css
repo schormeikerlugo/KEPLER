@@ -18,18 +18,49 @@
         /* Ensure it's not hidden */
     }
 
-    /* Adjust Object Panel to be collapsible/smaller */
+    /* Object Panel - Hidden by default on mobile */
     .map-object-panel {
-        top: 10px;
-        left: 10px;
-        width: 200px;
-        max-height: 40vh;
-        opacity: 0.9;
-        /* Make it collapsible in future phases, for now smaller */
-        transform: scale(0.9);
-        transform-origin: top left;
         display: none;
-        /* Hide object panel on mobile initially to see map */
+        position: fixed;
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        max-height: 50vh;
+        border-radius: 16px 16px 0 0;
+        z-index: 3000;
+        /* Higher than controls */
+        transform: translateY(0);
+        transition: transform 0.3s ease, max-height 0.3s ease;
+    }
+
+    /* Show panel when toggled */
+    .map-object-panel.mobile-visible {
+        display: flex;
+    }
+
+    /* Collapsed state */
+    .map-object-panel.mobile-collapsed {
+        max-height: 60px;
+    }
+
+    .map-object-panel.mobile-collapsed .map-object-list,
+    .map-object-panel.mobile-collapsed .map-scope-toggle {
+        display: none;
+    }
+
+    /* Add collapse handle */
+    .map-object-panel::before {
+        content: '';
+        position: absolute;
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 40px;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 2px;
     }
 
     /* Ensure Controls are visible above everything */

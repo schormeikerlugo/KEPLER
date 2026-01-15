@@ -1,6 +1,11 @@
 import { auth } from '../auth.js';
 const API_BASE = '/api';
 
+// Export auth token getter for streaming and other modules
+export async function getAuthToken() {
+    return await auth.getToken();
+}
+
 export const api = {
     // --- DASHBOARD ---
     async getDashboardStats() {

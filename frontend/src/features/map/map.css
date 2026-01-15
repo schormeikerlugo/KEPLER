@@ -138,10 +138,11 @@
    ============================================ */
 .map-object-panel {
     position: absolute;
-    top: 85px;
-    left: 10px;
+    top: 180px;
+    left: 15px;
     width: 280px;
-    max-height: calc(100% - 100px);
+    max-height: 70vh;
+    height: auto;
     background: rgba(5, 10, 20, 0.92);
     border: 1px solid rgba(63, 168, 255, 0.4);
     border-radius: 8px;
@@ -151,6 +152,32 @@
     overflow: hidden;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(10px);
+    transition: max-height 0.3s ease, height 0.3s ease;
+}
+
+/* Ensure list container respects parent bounds */
+.map-object-panel .map-object-list {
+    max-height: 60vh;
+    overflow-y: auto;
+    transition: max-height 0.3s ease;
+}
+
+/* Smooth item animations */
+.map-object-item {
+    animation: fadeSlideIn 0.2s ease forwards;
+    opacity: 0;
+}
+
+@keyframes fadeSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }
 
 .map-object-panel-header {
@@ -160,6 +187,37 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+.map-object-panel-header .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.panel-collapse-btn,
+.panel-close-btn {
+    display: none;
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    transition: color 0.2s;
+}
+
+.panel-collapse-btn:hover,
+.panel-close-btn:hover {
+    color: var(--color-primary);
+}
+
+@media (max-width: 768px) {
+
+    .panel-collapse-btn,
+    .panel-close-btn {
+        display: block;
+    }
 }
 
 .map-object-panel-header h3 {
@@ -239,6 +297,16 @@
     flex: 1;
     overflow-y: auto;
     padding: 8px;
+    /* Hide scrollbar but keep scroll functionality */
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE/Edge */
+}
+
+.map-object-list::-webkit-scrollbar {
+    display: none;
+    /* Chrome/Safari/Opera */
 }
 
 .map-object-item {

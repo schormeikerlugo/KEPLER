@@ -4,14 +4,15 @@
 .map-search-container {
     position: absolute;
     top: 20px;
-    left: 20px;
-    /* Aligned with object panel */
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 1000;
     display: flex;
     gap: 10px;
     align-items: center;
     width: 300px;
-    /* Reduced width */
+    max-width: 90vw;
+    /* Limit width on small screens */
     transition: all 0.3s ease;
 }
 
@@ -20,8 +21,17 @@
     .map-search-container {
         left: 50%;
         transform: translateX(-50%);
-        width: 90%;
-        top: 10px;
+        width: 95%;
+        top: 55px;
+        /* Pushed down to make room for widget */
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    /* Remove toggle class logic as it's now always visible */
+    .map-search-container.visible {
+        transform: translateX(-50%);
+        opacity: 1;
     }
 }
 
@@ -95,6 +105,11 @@
     border-radius: 12px;
     padding: 15px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    max-height: 200px;
+    overflow-y: auto;
+    /* Custom Scrollbar for the panel */
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-primary-400) rgba(0, 0, 0, 0.3);
     display: none;
     /* Hidden by default */
     opacity: 0;

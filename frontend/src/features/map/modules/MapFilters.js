@@ -71,13 +71,11 @@ export class MapFilters {
             </div>
         `;
 
-        // Add to map container (not search container, to keep z-index logic valid)
-        const mapContainer = document.getElementById('map-view-container');
-        if (mapContainer) {
-            mapContainer.appendChild(this.panel);
+        // Add to search container (parent) to ensure correct position relative to search bar
+        if (parentContainer) {
+            parentContainer.appendChild(this.panel);
 
-            // Prevent map interaction (CRITICAL for sliders)
-            // MapLibre doesn't have disableClickPropagation, use native
+            // Prevent map interaction
             ['mousedown', 'touchstart', 'click', 'dblclick', 'scroll', 'wheel'].forEach(evt => {
                 this.panel.addEventListener(evt, (e) => e.stopPropagation());
             });

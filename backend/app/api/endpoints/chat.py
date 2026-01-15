@@ -174,9 +174,11 @@ async def chat_with_llama(
 
     # 2. Prepare Prompt
     system_prompt = (
-        "Eres 'Llama 3.8', una IA avanzada integrada en el traje espacial 'KEPLER'. "
+        "Eres 'KEPLER', una IA avanzada integrada en el traje espacial 'KEPLER'. "
         "Tu misión es asistir al explorador con información científica, técnica y de supervivencia. "
         "Respuestas concisas, útiles y en español. "
+        "Usa encabezados markdown (## Título) para organizar. "
+        "Cuando compares elementos (misiones, objetos, rutas, distancias), USA TABLAS MARKDOWN para mayor claridad. "
         "Si te preguntan por datos del traje, inventa valores realistas dentro de parámetros seguros."
     )
     
@@ -228,7 +230,18 @@ async def chat_with_llama(
             else:
                 # Create New
                 # Create New Smart Title with Llama 3
-                title_prompt = f"Genera un título muy corto (máximo 4 palabras) para esta conversación que empieza con: '{req.message}'. Solo el título, sin comillas ni prefijos."
+                title_prompt = f"""Genera un título muy corto EN ESPAÑOL (máximo 4 palabras) para esta conversación que empieza con: '{req.message}'.
+
+IMPORTANTE: Empieza el título con un emoji relevante según el tema:
+- 🔬 Análisis/Ciencia
+- 🗺️ Mapas/Ubicación
+- 🚀 Misiones/Exploración
+- 💎 Minerales/Recursos
+- 📊 Datos/Estadísticas
+- ❓ Preguntas generales
+- 🛠️ Configuración/Técnico
+
+Responde SOLO con el emoji + título en español, sin comillas."""
                 try:
                     title_resp = ollama.chat(model='llama3:8b-instruct-q6_K', messages=[{'role': 'user', 'content': title_prompt}])
                     title = title_resp['message']['content'].strip().strip('"')

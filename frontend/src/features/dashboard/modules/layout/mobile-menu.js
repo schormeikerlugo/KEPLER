@@ -3,7 +3,7 @@
  * Handles hamburger menu toggle, navigation, and mobile-specific interactions
  */
 
-import { auth } from '../../../js/auth.js';
+import { auth } from '../../../../js/auth.js';
 
 export function initMobileMenu(user, missionModal) {
     const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
@@ -47,6 +47,14 @@ export function initMobileMenu(user, missionModal) {
         if (mobileUserName) mobileUserName.textContent = user.email.split('@')[0];
         if (mobileUserEmail) mobileUserEmail.textContent = user.email;
         if (mobileUserAvatar) mobileUserAvatar.textContent = user.email[0].toUpperCase();
+
+        // Handle profile click
+        const mobileNavUser = document.getElementById('mobile-nav-user');
+        if (mobileNavUser) {
+            mobileNavUser.addEventListener('click', () => {
+                window.location.href = '/src/features/profile/profile.html';
+            });
+        }
     }
 
     // Mobile menu button handlers

@@ -3,6 +3,15 @@
  * KEPLER Project - Holographic UI
  */
 
+body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-primary, #0a0f19);
+    /* Fallback color */
+    color: #fff;
+    font-family: var(--font-primary, sans-serif);
+}
+
 .profile-container {
     min-height: 100vh;
     background: var(--bg-primary);
@@ -564,4 +573,152 @@
     flex: 1;
     height: 1px;
     background: rgba(63, 168, 255, 0.2);
+}
+
+/* ========================================
+   AI AVATAR SECTION
+   ======================================== */
+.profile-ai-avatar-section .section-description {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+    margin: -10px 0 20px 0;
+}
+
+.ai-avatar-options {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.ai-avatar-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.ai-avatar-preview-img {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: rgba(63, 168, 255, 0.1);
+    border: 2px solid rgba(63, 168, 255, 0.3);
+    object-fit: contain;
+    padding: 12px;
+}
+
+.ai-avatar-label {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ai-avatar-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+}
+
+.ai-avatar-option {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.3);
+    border: 2px solid rgba(63, 168, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.ai-avatar-option:hover {
+    background: rgba(63, 168, 255, 0.15);
+    border-color: #3fa8ff;
+    transform: scale(1.1);
+}
+
+.ai-avatar-option.selected {
+    background: rgba(63, 168, 255, 0.2);
+    border-color: #3fa8ff;
+    box-shadow: 0 0 15px rgba(63, 168, 255, 0.4);
+}
+
+.ai-avatar-option img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+}
+
+.ai-avatar-option .avatar-emoji {
+    font-size: 1.8rem;
+}
+
+.ai-avatar-custom {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(63, 168, 255, 0.1);
+}
+
+.ai-avatar-custom label {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.ai-avatar-url-input {
+    display: flex;
+    gap: 10px;
+}
+
+.ai-avatar-url-input input {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(63, 168, 255, 0.2);
+    border-radius: 10px;
+    padding: 12px 15px;
+    color: #fff;
+    font-family: var(--font-primary);
+    font-size: 0.9rem;
+}
+
+.ai-avatar-url-input input:focus {
+    outline: none;
+    border-color: #3fa8ff;
+}
+
+.btn-save-avatar {
+    background: linear-gradient(135deg, #3fa8ff, #0066cc);
+    border: none;
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-family: var(--font-jura);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-save-avatar:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(63, 168, 255, 0.3);
+}
+
+@media (max-width: 480px) {
+    .ai-avatar-url-input {
+        flex-direction: column;
+    }
+
+    .ai-avatar-option {
+        width: 50px;
+        height: 50px;
+    }
+
+    .ai-avatar-option .avatar-emoji {
+        font-size: 1.5rem;
+    }
 }

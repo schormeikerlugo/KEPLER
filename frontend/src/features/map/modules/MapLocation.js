@@ -1,6 +1,7 @@
 /**
  * MapLocation.js
  * GPS location functionality - Centers map on user's current position
+ * Updated for MapLibre GL JS
  */
 
 export class MapLocation {
@@ -16,7 +17,7 @@ export class MapLocation {
     goToMyLocation() {
         if (!navigator.geolocation) {
             console.warn('Geolocation not supported');
-            this.controller.showToast?.('GPS no soportado en este navegador', 'error');
+            this.controller.controls?.showToast?.('GPS no soportado en este navegador', 'error');
             return;
         }
 
@@ -24,18 +25,25 @@ export class MapLocation {
         const btn = document.getElementById('map-btn-location');
         if (btn) btn.classList.add('loading');
 
+        this.controller.controls?.showToast?.('Obteniendo ubicación...');
+
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 const { latitude, longitude, accuracy } = position.coords;
                 console.log(`📍 GPS: ${latitude}, ${longitude} (±${Math.round(accuracy)}m)`);
 
-                // Fly to position
-                this.controller.map.flyTo([latitude, longitude], 16, { duration: 1.5 });
+                // Fly to position with MapLibre
+                this.controller.map.flyTo({
+                    center: [longitude, latitude], // MapLibre uses [lng, lat]
+                    zoom: 16,
+                    duration: 1500
+                });
 
                 // Add/update user marker
                 this.setUserMarker(latitude, longitude, accuracy);
 
                 if (btn) btn.classList.remove('loading');
+                this.controller.controls?.showToast?.(`Ubicación encontrada (±${Math.round(accuracy)}m)`, 'success');
             },
             (error) => {
                 console.error('GPS Error:', error);
@@ -46,42 +54,50 @@ export class MapLocation {
                 if (error.code === 2) msg = 'Ubicación no disponible';
                 if (error.code === 3) msg = 'Timeout obteniendo ubicación';
 
-                this.controller.showToast?.(msg, 'error');
+                this.controller.controls?.showToast?.(msg, 'error');
             },
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
         );
     }
 
     /**
-     * Set or update user location marker
+     * Set or update user location marker (MapLibre version)
      */
     setUserMarker(lat, lon, accuracy) {
-        const L = window.L;
-
         // Remove existing marker
         if (this.userMarker) {
-            this.controller.map.removeLayer(this.userMarker);
+            this.userMarker.remove();
         }
 
-        // Create pulsing user marker
-        const userIcon = L.divIcon({
-            className: 'user-location-marker',
-            html: `
-                <div class="user-marker-pulse"></div>
-                <div class="user-marker-dot"></div>
-            `,
-            iconSize: [20, 20],
-            iconAnchor: [10, 10]
-        });
+        // Get MapLibre reference from window or map
+        const maplibregl = window.maplibregl;
+        if (!maplibregl) {
+            console.warn('MapLibre GL not available');
+            return;
+        }
 
-        this.userMarker = L.marker([lat, lon], { icon: userIcon })
-            .addTo(this.controller.map)
-            .bindPopup(`
-                <div class="user-location-popup">
-                    <strong>📍 Tu ubicación</strong>
-                    <br><small>±${Math.round(accuracy)}m de precisión</small>
-                </div>
-            `);
+        // Create pulsing user marker element
+        const el = document.createElement('div');
+        el.className = 'user-location-marker';
+        el.innerHTML = `
+            <div class="user-marker-pulse"></div>
+            <div class="user-marker-dot"></div>
+        `;
+
+        // Create MapLibre marker
+        this.userMarker = new maplibregl.Marker({ element: el })
+            .setLngLat([lon, lat])
+            .setPopup(
+                new maplibregl.Popup({ offset: 25 })
+                    .setHTML(`
+                        <div class="user-location-popup">
+                            <strong>📍 Tu ubicación</strong>
+                            <br><small>±${Math.round(accuracy)}m de precisión</small>
+                            <br><small style="color:#888;">${lat.toFixed(5)}, ${lon.toFixed(5)}</small>
+                        </div>
+                    `)
+            )
+            .addTo(this.controller.map);
     }
 
     /**

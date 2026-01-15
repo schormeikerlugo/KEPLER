@@ -111,6 +111,12 @@
     gap: 15px;
     padding: 20px;
     border-bottom: 1px solid rgba(63, 168, 255, 0.1);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.mobile-nav-user:hover {
+    background: rgba(63, 168, 255, 0.05);
 }
 
 .mobile-user-avatar {

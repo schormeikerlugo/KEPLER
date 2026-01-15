@@ -1,147 +1,138 @@
 /**
  * MapLayers.js
- * Layer switching functionality - Toggle between map styles
+ * Handles map layer switching between raster and vector tiles.
+ * Supports: Street, Dark (Odradek), Satellite, Terrain, Vector (PMTiles).
  */
 
 export class MapLayers {
-    constructor(mapController) {
-        this.controller = mapController;
-        this.currentLayer = null;
-        this.currentLayerName = 'dark';
-
-        // Set default options for all layers to avoid COEP blocking
-        const tileOptions = {
-            crossOrigin: false, // CRITICAL: Treat as opaque resource to pass COEP check
-            className: 'holo-tiles'
-        };
-
-        // Use relative path to leverage Vite Proxy (avoids Mixed Content / CORS issues)
-        const PROXY_BASE = '/api/utils/tiles';
-
-        // Define available layers
-        this.layers = {
-            dark: {
-                name: 'Dark',
-                icon: '🌙',
-                url: `${PROXY_BASE}/{z}/{x}/{y}.png?source=osm`,
-                attribution: '&copy; OpenStreetMap',
-                filter: 'grayscale(100%) brightness(0.35) sepia(100%) hue-rotate(180deg) saturate(3) contrast(1.2)',
-                options: { ...tileOptions, maxNativeZoom: 19, maxZoom: 22 }
-            },
-            street: {
-                name: 'Street',
-                icon: '🗺️',
-                url: `${PROXY_BASE}/{z}/{x}/{y}.png?source=osm`,
-                attribution: '&copy; OpenStreetMap contributors',
-                filter: 'grayscale(0%) brightness(100%)',
-                options: { ...tileOptions, maxNativeZoom: 19, maxZoom: 22 }
-            },
-            satellite: {
-                name: 'Satellite',
-                icon: '🛰️',
-                url: `${PROXY_BASE}/{z}/{x}/{y}.png?source=esri`,
-                attribution: '&copy; Esri',
-                filter: 'brightness(1.1) contrast(1.1)',
-                options: { ...tileOptions, maxNativeZoom: 17, maxZoom: 22 } // Scale after 17
-            },
-            terrain: {
-                name: 'Terrain',
-                icon: '⛰️',
-                url: `${PROXY_BASE}/{z}/{x}/{y}.png?source=opentopo`,
-                attribution: 'OpenTopoMap',
-                filter: 'grayscale(30%) sepia(20%)',
-                options: { ...tileOptions, maxNativeZoom: 19, maxZoom: 22 }
-            }
-        };
+    constructor(controller) {
+        this.controller = controller;
+        this.map = controller.map;
+        this.renderMode = 'raster';
+        this.availableRegions = [];
     }
 
     /**
-     * Initialize with saved preference or default
+     * Switch Base Layer
+     * @param {string} layerId - 'street', 'dark', 'satellite', 'terrain', 'vector'
      */
-    init() {
-        const saved = localStorage.getItem('kepler_map_layer') || 'dark';
-        this.setLayer(saved, false);
-    }
+    setLayer(layerId) {
+        console.log('Switching layer to:', layerId);
+        const mapContainer = document.getElementById(this.controller.containerId);
 
-    /**
-     * Set map layer by name
-     */
-    setLayer(layerName, animate = true) {
-        const L = window.L;
-        const layer = this.layers[layerName];
+        // Remove all mode classes
+        mapContainer?.classList.remove('map-mode-odradek');
 
-        if (!layer) {
-            console.warn('Unknown layer:', layerName);
+        // Special case: Vector mode uses PMTiles
+        if (layerId === 'vector' && this.availableRegions.length > 0) {
+            this.setVectorStyle();
             return;
         }
 
-        // Remove current layer
-        if (this.currentLayer) {
-            this.controller.map.removeLayer(this.currentLayer);
+        // Raster sources configuration
+        const sources = {
+            'street': { url: '/api/utils/tiles/{z}/{x}/{y}.png?source=osm', attrib: 'OSM' },
+            'dark': { url: '/api/utils/tiles/{z}/{x}/{y}.png?source=osm', attrib: 'OSM' },
+            'satellite': { url: '/api/utils/tiles/{z}/{x}/{y}.png?source=esri', attrib: 'ESRI World Imagery' },
+            'terrain': { url: '/api/utils/tiles/{z}/{x}/{y}.png?source=opentopo', attrib: 'OpenTopoMap' }
+        };
+
+        const config = sources[layerId] || sources['street'];
+
+        // Toggle Odradek Mode (Holographic Blue via CSS)
+        if (layerId === 'dark') {
+            mapContainer?.classList.add('map-mode-odradek');
         }
 
-        // Add new layer
-        this.currentLayer = L.tileLayer(layer.url, {
-            attribution: layer.attribution,
-            maxZoom: 19,
-            ...layer.options // Pass crossOrigin: false here
-        }).addTo(this.controller.map);
+        this.renderMode = 'raster';
 
-        // Apply filter to tiles
-        const tilePane = document.querySelector('.leaflet-tile-pane');
-        if (tilePane) {
-            tilePane.style.filter = layer.filter;
-            if (animate) {
-                tilePane.style.transition = 'filter 0.5s ease';
-            }
-        }
-
-        // Save preference
-        this.currentLayerName = layerName;
-        localStorage.setItem('kepler_map_layer', layerName);
-
-        // Update UI
-        this.updateLayerUI();
-
-        console.log(`🗺️ Map layer changed to: ${layer.name}`);
-    }
-
-    /**
-     * Cycle to next layer
-     */
-    cycleLayer() {
-        const names = Object.keys(this.layers);
-        const currentIdx = names.indexOf(this.currentLayerName);
-        const nextIdx = (currentIdx + 1) % names.length;
-        this.setLayer(names[nextIdx]);
-    }
-
-    /**
-     * Update layer switcher UI
-     */
-    updateLayerUI() {
-        const btn = document.getElementById('map-btn-layers');
-        if (btn) {
-            const layer = this.layers[this.currentLayerName];
-            btn.innerHTML = layer.icon;
-            btn.title = `Capa: ${layer.name}`;
-        }
-
-        // Update dropdown if exists
-        document.querySelectorAll('.layer-option').forEach(el => {
-            el.classList.toggle('active', el.dataset.layer === this.currentLayerName);
+        this.map.setStyle({
+            version: 8,
+            sources: {
+                'base-source': {
+                    type: 'raster',
+                    tiles: [window.location.origin + config.url],
+                    tileSize: 256,
+                    attribution: config.attrib
+                }
+            },
+            layers: [
+                {
+                    id: 'base-layer',
+                    type: 'raster',
+                    source: 'base-source',
+                    minzoom: 0,
+                    maxzoom: 22
+                }
+            ]
         });
     }
 
     /**
-     * Get available layers for menu rendering
+     * Set Vector Style (Odradek with PMTiles)
      */
-    getLayerOptions() {
-        return Object.entries(this.layers).map(([key, layer]) => ({
-            key,
-            name: layer.name,
-            icon: layer.icon,
-            active: key === this.currentLayerName
-        }));
+    async setVectorStyle() {
+        console.log('🎨 Loading Vector Style (Odradek)...');
+        this.renderMode = 'vector';
+
+        try {
+            const response = await fetch('/src/features/map/styles/odradek-vector.json');
+            const style = await response.json();
+
+            // Update the PMTiles source URL to use available region
+            if (this.availableRegions.length > 0) {
+                const region = this.availableRegions[0].id;
+                style.sources.protomaps.url = `pmtiles://${window.location.origin}/api/utils/pmtiles/${region}.pmtiles`;
+            }
+
+            this.map.setStyle(style);
+            console.log('✅ Vector Style Applied');
+        } catch (error) {
+            console.error('Failed to load vector style:', error);
+            this.setLayer('dark');
+        }
+    }
+
+    /**
+     * Check for available PMTiles regions
+     */
+    async checkAvailableRegions() {
+        try {
+            const response = await fetch('/api/utils/pmtiles/available');
+            const data = await response.json();
+            this.availableRegions = data.regions || [];
+            console.log('📦 Available PMTiles regions:', this.availableRegions);
+            return this.availableRegions;
+        } catch (error) {
+            console.log('No PMTiles regions available');
+            this.availableRegions = [];
+            return [];
+        }
+    }
+
+    /**
+     * Toggle between Raster and Vector modes
+     */
+    async toggleRenderMode() {
+        if (this.renderMode === 'raster' && this.availableRegions.length > 0) {
+            await this.setVectorStyle();
+        } else {
+            this.setLayer('dark');
+        }
+    }
+
+    /**
+     * Cycle through available layers
+     */
+    cycleLayer() {
+        const layers = ['dark', 'street', 'satellite', 'terrain'];
+        if (this.availableRegions.length > 0) {
+            layers.unshift('vector');
+        }
+
+        // Find current and move to next
+        const currentIdx = layers.indexOf(this.renderMode === 'vector' ? 'vector' : 'dark');
+        const nextIdx = (currentIdx + 1) % layers.length;
+        this.setLayer(layers[nextIdx]);
     }
 }

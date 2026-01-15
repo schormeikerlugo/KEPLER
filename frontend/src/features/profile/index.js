@@ -11,8 +11,6 @@
  */
 
 import { auth } from '../../js/auth.js';
-import profileHTML from './profile.html?raw';
-import './profile.css';
 
 // Import modules
 import { loadProfile, populateProfileUI } from './modules/profile-data.js';
@@ -20,21 +18,18 @@ import { setupProfileForm } from './modules/form.js';
 import { setupAvatarModal } from './modules/avatar.js';
 import { loadStats } from './modules/stats.js';
 import { setupSecurityButtons } from './modules/security.js';
+import { setupAiAvatar } from './modules/ai-avatar.js';
 
 /**
- * Main render function - initializes the profile page
- * @param {HTMLElement} container - The container element to render into
+ * Main initialization function - initializes the profile page
  */
-export async function render(container) {
+export async function init() {
     // Get current user
     const user = await auth.getUser();
     if (!user) {
         window.location.href = '/login';
         return;
     }
-
-    // Inject template
-    container.innerHTML = profileHTML;
 
     // Load profile data
     const profile = await loadProfile(user.id);
@@ -49,6 +44,7 @@ export async function render(container) {
     setupProfileForm(user.id, profile);
     setupAvatarModal(user.id, profile);
     setupSecurityButtons();
+    setupAiAvatar(user.id, profile);
 
     // Back button
     setupBackButton();

@@ -3,7 +3,7 @@
  * Handles mission modal, start mission flow, and navigation buttons
  */
 
-import { dbService } from '../../../js/services/DatabaseService.js';
+import { dbService } from '../../../../js/services/DatabaseService.js';
 
 export function initMission() {
     const startBtn = document.getElementById('btn-start-mission');

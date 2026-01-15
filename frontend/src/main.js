@@ -57,9 +57,8 @@ async function route() {
             controller.init();
         });
     } else if (path === '/profile') {
-        import('./features/profile/index.js').then(module => {
-            module.render(document.getElementById('app'));
-        });
+        // Profile is a separate page, redirect to it
+        window.location.href = '/src/features/profile/profile.html';
     } else {
         // 404 Redirect
         window.location.href = '/';

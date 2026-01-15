@@ -6,14 +6,20 @@
 /* Base & Container */
 @import './base.css';
 
-/* Components */
-@import './header.css';
-@import './telemetry.css';
-@import './chat.css';
-@import './data-grid.css';
-@import './tabs.css';
-@import './history-modal.css';
-@import './mobile-menu.css';
+/* Shared Components */
+@import './modal.css';
+@import './map-overlay.css';
 
-/* Responsive */
+/* Layout Modules */
+@import '../modules/layout/header.css';
+@import '../modules/layout/mobile-menu.css';
+
+/* Feature Modules */
+@import '../modules/telemetry/telemetry.css';
+@import '../modules/chat/css/chat.css';
+@import '../modules/chat/css/stream.css';
+@import '../modules/data/grid.css';
+@import './tabs.css';
+
+/* Responsive MUST be last to override feature module base styles */
 @import './responsive.css';

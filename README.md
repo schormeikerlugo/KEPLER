@@ -7,7 +7,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Fase-Entrenamiento_Terrestre-cyan?style=for-the-badge&logo=target&logoColor=black" alt="Fase">
   <img src="https://img.shields.io/badge/Estado-Activo-green?style=for-the-badge&logo=statuspage&logoColor=black" alt="Estado">
-  <img src="https://img.shields.io/badge/Versión-0.3.0_Beta-blue?style=for-the-badge&logo=semver&logoColor=white" alt="Versión">
+  <img src="https://img.shields.io/badge/Versión-0.4.0_Beta-blue?style=for-the-badge&logo=semver&logoColor=white" alt="Versión">
 </p>
 
 ```
@@ -36,10 +36,24 @@
 |--------|--------|-------------|
 | 🔭 **Visual Core** | ✅ Activo | Detección de objetos en tiempo real (YOLOv11 Nano en browser). |
 | 🧠 **Cortex AI** | ✅ Activo | Análisis semántico profundo (CLIP + Llama 3). |
-| �️ **HoloMap** | ✅ Activo | Mapa táctico 3D (MapLibre) con filtros Odradek y tracking GPS. |
-| � **Dashboard** | ✅ Activo | Telemetría vital y gestión de misiones. |
+| 💬 **AI Chat** | ✅ Activo | Chat streaming con intents inteligentes, tablas comparativas y títulos contextuales. |
+| 🗺️ **HoloMap** | ✅ Activo | Mapa táctico 3D (MapLibre) con filtros Odradek y tracking GPS. |
+| 📊 **Dashboard** | ✅ Activo | Telemetría vital, gestión de misiones y chat integrado. |
 | 📂 **Archives** | ✅ Activo | Base de datos vectorial de hallazgos. |
 | 🔔 **Realtime** | ✅ Activo | Alertas en tiempo real vía WebSocket (Supabase Realtime). |
+| 👤 **Perfil** | ✅ Activo | Gestión de usuario y personalización de avatar del asistente IA. |
+
+---
+
+## 💬 Sistema de Chat IA
+
+### Características v0.4:
+- **Streaming en tiempo real**: Respuestas fluidas con animación typewriter.
+- **Detección de Intents**: Sistema ReAct que identifica automáticamente consultas de misiones, objetos, comparaciones, etc.
+- **Tablas Comparativas**: Genera tablas markdown al pedir comparaciones entre misiones u objetos.
+- **Historial en Español**: Títulos generados automáticamente con emojis temáticos (🔬, 🗺️, 🚀, 💎).
+- **Avatar Personalizable**: Elige entre presets de emojis o una imagen personalizada desde tu perfil.
+- **Modal Móvil**: Interfaz adaptada con FAB y menú hamburguesa funcional.
 
 ---
 

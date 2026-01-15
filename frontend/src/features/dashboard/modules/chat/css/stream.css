@@ -1,0 +1,412 @@
+/**
+ * Chat Streaming Styles
+ * Animations and visuals for real-time AI responses
+ */
+
+/* Thinking Indicator */
+.chat-thinking-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, rgba(63, 168, 255, 0.1), rgba(63, 168, 255, 0.05));
+    border-radius: 20px;
+    border: 1px solid rgba(63, 168, 255, 0.3);
+    color: #3FA8FF;
+    font-size: 0.9rem;
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.thinking-dots {
+    display: flex;
+    gap: 4px;
+}
+
+.thinking-dots span {
+    width: 6px;
+    height: 6px;
+    background: #3FA8FF;
+    border-radius: 50%;
+    animation: bounce 1.4s ease-in-out infinite;
+}
+
+.thinking-dots span:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.thinking-dots span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.thinking-dots span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes bounce {
+
+    0%,
+    60%,
+    100% {
+        transform: translateY(0);
+    }
+
+    30% {
+        transform: translateY(-8px);
+    }
+}
+
+@keyframes pulse-glow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 10px rgba(63, 168, 255, 0.2);
+        border-color: rgba(63, 168, 255, 0.3);
+    }
+
+    50% {
+        box-shadow: 0 0 20px rgba(63, 168, 255, 0.4);
+        border-color: rgba(63, 168, 255, 0.6);
+    }
+}
+
+.thinking-text {
+    font-family: var(--font-jura, 'Jura', sans-serif);
+    letter-spacing: 0.5px;
+}
+
+/* Streaming Cursor */
+.chat-message.streaming::after {
+    content: '▋';
+    display: inline;
+    animation: blink 1s step-end infinite;
+    color: #3FA8FF;
+    margin-left: 2px;
+}
+
+@keyframes blink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0;
+    }
+}
+
+/* Streaming Message State */
+.chat-message.streaming {
+    border-left-color: #00ff88;
+    background: linear-gradient(90deg,
+            rgba(0, 255, 136, 0.05) 0%,
+            var(--bg-dash-card) 100%);
+}
+
+/* Status Transition */
+.chat-thinking-indicator.fade-out {
+    animation: fadeOut 0.3s ease-out forwards;
+}
+
+@keyframes fadeOut {
+    to {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+}
+
+/* Clickable Images in Chat */
+.chat-img-clickable {
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.chat-img-clickable:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 20px rgba(63, 168, 255, 0.3);
+}
+
+/* Image Modal */
+.chat-image-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(5px);
+}
+
+.chat-image-modal-content {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+    animation: modalZoomIn 0.3s ease-out;
+}
+
+.chat-image-modal-actions {
+    position: absolute;
+    top: -45px;
+    right: 0;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.chat-image-modal-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.chat-image-modal-btn:hover {
+    background: #3FA8FF;
+    border-color: #3FA8FF;
+}
+
+@keyframes modalZoomIn {
+    from {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.chat-image-modal-close {
+    position: absolute;
+    top: -40px;
+    right: 0;
+    color: white;
+    font-size: 32px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 10001;
+    transition: color 0.2s;
+}
+
+.chat-image-modal-close:hover {
+    color: #3FA8FF;
+}
+
+.chat-image-modal img {
+    max-width: 90vw;
+    max-height: 80vh;
+    border-radius: 8px;
+    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5);
+}
+
+.chat-image-modal-caption {
+    text-align: center;
+    color: white;
+    font-size: 1rem;
+    margin-top: 16px;
+    font-family: var(--font-jura, 'Jura', sans-serif);
+}
+
+/* Quick Action Buttons - Header style (transparent, color on hover) */
+.chat-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    margin: 4px 4px 4px 0;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.82rem;
+    font-family: var(--font-jura, 'Jura', sans-serif);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.chat-action-btn:hover {
+    background: rgba(63, 168, 255, 0.12);
+    border-color: #3FA8FF;
+    color: #3FA8FF;
+}
+
+.chat-action-btn:active {
+    transform: scale(0.97);
+}
+
+/* Danger button (confirm delete) - red on hover */
+.chat-action-btn-danger {
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.chat-action-btn-danger:hover {
+    background: rgba(255, 82, 82, 0.15);
+    border-color: #ff5252;
+    color: #ff5252;
+}
+
+/* Secondary button (cancel) - neutral on hover */
+.chat-action-btn-secondary {
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.chat-action-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.4);
+    color: white;
+}
+
+/* Confirmation Dialog */
+.chat-confirm-dialog {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(5px);
+}
+
+.chat-confirm-content {
+    background: linear-gradient(145deg, #1a1a2e, #16213e);
+    border: 1px solid rgba(255, 100, 100, 0.3);
+    border-radius: 16px;
+    padding: 28px 32px;
+    max-width: 400px;
+    animation: confirmSlideIn 0.25s ease-out;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+}
+
+@keyframes confirmSlideIn {
+    from {
+        transform: scale(0.9) translateY(-20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+}
+
+.chat-confirm-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #ff6b6b;
+    margin-bottom: 16px;
+    font-family: var(--font-jura, 'Jura', sans-serif);
+}
+
+.chat-confirm-message {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin-bottom: 24px;
+}
+
+.chat-confirm-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.chat-confirm-btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-family: var(--font-jura, 'Jura', sans-serif);
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+}
+
+.chat-confirm-cancel {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.chat-confirm-cancel:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.chat-confirm-ok {
+    background: linear-gradient(135deg, #ff6b6b, #ee5a5a);
+    color: white;
+}
+
+.chat-confirm-ok:hover {
+    background: linear-gradient(135deg, #ff5252, #e04444);
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+}
+
+/* Toast Notifications */
+.chat-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-family: var(--font-jura, 'Jura', sans-serif);
+    color: white;
+    z-index: 10001;
+    transform: translateX(120%);
+    transition: transform 0.3s ease;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.chat-toast.show {
+    transform: translateX(0);
+}
+
+.chat-toast-success {
+    background: linear-gradient(135deg, #00c853, #00a34c);
+    border: 1px solid rgba(0, 200, 83, 0.3);
+}
+
+.chat-toast-error {
+    background: linear-gradient(135deg, #ff5252, #e04444);
+    border: 1px solid rgba(255, 82, 82, 0.3);
+}
+
+.chat-toast-info {
+    background: linear-gradient(135deg, #3FA8FF, #2196f3);
+    border: 1px solid rgba(63, 168, 255, 0.3);
+}
+
+.chat-toast-icon {
+    font-size: 1.1rem;
+}
+
+/* Success/Error message styling in chat */
+.chat-message.success-message {
+    border-left: 3px solid #00c853;
+    background: linear-gradient(90deg, rgba(0, 200, 83, 0.1), transparent);
+}
+
+.chat-message.error-message {
+    border-left: 3px solid #ff5252;
+    background: linear-gradient(90deg, rgba(255, 82, 82, 0.1), transparent);
+}

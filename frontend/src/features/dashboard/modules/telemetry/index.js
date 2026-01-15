@@ -3,7 +3,7 @@
  * Handles real-time telemetry polling and display updates
  */
 
-import { api } from '../../../js/services/api.js';
+import { api } from '../../../../js/services/api.js';
 
 export async function initTelemetry() {
     const tTemp = document.getElementById('telem-temp');
@@ -40,7 +40,7 @@ export async function initTelemetry() {
     update();
 
     // Init GPS Check for Status Badge
-    import('../../../js/engines/GPSEngine.js').then(module => {
+    import('../../../../js/engines/GPSEngine.js').then(module => {
         const GPSEngine = module.GPSEngine;
         const gps = new GPSEngine();
 

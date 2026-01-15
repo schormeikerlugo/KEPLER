@@ -1,0 +1,334 @@
+from langchain_core.tools import tool
+from app.api.deps import get_supabase_client
+from typing import List, Dict, Any, Optional
+
+import os
+from supabase import create_client, Client
+
+def get_admin_client():
+    """
+    Returns a Supabase client with Service Role (Admin) privileges to bypass RLS.
+    """
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_SERVICE_KEY")
+    
+    if not url or not key:
+        return get_supabase_client()
+        
+    return create_client(url, key)
+
+
+# ============ USER-SPECIFIC TOOLS (Strict Filtering) ============
+
+@tool
+def read_scans(user_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+    """
+    Retrieves the most recent scans (objects) belonging to the current user.
+    Use for "What did I scan recently?" or "List my objects".
+    Returns ONLY the user's own objects.
+    """
+    client = get_admin_client()
+    try:
+        # Strict filter: Only this user's objects
+        response = client.table("objetos_exploracion").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(limit).execute()
+        return response.data
+    except Exception as e:
+        return [f"Error reading DB: {str(e)}"]
+
+@tool
+def count_scans(user_id: str) -> int:
+    """
+    Counts the number of scans/objects belonging to the current user.
+    Use for "How many objects do I have?".
+    """
+    client = get_admin_client()
+    try:
+        response = client.table("objetos_exploracion").select("*", count="exact", head=True).eq("user_id", user_id).execute()
+        return response.count
+    except Exception as e:
+        return -1
+
+@tool
+def search_scans_by_label(user_id: str, label: str) -> List[Dict[str, Any]]:
+    """
+    Search for user's scans matching a specific label (class) like 'crater', 'rock', etc.
+    Use for "Show me all my craters" or "How many rocks did I find?".
+    """
+    client = get_admin_client()
+    try:
+        response = client.table("objetos_exploracion").select("*").eq("user_id", user_id).ilike("tipo", f"%{label}%").execute()
+        return response.data
+    except Exception as e:
+        return [f"Error searching DB: {str(e)}"]
+
+@tool
+def delete_scan(user_id: str, scan_id: str) -> str:
+    """
+    Deletes a specific scan object by its ID. 
+    WARNING: This is a destructive action. Ask for confirmation before calling.
+    Only deletes objects belonging to the user.
+    """
+    client = get_admin_client()
+    try:
+        check = client.table("objetos_exploracion").select("id").eq("id", scan_id).eq("user_id", user_id).execute()
+        if not check.data:
+            return "Error: Object not found or you do not have permission to delete it."
+            
+        client.table("objetos_exploracion").delete().eq("id", scan_id).execute()
+        return f"Successfully deleted object {scan_id}."
+    except Exception as e:
+        return f"Error deleting object: {str(e)}"
+
+
+# ============ ORPHAN MANAGEMENT TOOLS ============
+
+@tool
+def get_orphan_count() -> int:
+    """
+    Counts how many orphaned objects (without user_id) exist in the database.
+    Use for "How many orphaned objects are there?" or "Are there any unclaimed objects?".
+    """
+    client = get_admin_client()
+    try:
+        response = client.table("objetos_exploracion").select("*", count="exact", head=True).is_("user_id", "null").execute()
+        return response.count
+    except Exception as e:
+        return -1
+
+@tool
+def adopt_orphans(user_id: str) -> str:
+    """
+    Adopts all orphaned objects (where user_id is NULL) and assigns them to the current user.
+    Use for "Adopt orphaned objects", "Claim unclaimed data", or "Assign my ID to objects without owner".
+    """
+    client = get_admin_client()
+    try:
+        # 1. Count orphans
+        count_res = client.table("objetos_exploracion").select("*", count="exact", head=True).is_("user_id", "null").execute()
+        count = count_res.count
+        
+        if count == 0:
+            return "No orphaned objects found to adopt. All objects already have owners."
+            
+        # 2. Update them
+        res = client.table("objetos_exploracion").update({"user_id": user_id}).is_("user_id", "null").execute()
+        
+        adopted = len(res.data) if res.data else count
+        return f"Successfully adopted {adopted} orphaned object(s). They are now yours!"
+    except Exception as e:
+        return f"Error adopting orphans: {str(e)}"
+
+
+# ============ GLOBAL/LOCATION TOOLS ============
+
+@tool
+def count_global_objects() -> int:
+    """
+    Counts ALL objects in the database (from all users).
+    Use for global statistics like "How many total objects are in the system?" or "How many discoveries have been made overall?".
+    """
+    client = get_admin_client()
+    try:
+        response = client.table("objetos_exploracion").select("*", count="exact", head=True).execute()
+        return response.count
+    except Exception as e:
+        return -1
+
+@tool
+def get_objects_summary() -> Dict[str, Any]:
+    """
+    Gets a summary of all objects in the database, grouped by type.
+    Use for "What types of objects have been found?" or "Give me an overview of discoveries".
+    """
+    client = get_admin_client()
+    try:
+        response = client.table("objetos_exploracion").select("tipo").execute()
+        if not response.data:
+            return {"total": 0, "types": {}}
+        
+        # Count by type
+        type_counts = {}
+        for obj in response.data:
+            tipo = obj.get("tipo") or "Unknown"
+            type_counts[tipo] = type_counts.get(tipo, 0) + 1
+        
+        return {"total": len(response.data), "types": type_counts}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ============ GLOBAL READ TOOLS (Read-Only Access to All Data) ============
+
+@tool
+def read_all_scans(limit: int = 20) -> List[Dict[str, Any]]:
+    """
+    Retrieves the most recent scans/objects from ALL users in the community.
+    Use for "What has everyone found?", "Show recent community discoveries", 
+    or "What objects exist in the database?".
+    READ-ONLY: Does not modify any data.
+    """
+    client = get_admin_client()
+    try:
+        response = client.table("objetos_exploracion").select(
+            "id, nombre, tipo, descripcion, user_id, created_at, metadata"
+        ).order("created_at", desc=True).limit(limit).execute()
+        return response.data
+    except Exception as e:
+        return [f"Error reading DB: {str(e)}"]
+
+@tool
+def search_all_scans(label: str) -> List[Dict[str, Any]]:
+    """
+    Search for scans/objects matching a label from ALL users.
+    Use for "Are there any refrigerators?", "Has anyone found a TV?",
+    or "What [type] objects exist in the system?".
+    READ-ONLY: Does not modify any data.
+    """
+    client = get_admin_client()
+    try:
+        response = client.table("objetos_exploracion").select(
+            "id, nombre, tipo, descripcion, user_id, created_at"
+        ).ilike("nombre", f"%{label}%").execute()
+        
+        # Also search by tipo if no results
+        if not response.data:
+            response = client.table("objetos_exploracion").select(
+                "id, nombre, tipo, descripcion, user_id, created_at"
+            ).ilike("tipo", f"%{label}%").execute()
+        
+        return response.data
+    except Exception as e:
+        return [f"Error searching DB: {str(e)}"]
+
+@tool
+def get_object_details(object_id: str) -> Dict[str, Any]:
+    """
+    Gets full details of a specific object by ID, regardless of owner.
+    Use for "Tell me about object X", "Show details of [ID]",
+    or when you need complete information about a specific discovery.
+    READ-ONLY: Does not modify any data.
+    """
+    client = get_admin_client()
+    try:
+        response = client.table("objetos_exploracion").select("*").eq("id", object_id).single().execute()
+        if response.data:
+            return response.data
+        return {"error": "Object not found"}
+    except Exception as e:
+        return {"error": str(e)}
+
+@tool
+def get_user_stats(target_user_id: str) -> Dict[str, Any]:
+    """
+    Gets statistics for a specific user (objects count, types breakdown).
+    Use for "How many objects does user X have?", "What has [user] found?",
+    or comparing users' contributions.
+    READ-ONLY: Does not modify any data.
+    """
+    client = get_admin_client()
+    try:
+        # Count objects
+        response = client.table("objetos_exploracion").select(
+            "tipo"
+        ).eq("user_id", target_user_id).execute()
+        
+        if not response.data:
+            return {"user_id": target_user_id, "total_objects": 0, "types": {}}
+        
+        # Count by type
+        type_counts = {}
+        for obj in response.data:
+            tipo = obj.get("tipo") or "Unknown"
+            type_counts[tipo] = type_counts.get(tipo, 0) + 1
+        
+        # Get profile info
+        profile = client.table("profiles").select(
+            "username, display_name"
+        ).eq("id", target_user_id).single().execute()
+        
+        username = profile.data.get("display_name") or profile.data.get("username") if profile.data else "Unknown"
+        
+        return {
+            "user_id": target_user_id,
+            "username": username,
+            "total_objects": len(response.data),
+            "types": type_counts
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@tool
+def get_object_image(object_id: str) -> str:
+    """
+    Gets the image of a specific object for display in the chat.
+    Use when user asks to "show me the image", "let me see it", "display the picture".
+    Returns a reference that will display the image in the chat.
+    """
+    client = get_admin_client()
+    try:
+        response = client.table("objetos_exploracion").select(
+            "id, nombre, tipo, metadata"
+        ).eq("id", object_id).single().execute()
+        
+        if not response.data:
+            return "Error: Object not found"
+        
+        obj = response.data
+        metadata = obj.get("metadata") or {}
+        has_image = bool(metadata.get("image_base64"))
+        nombre = obj.get("nombre", "Objeto")
+        tipo = obj.get("tipo", "Unknown")
+        
+        if not has_image:
+            return f"No image available for '{nombre}' (Type: {tipo})"
+        
+        # Return placeholder - will be replaced with actual image by post-processor
+        return f"Here is **{nombre}** (Type: {tipo}):\n\n[KEPLER_IMAGE:{object_id}]"
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+
+@tool
+def search_object_with_image(label: str) -> str:
+    """
+    Searches for an object by name/type and returns it WITH its image.
+    Use for "Show me a picture of [object]", "What does [object] look like?".
+    Returns a reference that will display the image in the chat.
+    """
+    client = get_admin_client()
+    try:
+        # Search by nombre first
+        response = client.table("objetos_exploracion").select(
+            "id, nombre, tipo, descripcion, metadata"
+        ).ilike("nombre", f"%{label}%").limit(1).execute()
+        
+        # If not found, try tipo
+        if not response.data:
+            response = client.table("objetos_exploracion").select(
+                "id, nombre, tipo, descripcion, metadata"
+            ).ilike("tipo", f"%{label}%").limit(1).execute()
+        
+        if not response.data:
+            return f"No object found matching '{label}'"
+        
+        obj = response.data[0]
+        object_id = obj.get("id")
+        metadata = obj.get("metadata") or {}
+        has_image = bool(metadata.get("image_base64"))
+        nombre = obj.get("nombre", "Objeto")
+        tipo = obj.get("tipo", "Unknown")
+        desc = obj.get("descripcion", "")
+        
+        result = f"Found **{nombre}** (Type: {tipo})"
+        if desc:
+            result += f"\n{desc}"
+        
+        if has_image:
+            result += f"\n\n[KEPLER_IMAGE:{object_id}]"
+        else:
+            result += "\n(No image available)"
+        
+        return result
+    except Exception as e:
+        return f"Error: {str(e)}"

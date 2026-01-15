@@ -90,3 +90,33 @@ Se usan variables CSS inyectadas por JS para el color del pulso:
     animation: pulse-ring 3s infinite;
 }
 ```
+
+---
+
+## 🚀 Sistema de Vector Tiles (PMTiles)
+
+### Arquitectura
+KEPLER soporta dos modos de renderizado:
+1. **Raster Mode**: Tiles PNG tradicionales (por defecto si no hay PMTiles).
+2. **Vector Mode**: Geometría vectorial via PMTiles (WebGL, edificios 3D).
+
+### Descargar Regiones
+```bash
+# Desde el directorio backend/
+./scripts/download_pmtiles.sh venezuela
+
+# Regiones disponibles:
+# venezuela, colombia, brazil, peru, chile, argentina, ecuador, bolivia
+```
+
+### Cambiar a Modo Vector
+1. El sistema detecta automáticamente los archivos PMTiles en `data/pmtiles/`.
+2. Si hay regiones disponibles, usa el modo Vector por defecto.
+3. Manualmente: Menú de capas → "⚡ Vector (3D)".
+
+### Estilo Odradek Vector
+El archivo `frontend/src/features/map/styles/odradek-vector.json` define:
+- Fondo oscuro (#0a0f14).
+- Autopistas con efecto neón cyan y resplandor.
+- Edificios extruidos en 3D con contornos luminosos.
+- Etiquetas de ciudades estilo holográfico.

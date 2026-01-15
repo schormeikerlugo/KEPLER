@@ -8,11 +8,11 @@ import './css/index.css';
 import template from './dashboard.html?raw';
 
 // Import modules
-import { initMobileMenu } from './modules/mobile-menu.js';
-import { initMission } from './modules/mission.js';
-import { initTelemetry } from './modules/telemetry.js';
-import { initChat } from './modules/chat.js';
-import { loadDashboardData } from './modules/dashboard-data.js';
+import { initMobileMenu } from './modules/layout/mobile-menu.js';
+import { initMission } from './modules/mission/index.js';
+import { initTelemetry } from './modules/telemetry/index.js';
+import { initChat } from './modules/chat/index.js';
+import { loadDashboardData } from './modules/data/index.js';
 import { MapController } from '../../features/map/MapController.js';
 
 /**
@@ -187,6 +187,7 @@ function setupNavigation(mapController) {
         if (btnMap) btnMap.classList.remove('active');
         if (mapSection) mapSection.style.display = 'none';
         if (dashMain) dashMain.style.display = 'grid';
+        if (btnCloseMap) btnCloseMap.style.display = 'none';
     };
 
     const openMap = async () => {
@@ -196,6 +197,7 @@ function setupNavigation(mapController) {
         if (btnMap) btnMap.classList.add('active');
         if (dashMain) dashMain.style.display = 'none';
         if (mapSection) mapSection.style.display = 'block';
+        if (btnCloseMap) btnCloseMap.style.display = 'block';
 
         console.log('🗺️ Calling mapController.init()...');
         await mapController.init();

@@ -73,6 +73,14 @@ class ProfileService {
     }
 
     /**
+     * Get AI avatar URL (custom or default)
+     */
+    async getAiAvatarUrl() {
+        const profile = await this.getProfile();
+        return profile?.ai_avatar_url || '/icons/dashboard/IA.svg';
+    }
+
+    /**
      * Get avatar display (emoji or first letter)
      */
     async getAvatarDisplay() {

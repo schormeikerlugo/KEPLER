@@ -3,7 +3,7 @@
  * Handles loading and displaying dashboard statistics and lists
  */
 
-import { api } from '../../../js/services/api.js';
+import { api } from '../../../../js/services/api.js';
 
 export async function loadDashboardData() {
     const stats = await api.getDashboardStats();

@@ -80,3 +80,5 @@ temp/
 *.pyc
 
 .docker-data/
+backend/data/pmtiles/*.pmtiles
+*.pmtiles

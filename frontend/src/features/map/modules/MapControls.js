@@ -37,23 +37,14 @@ export class MapControls {
             <div class="map-menu-overlay" id="map-menu-overlay">
                 <div class="map-menu">
                     <div class="map-menu-header">
-                        <span>🛠️ Map Tools</span>
+                        <span class="menu-title">🛠️ HERRAMIENTAS</span>
                         <button class="map-menu-close" id="map-menu-close">×</button>
                     </div>
                     <div class="map-menu-items">
-                        <button class="map-menu-item" data-action="refresh">
-                            <span class="menu-icon">🔄</span>
-                            <span>Recargar objetos</span>
+                        <button class="map-menu-item" data-action="objects">
+                            <span class="menu-icon">📦</span>
+                            <span>Objetos</span>
                         </button>
-                        <button class="map-menu-item" data-action="location">
-                            <span class="menu-icon">🎯</span>
-                            <span>Mi ubicación</span>
-                        </button>
-                        <button class="map-menu-item" data-action="layers">
-                            <span class="menu-icon">📡</span>
-                            <span>Cambiar capa</span>
-                        </button>
-                        <div class="map-menu-divider"></div>
                         <button class="map-menu-item" data-action="search">
                             <span class="menu-icon">🔍</span>
                             <span>Buscar</span>
@@ -62,16 +53,68 @@ export class MapControls {
                             <span class="menu-icon">📊</span>
                             <span>Filtros</span>
                         </button>
-                        <button class="map-menu-item" data-action="export">
-                            <span class="menu-icon">📤</span>
-                            <span>Exportar</span>
+                        <div class="map-menu-divider"></div>
+                        <button class="map-menu-item" data-action="location">
+                            <span class="menu-icon">🎯</span>
+                            <span>Mi ubicación</span>
+                        </button>
+                        <button class="map-menu-item" data-action="layers">
+                            <span class="menu-icon">🗺️</span>
+                            <span>Cambiar mapa</span>
+                        </button>
+                        <button class="map-menu-item" data-action="refresh">
+                            <span class="menu-icon">🔄</span>
+                            <span>Recargar</span>
+                        </button>
+                        <div class="map-menu-divider"></div>
+                        <button class="map-menu-item exit-action" data-action="exit">
+                            <span class="menu-icon">🔙</span>
+                            <span>Volver al Dashboard</span>
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Layers dropdown -->
-            <div class="map-layers-dropdown" id="map-layers-dropdown">
+            <!-- Layer Selector Modal -->
+            <div class="map-layer-modal" id="map-layer-modal">
+                <div class="layer-modal-content">
+                    <div class="layer-modal-header">
+                        <span>🗺️ Seleccionar Mapa</span>
+                        <button class="layer-modal-close" id="layer-modal-close">×</button>
+                    </div>
+                    <div class="layer-options">
+                        <div class="layer-option-card" data-layer="vector">
+                            <span class="layer-icon">⚡</span>
+                            <span class="layer-name">Vector</span>
+                            <span class="layer-desc">3D y animaciones</span>
+                        </div>
+                        <div class="layer-option-card" data-layer="dark">
+                            <span class="layer-icon">🌙</span>
+                            <span class="layer-name">Dark</span>
+                            <span class="layer-desc">Modo oscuro</span>
+                        </div>
+                        <div class="layer-option-card" data-layer="street">
+                            <span class="layer-icon">🛣️</span>
+                            <span class="layer-name">Street</span>
+                            <span class="layer-desc">Calles detalladas</span>
+                        </div>
+                        <div class="layer-option-card" data-layer="satellite">
+                            <span class="layer-icon">🛰️</span>
+                            <span class="layer-name">Satélite</span>
+                            <span class="layer-desc">Imágenes reales</span>
+                        </div>
+                        <div class="layer-option-card" data-layer="terrain">
+                            <span class="layer-icon">⛰️</span>
+                            <span class="layer-name">Terrain</span>
+                            <span class="layer-desc">Topográfico</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Layers dropdown (legacy, hidden) -->
+            <div class="map-layers-dropdown" id="map-layers-dropdown" style="display:none;">
+                <div class="layer-option" data-layer="vector">⚡ Vector (3D)</div>
                 <div class="layer-option" data-layer="dark">🌙 Dark</div>
                 <div class="layer-option" data-layer="street">🗺️ Street</div>
                 <div class="layer-option" data-layer="satellite">🛰️ Satellite</div>
@@ -80,10 +123,54 @@ export class MapControls {
 
             <!-- Toast notifications -->
             <div class="map-toast" id="map-toast"></div>
+
+            <!-- Coordinate Display Widget -->
+            <div class="map-coords-widget" id="map-coords-widget">
+                <div class="coords-row">
+                    <span class="coords-label">LAT</span>
+                    <span class="coords-value" id="coords-lat">0.0000</span>
+                </div>
+                <div class="coords-row">
+                    <span class="coords-label">LNG</span>
+                    <span class="coords-value" id="coords-lng">0.0000</span>
+                </div>
+                <div class="coords-row">
+                    <span class="coords-label">ZOOM</span>
+                    <span class="coords-value" id="coords-zoom">13</span>
+                </div>
+            </div>
         `;
 
         container.appendChild(controls);
         this.bindEvents();
+        this.initCoordinateWidget();
+    }
+
+    /**
+     * Initialize coordinate widget with map events
+     */
+    initCoordinateWidget() {
+        const map = this.controller.map;
+        if (!map) return;
+
+        const updateCoords = () => {
+            const center = map.getCenter();
+            const zoom = map.getZoom();
+
+            const latEl = document.getElementById('coords-lat');
+            const lngEl = document.getElementById('coords-lng');
+            const zoomEl = document.getElementById('coords-zoom');
+
+            if (latEl) latEl.textContent = center.lat.toFixed(5);
+            if (lngEl) lngEl.textContent = center.lng.toFixed(5);
+            if (zoomEl) zoomEl.textContent = zoom.toFixed(1);
+        };
+
+        // Update on map move
+        map.on('move', updateCoords);
+
+        // Initial update
+        updateCoords();
     }
 
     /**
@@ -113,7 +200,7 @@ export class MapControls {
 
         document.getElementById('map-btn-layers')?.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.toggleLayersDropdown();
+            this.openLayerModal();
         });
 
         // Menu items
@@ -121,14 +208,34 @@ export class MapControls {
             item.addEventListener('click', () => {
                 const action = item.dataset.action;
                 this.handleMenuAction(action);
-                this.closeMenu();
             });
         });
 
-        // Layer options
+        // Layer modal events
+        document.getElementById('layer-modal-close')?.addEventListener('click', () => {
+            this.closeLayerModal();
+        });
+
+        document.getElementById('map-layer-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'map-layer-modal') {
+                this.closeLayerModal();
+            }
+        });
+
+        // Layer option cards
+        document.querySelectorAll('.layer-option-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const layer = card.dataset.layer;
+                this.controller.layersMod?.setLayer(layer);
+                this.closeLayerModal();
+                this.showToast(`Mapa cambiado a ${card.querySelector('.layer-name')?.textContent}`);
+            });
+        });
+
+        // Legacy layer options (for desktop quick buttons)
         document.querySelectorAll('.layer-option').forEach(opt => {
             opt.addEventListener('click', () => {
-                this.controller.layers?.setLayer(opt.dataset.layer);
+                this.controller.layersMod?.setLayer(opt.dataset.layer);
                 this.hideLayersDropdown();
             });
         });
@@ -141,6 +248,8 @@ export class MapControls {
      * Handle menu action
      */
     handleMenuAction(action) {
+        this.closeMenu(); // Close menu after action
+
         switch (action) {
             case 'refresh':
                 this.controller.loadObjects();
@@ -150,17 +259,100 @@ export class MapControls {
                 this.controller.location?.goToMyLocation();
                 break;
             case 'layers':
-                this.controller.layers?.cycleLayer();
+                this.openLayerModal();
+                break;
+            case 'objects':
+                this.toggleObjectPanel();
                 break;
             case 'search':
-                this.showPanel('search');
+                this.toggleSearchBar();
                 break;
             case 'filters':
-                this.showPanel('filters');
+                this.toggleFiltersPanel();
                 break;
-            case 'export':
-                this.controller.export?.exportData();
+            case 'exit':
+                // Ensure chat is visible before exiting
+                const chatFab = document.getElementById('chat-fab');
+                if (chatFab) chatFab.style.display = 'flex';
+
+                document.getElementById('btn-close-map')?.click();
                 break;
+        }
+    }
+
+    /**
+     * Open layer selector modal
+     */
+    openLayerModal() {
+        const modal = document.getElementById('map-layer-modal');
+        if (modal) {
+            modal.classList.add('active');
+            // Mark current layer as active
+            const currentLayer = this.controller.layersMod?.currentLayer || 'vector';
+            modal.querySelectorAll('.layer-option-card').forEach(card => {
+                card.classList.toggle('active', card.dataset.layer === currentLayer);
+            });
+        }
+    }
+
+    /**
+     * Close layer modal
+     */
+    closeLayerModal() {
+        document.getElementById('map-layer-modal')?.classList.remove('active');
+    }
+
+    /**
+     * Toggle search bar visibility
+     */
+    toggleSearchBar() {
+        const searchContainer = document.querySelector('.map-search-container');
+        if (searchContainer) {
+            searchContainer.classList.toggle('visible');
+            if (searchContainer.classList.contains('visible')) {
+                searchContainer.querySelector('input')?.focus();
+            }
+        }
+    }
+
+    /**
+     * Toggle filters panel
+     */
+    toggleFiltersPanel() {
+        const filterToggle = document.getElementById('filter-toggle');
+        if (filterToggle) {
+            filterToggle.click(); // Trigger existing filter toggle
+        }
+    }
+
+    /**
+     * Open chat (dispatch event to dashboard)
+     */
+    openChat() {
+        // Dispatch custom event that dashboard can listen to
+        window.dispatchEvent(new CustomEvent('kepler:openChat'));
+        this.showToast('Abriendo Chat IA...');
+    }
+
+    /**
+     * Toggle object panel visibility (mobile)
+     */
+    toggleObjectPanel() {
+        const panel = document.getElementById('map-object-panel');
+        if (panel) {
+            panel.classList.toggle('mobile-visible');
+            const isVisible = panel.classList.contains('mobile-visible');
+
+            // Toggle Chat FAB visibility to prevent overlap
+            const chatFab = document.getElementById('chat-fab');
+            if (chatFab) {
+                // If panel is visible, hide chat. Else show chat.
+                // We'll use opacity or display. Opacity keeps layout but untappable if pointer-events none.
+                // display: none is safer to ensure no tap.
+                chatFab.style.display = isVisible ? 'none' : 'flex';
+            }
+
+            this.showToast(isVisible ? 'Panel de objetos abierto' : 'Panel de objetos cerrado');
         }
     }
 

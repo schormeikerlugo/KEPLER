@@ -1,0 +1,51 @@
+/**
+ * Map Overlay Styles
+ * Styles for the map view overlay and its controls
+ */
+
+.map-back-btn {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 1000;
+    /* Above map */
+
+    background: rgba(5, 10, 20, 0.6);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(63, 168, 255, 0.3);
+    color: var(--color-primary-400, #3FA8FF);
+
+    padding: 10px 20px;
+    border-radius: 30px;
+    /* Pill shape */
+    font-family: var(--font-mono, monospace);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+
+    display: flex;
+    /* Handled by JS toggling, but flex for centering if needed */
+    align-items: center;
+    gap: 8px;
+
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.map-back-btn:hover {
+    background: rgba(63, 168, 255, 0.1);
+    border-color: var(--color-primary-500, #3FA8FF);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(63, 168, 255, 0.2);
+    color: #fff;
+}
+
+.map-back-btn:active {
+    transform: translateY(0);
+}
+
+/* Hide on Mobile - functionality exists in mobile menu */
+@media (max-width: 768px) {
+    .map-back-btn {
+        display: none !important;
+    }
+}
