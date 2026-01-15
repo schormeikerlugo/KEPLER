@@ -12,6 +12,7 @@ KEPLER implementa una arquitectura de IA híbrida, dividiendo el procesamiento e
 *   **Ejecución:** [ONNX Runtime Web](https://onnxruntime.ai/) con backend WebAssembly (WASM) / WebGL.
 *   **Rendimiento:** Optimizado para correr directamente en el navegador a 15-30 FPS.
 *   **Propósito:** Detectar e identificar objetos instantáneamente en el feed de video del usuario (AR Mode).
+*   **Nota:** Se precarga al inicio de sesión (`ModelPreloaderService`) para minimizar latencia. Ver [Loading System](loading-system.md).
 
 ### 2. Estabilización (Filtro de Kalman)
 *   **Algoritmo:** Implementación personalizada en JS (`KalmanFilter.js`).

@@ -101,6 +101,7 @@ La documentación ha sido reorganizada para facilitar el desarrollo:
 *   **[🧠 Hybrid AI System](docs/ia.md)**: Detalles sobre la integración Edge-Cloud AI.
 *   **[🔔 Realtime & Notificaciones](docs/realtime.md)**: WebSocket, Alertas, Bitácora.
 *   **[📊 Dashboard & UI Components](docs/dashboard.md)**: Header Refactor, Command Menu, System Status.
+*   **[⏳ Loading & Caching System](docs/loading-system.md)**: Initialization tasks, Model Preloading.
 
 ---
 
