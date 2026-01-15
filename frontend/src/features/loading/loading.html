@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KEPLER - Preparando Sistema</title>
+    <link rel="stylesheet" href="loading.css">
+    <link rel="icon" type="image/svg+xml" href="/icons/kepler-logo.svg">
+</head>
+<body>
+    <div class="loading-container">
+        <!-- Stars Background (same as login) -->
+        <div class="stars-background"></div>
+        
+        <!-- Main Loading Card -->
+        <div class="loading-card">
+            <!-- Logo -->
+            <div class="loading-header">
+                <img src="/icons/kepler-logo.svg" alt="KEPLER" class="loading-logo" />
+                <h1 class="loading-title">K E P L E R</h1>
+                <p class="loading-subtitle">Sistema de Exploración</p>
+            </div>
+
+            <!-- Progress Section -->
+            <div class="loading-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <div class="progress-info">
+                    <span id="progress-text">Iniciando...</span>
+                    <span id="progress-percent">0%</span>
+                </div>
+            </div>
+
+            <!-- Current Task -->
+            <div class="loading-status" id="loading-status">
+                ⏳ Verificando sesión...
+            </div>
+
+            <!-- Exploration Tip -->
+            <div class="loading-tip">
+                <div class="tip-icon">💡</div>
+                <p class="tip-text" id="tip-text">
+                    Los minerales brillantes pueden indicar presencia de agua subterránea.
+                </p>
+            </div>
+
+            <!-- Skip Button (appears after 40%) -->
+            <button class="btn-skip" id="btn-skip" style="display: none;">
+                Continuar sin esperar →
+            </button>
+        </div>
+
+        <!-- Footer -->
+        <div class="loading-footer">
+            KEPLER PROJECT • Explorando lo desconocido
+        </div>
+    </div>
+
+    <script type="module" src="./index.js"></script>
+</body>
+</html>

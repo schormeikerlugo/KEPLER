@@ -7,11 +7,8 @@
         <div class="holo-logo-wrapper">
           <img src="/assets/logotipo.svg" alt="KEPLER" class="dash-logo holo-logo-img">
         </div>
-        <div class="server-status">
-          <span class="status-dot"></span>
-          <span>Online</span>
-          <span id="dash-gps-status" style="margin-left:10px; font-size:0.8em; opacity:0.7; font-weight:bold;"></span>
-        </div>
+        <!-- System status for mobile -->
+        <div id="system-status-mobile" class="mobile-status-container"></div>
       </div>
 
       <!-- Mobile hamburger button -->
@@ -24,32 +21,51 @@
 
     <!-- Desktop navigation (hidden on mobile) -->
     <div class="dash-header-right desktop-nav">
-      <button id="btn-start-mission" class="btn-start-mission">
-        <img src="/icons/dashboard/Start-mission.svg" alt="Start" class="icon-btn" />
-        <span>Start mission</span>
-      </button>
 
+      <!-- Main Command Menu -->
+      <div class="main-menu-container" style="margin-right: 15px; position: relative;">
+        <button id="btn-main-menu" class="btn-main-menu">
+          <span class="menu-icon-grid">
+            <span></span><span></span>
+            <span></span><span></span>
+          </span>
+          <span class="menu-label">COMANDOS</span>
+        </button>
 
+        <!-- Commands Dropdown -->
+        <div class="main-menu-dropdown" id="main-menu-dropdown">
+          <button id="btn-start-mission" class="menu-item-btn primary">
+            <span class="menu-item-icon">🚀</span>
+            <span class="menu-item-text">Iniciar Misión</span>
+          </button>
+          <div class="menu-divider"></div>
+          <button id="nav-btn-map" class="menu-item-btn" data-view="map">
+            <span class="menu-item-icon">🗺️</span>
+            <span class="menu-item-text">Mapa</span>
+          </button>
+          <button id="btn-archives" class="menu-item-btn">
+            <span class="menu-item-icon">📦</span>
+            <span class="menu-item-text">Archivos</span>
+          </button>
+          <button id="btn-taxonomia" class="menu-item-btn">
+            <span class="menu-item-icon">🏷️</span>
+            <span class="menu-item-text">Taxonomía</span>
+          </button>
+        </div>
+      </div>
 
-      <button id="nav-btn-map" class="btn-nav-item" data-view="map">
-        🗺️ MAPA
-      </button>
-
-      <button id="btn-archives" class="btn-nav-item">
-        📦 ARCHIVOS
-      </button>
-
-      <button id="btn-taxonomia" class="btn-nav-item btn-taxonomia">
-        🏷️ TAXONOMÍA
-      </button>
+      <!-- System Status Slot (Injected by JS) -->
+      <div id="system-status-container"></div>
 
       <div class="header-divider"></div>
 
+      <!-- Notifications -->
       <button class="btn-notifications" id="btn-notifications-header">
         <img src="/icons/dashboard/notifications.svg" alt="Notifications" class="icon-btn" />
         <span class="notification-badge" id="notification-badge" style="display:none">0</span>
       </button>
 
+      <!-- User Profile -->
       <div class="user-profile-dropdown" id="user-profile-container" style="position:relative;">
         <button class="btn-user-profile" id="btn-user-profile">
           <span class="user-name" id="user-name">Schormaker .L</span>
@@ -59,7 +75,7 @@
           </div>
         </button>
         <div class="profile-dropdown-menu" id="profile-dropdown"
-          style="display:none; position:absolute; top:100%; right:0; margin-top:8px; background:rgba(0,10,30,0.95); border:1px solid rgba(63,168,255,0.3); border-radius:16px; min-width:200px; z-index:1000; backdrop-filter:blur(15px);">
+          style="display:none; position:absolute; top:calc(100% + 12px); right:0; background:rgba(10,15,25,0.95); border:1px solid rgba(63,168,255,0.3); border-radius:12px; min-width:200px; z-index:1000; backdrop-filter:blur(20px); box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
           <div style="padding:15px; border-bottom:1px solid rgba(63,168,255,0.2);">
             <div style="font-size:0.85rem; color:#888;">Conectado como</div>
             <div style="font-weight:bold; color:#3fa8ff;" id="dropdown-email">user@email.com</div>
@@ -74,6 +90,9 @@
           </button>
         </div>
       </div>
+
+
+
     </div>
   </header>
 

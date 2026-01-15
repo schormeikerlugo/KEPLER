@@ -1,10 +1,15 @@
 import { auth } from '../auth.js';
+import { offlineSync } from './OfflineSyncService.js';
+
 const API_BASE = '/api';
 
 // Export auth token getter for streaming and other modules
 export async function getAuthToken() {
     return await auth.getToken();
 }
+
+// Export offline sync for manual operations
+export { offlineSync };
 
 export const api = {
     // --- DASHBOARD ---
@@ -182,26 +187,25 @@ export const api = {
         } catch (e) { return { success: false, error: e.message }; }
     },
 
-    // --- UNIFIED OBJECT CREATION ---
-    // Replaces logSentinelEvent
+    // --- UNIFIED OBJECT CREATION (WITH OFFLINE SUPPORT) ---
+    // Uses OfflineSyncService for automatic offline handling
     async createObject(data) {
         // data: { source, object_class, name, confidence, timestamp, location, heading, image_base64, metadata, mission_id }
-        try {
-            const token = await auth.getToken();
-            const res = await fetch(`${API_BASE}/objects/create`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(data)
-            });
-            if (!res.ok) throw new Error('Object Create failed');
-            return await res.json();
-        } catch (err) {
-            console.error("Object Sync Error:", err);
-            return { success: false, error: err.message };
-        }
+        // Delegates to OfflineSyncService which handles:
+        // - Offline storage in localStorage
+        // - Automatic retry when back online
+        // - User notifications
+        return await offlineSync.createObject(data);
+    },
+
+    // Force sync all pending objects
+    async forceSyncObjects() {
+        return await offlineSync.forceSync();
+    },
+
+    // Get sync status
+    getSyncStatus() {
+        return offlineSync.getStatus();
     },
 
     // --- ARCHIVES ---

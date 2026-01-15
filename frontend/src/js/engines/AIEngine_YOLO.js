@@ -32,6 +32,34 @@ export class AIEngine {
 
         try {
             console.log("AI: Initializing YOLO Worker...");
+
+            // Check if worker was preloaded by loading screen
+            if (window.__keplerYoloWorker && window.__keplerModelReady) {
+                console.log("AI: Reusing preloaded YOLO worker! 🚀");
+                this.worker = window.__keplerYoloWorker;
+                this.isLoaded = true;
+
+                // Rebind message handler for this instance
+                this.worker.onmessage = (e) => {
+                    const { type, predictions, error } = e.data;
+                    if (type === 'RESULT') {
+                        this.handlePredictions(predictions);
+                        this.isProcessing = false;
+                    } else if (type === 'ERROR') {
+                        console.error("AI Worker Error:", error);
+                        if (this.onStatusUpdate) this.onStatusUpdate("Error de Visión: " + error);
+                        this.isProcessing = false;
+                    }
+                };
+
+                // Notify immediately
+                if (this.onStatusUpdate) this.onStatusUpdate("Sistema de Visión Activo 👁️ (Pre-cargado)");
+                this.startDetection();
+                return;
+            }
+
+            // No preloaded worker, create new one
+            console.log("AI: No preloaded worker found, creating new...");
             this.worker = new YoloWorker();
 
             // Handle Worker Messages

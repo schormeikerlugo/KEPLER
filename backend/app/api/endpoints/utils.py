@@ -142,3 +142,75 @@ async def list_available_regions():
         })
     
     return {"regions": regions}
+
+
+@router.get("/avatar/{user_id}")
+async def proxy_avatar(user_id: str):
+    """
+    Proxy for Supabase Storage avatars to bypass CORS restrictions.
+    This allows avatars to load from remote tunnel access.
+    """
+    # Supabase Storage URL (local instance)
+    SUPABASE_URL = os.getenv("SUPABASE_URL", "http://localhost:54321")
+    print(f"[Avatar Proxy] Fetching avatar for user: {user_id}")
+    print(f"[Avatar Proxy] Supabase URL: {SUPABASE_URL}")
+    
+    async with httpx.AsyncClient(follow_redirects=True, timeout=10.0) as client:
+        # First, try direct common patterns
+        patterns = [
+            f"avatars/{user_id}/avatar.jpeg",
+            f"avatars/{user_id}/avatar.jpg",
+            f"avatars/{user_id}/avatar.png",
+            f"avatars/{user_id}/avatar.webp",
+        ]
+        
+        for path in patterns:
+            storage_url = f"{SUPABASE_URL}/storage/v1/object/public/{path}"
+            print(f"[Avatar Proxy] Trying: {storage_url}")
+            try:
+                resp = await client.get(storage_url)
+                print(f"[Avatar Proxy] Response: {resp.status_code}")
+                if resp.status_code == 200:
+                    content_type = resp.headers.get("content-type", "image/jpeg")
+                    print(f"[Avatar Proxy] SUCCESS! Content-Type: {content_type}, Size: {len(resp.content)}")
+                    return Response(
+                        content=resp.content,
+                        media_type=content_type,
+                        headers={
+                            "Access-Control-Allow-Origin": "*",
+                            "Cross-Origin-Resource-Policy": "cross-origin",
+                            "Cache-Control": "public, max-age=3600"
+                        }
+                    )
+            except Exception as e:
+                print(f"[Avatar Proxy] Error: {e}")
+                continue
+        
+        # If direct patterns fail, try listing the folder
+        try:
+            list_url = f"{SUPABASE_URL}/storage/v1/object/list/avatars"
+            resp = await client.post(list_url, json={"prefix": f"{user_id}/"})
+            if resp.status_code == 200:
+                files = resp.json()
+                if files and len(files) > 0:
+                    # Get first file
+                    file_name = files[0].get("name", "")
+                    if file_name:
+                        storage_url = f"{SUPABASE_URL}/storage/v1/object/public/avatars/{user_id}/{file_name}"
+                        file_resp = await client.get(storage_url)
+                        if file_resp.status_code == 200:
+                            content_type = file_resp.headers.get("content-type", "image/jpeg")
+                            return Response(
+                                content=file_resp.content,
+                                media_type=content_type,
+                                headers={
+                                    "Access-Control-Allow-Origin": "*",
+                                    "Cross-Origin-Resource-Policy": "cross-origin",
+                                    "Cache-Control": "public, max-age=3600"
+                                }
+                            )
+        except Exception as e:
+            print(f"Avatar list error: {e}")
+    
+    # Return 404 if not found
+    raise HTTPException(status_code=404, detail="Avatar not found")

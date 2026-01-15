@@ -1,0 +1,292 @@
+/* loading.css - KEPLER System Preload Screen */
+
+@import url('https://fonts.googleapis.com/css2?family=Jura:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --bg-primary: #0a0f19;
+    --bg-card: rgba(10, 15, 25, 0.75);
+    --cyan: #3FA8FF;
+    --cyan-dim: rgba(63, 168, 255, 0.4);
+    --cyan-glow: 0 0 20px rgba(63, 168, 255, 0.3);
+    --text-primary: #ffffff;
+    --text-sec: #8899aa;
+    --radius: 20px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    background: var(--bg-primary);
+    font-family: 'Jura', sans-serif;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+}
+
+/* Container - Same as Login */
+.loading-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at center, #1b2735 0%, #090a0f 80%);
+    z-index: 100;
+    padding: 20px;
+}
+
+/* Stars Background - Copied from Login */
+.stars-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image:
+        radial-gradient(2px 2px at 20px 30px, #eee, rgba(0, 0, 0, 0)),
+        radial-gradient(2px 2px at 40px 70px, #fff, rgba(0, 0, 0, 0)),
+        radial-gradient(2px 2px at 50px 160px, #ddd, rgba(0, 0, 0, 0)),
+        radial-gradient(2px 2px at 90px 40px, #fff, rgba(0, 0, 0, 0)),
+        radial-gradient(2px 2px at 130px 80px, #fff, rgba(0, 0, 0, 0)),
+        radial-gradient(1px 1px at 200px 120px, #ccc, rgba(0, 0, 0, 0)),
+        radial-gradient(1px 1px at 350px 200px, #eee, rgba(0, 0, 0, 0)),
+        radial-gradient(1.5px 1.5px at 400px 50px, #fff, rgba(0, 0, 0, 0));
+    background-size: 500px 300px;
+    opacity: 0.4;
+    animation: float-stars 30s infinite linear;
+    z-index: 0;
+}
+
+@keyframes float-stars {
+    0% { transform: translateY(0) translateX(0); }
+    50% { transform: translateY(-20px) translateX(10px); }
+    100% { transform: translateY(0) translateX(0); }
+}
+
+/* Loading Card */
+.loading-card {
+    width: 100%;
+    max-width: 480px;
+    padding: 40px;
+    background: var(--bg-card);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(63, 168, 255, 0.2);
+    border-radius: var(--radius);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
+    z-index: 10;
+    animation: card-in 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    position: relative;
+}
+
+.loading-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+}
+
+@keyframes card-in {
+    0% {
+        opacity: 0;
+        transform: scale(0.9) translateY(20px);
+        filter: blur(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+        filter: blur(0);
+    }
+}
+
+/* Header */
+.loading-header {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.loading-logo {
+    width: 80px;
+    height: 80px;
+    filter: drop-shadow(0 0 10px rgba(63, 168, 255, 0.5));
+    animation: pulse-logo 2s infinite ease-in-out;
+}
+
+@keyframes pulse-logo {
+    0%, 100% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(63, 168, 255, 0.5)); }
+    50% { transform: scale(1.05); filter: drop-shadow(0 0 20px rgba(63, 168, 255, 0.8)); }
+}
+
+.loading-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 4px;
+    margin: 0;
+    text-shadow: 0 0 10px rgba(63, 168, 255, 0.3);
+}
+
+.loading-subtitle {
+    font-size: 0.8rem;
+    color: var(--cyan);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    opacity: 0.8;
+    margin: 0;
+}
+
+/* Progress Bar */
+.loading-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--cyan), #00d4ff);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+    position: relative;
+}
+
+.progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.3) 50%,
+        transparent 100%
+    );
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.progress-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--text-sec);
+}
+
+#progress-percent {
+    color: var(--cyan);
+    font-weight: 600;
+}
+
+/* Loading Status */
+.loading-status {
+    text-align: center;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+    min-height: 24px;
+    transition: all 0.3s ease;
+}
+
+/* Exploration Tip */
+.loading-tip {
+    background: rgba(63, 168, 255, 0.1);
+    border: 1px solid rgba(63, 168, 255, 0.2);
+    border-radius: 12px;
+    padding: 15px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.tip-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.tip-text {
+    margin: 0;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.5;
+}
+
+/* Skip Button */
+.btn-skip {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--text-sec);
+    padding: 12px 20px;
+    border-radius: 25px;
+    font-family: 'Jura', sans-serif;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    align-self: center;
+}
+
+.btn-skip:hover {
+    border-color: var(--cyan);
+    color: var(--cyan);
+    background: rgba(63, 168, 255, 0.1);
+}
+
+/* Footer */
+.loading-footer {
+    position: absolute;
+    bottom: 20px;
+    font-size: 0.7rem;
+    color: var(--text-sec);
+    opacity: 0.4;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .loading-container {
+        padding: 15px;
+    }
+
+    .loading-card {
+        padding: 30px 20px;
+    }
+
+    .loading-logo {
+        width: 60px;
+        height: 60px;
+    }
+
+    .loading-title {
+        font-size: 1.4rem;
+        letter-spacing: 2px;
+    }
+}

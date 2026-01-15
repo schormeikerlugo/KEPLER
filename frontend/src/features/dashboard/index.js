@@ -14,6 +14,10 @@ import { initTelemetry } from './modules/telemetry/index.js';
 import { initChat } from './modules/chat/index.js';
 import { loadDashboardData } from './modules/data/index.js';
 import { MapController } from '../../features/map/MapController.js';
+import { modelPreloader } from '../../js/services/ModelPreloader.js';
+import { showLoadingOverlay } from './modules/loading-overlay.js';
+import { initSystemStatus } from './modules/system-status.js';
+import { initMainMenu } from './modules/main-menu.js';
 
 /**
  * Main render function - initializes the dashboard
@@ -23,8 +27,22 @@ export async function render(container) {
     // Get current user
     const user = await auth.getUser();
 
-    // Inject template
+    // Inject template first (so overlay appears on top)
     container.innerHTML = template;
+
+    // Show loading overlay and wait for all resources to be ready
+    // This blocks interaction until profile, missions, and AI model are cached
+    if (!sessionStorage.getItem('kepler_preload_done')) {
+        await showLoadingOverlay(user.id);
+        sessionStorage.setItem('kepler_preload_done', 'true');
+    } else {
+        // Already preloaded this session, just ensure model is loading
+        modelPreloader.preload();
+    }
+
+    // Initialize UI Components
+    initMainMenu();     // Command Menu (Left)
+    initSystemStatus(); // System Status (Right)
 
     // Initialize Map Controller (Singleton for this view)
     const mapController = new MapController('map-view-container');
@@ -145,12 +163,19 @@ function setupProfileDropdown() {
         profileBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             const isVisible = profileDropdown.style.display === 'block';
-            profileDropdown.style.display = isVisible ? 'none' : 'block';
+            if (isVisible) {
+                profileDropdown.style.display = 'none';
+                profileBtn.classList.remove('active');
+            } else {
+                profileDropdown.style.display = 'block';
+                profileBtn.classList.add('active');
+            }
         });
 
         // Close when clicking outside
         document.addEventListener('click', () => {
             profileDropdown.style.display = 'none';
+            profileBtn.classList.remove('active');
         });
 
         profileDropdown.addEventListener('click', (e) => e.stopPropagation());

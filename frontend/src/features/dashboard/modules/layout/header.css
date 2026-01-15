@@ -197,11 +197,13 @@
     align-items: center;
     gap: 12px;
     background: transparent;
-    border: none;
-    padding: 0;
+    border: 1px solid transparent;
+    padding: 6px 12px;
     cursor: pointer;
     transition: all 0.3s ease;
     color: #fff;
+    border-radius: 8px;
+    /* Match other buttons */
 }
 
 .user-name {
@@ -212,7 +214,16 @@
     letter-spacing: 0.3px;
 }
 
-.btn-user-profile:hover .user-name {
+.btn-user-profile:hover,
+.btn-user-profile.active {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.btn-user-profile.active {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(63, 168, 255, 0.5);
+    box-shadow: 0 0 15px rgba(63, 168, 255, 0.1);
     color: #fff;
 }
 

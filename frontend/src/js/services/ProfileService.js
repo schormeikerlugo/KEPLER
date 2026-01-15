@@ -69,7 +69,8 @@ class ProfileService {
      */
     async getAvatarUrl() {
         const profile = await this.getProfile();
-        return profile?.avatar_url || null;
+        const avatarUrl = profile?.avatar_url || null;
+        return this._resolveAvatarUrl(avatarUrl, profile?.id);
     }
 
     /**
@@ -90,11 +91,34 @@ class ProfileService {
         if (avatarUrl && avatarUrl.startsWith('emoji:')) {
             return { type: 'emoji', value: avatarUrl.replace('emoji:', '') };
         } else if (avatarUrl && (avatarUrl.startsWith('http') || avatarUrl.startsWith('/'))) {
-            return { type: 'image', value: avatarUrl };
+            const resolvedUrl = this._resolveAvatarUrl(avatarUrl, profile?.id);
+            return { type: 'image', value: resolvedUrl };
         } else {
             const name = profile?.display_name || profile?.email || 'U';
             return { type: 'letter', value: name[0].toUpperCase() };
         }
+    }
+
+    /**
+     * Resolve avatar URL - use proxy for remote access
+     * When accessing via tunnel, localhost URLs won't work on remote device
+     */
+    _resolveAvatarUrl(avatarUrl, userId) {
+        if (!avatarUrl) return null;
+
+        // Check if we're accessing remotely (not localhost)
+        const isRemote = !window.location.hostname.includes('localhost') &&
+            !window.location.hostname.includes('127.0.0.1');
+
+        // If remote and URL points to localhost, use backend proxy
+        if (isRemote && avatarUrl.includes('localhost')) {
+            // Use backend proxy: /api/utils/avatar/{user_id}
+            if (userId) {
+                return `/api/utils/avatar/${userId}`;
+            }
+        }
+
+        return avatarUrl;
     }
 
     /**

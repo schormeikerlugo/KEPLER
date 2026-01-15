@@ -100,6 +100,7 @@ La documentación ha sido reorganizada para facilitar el desarrollo:
 *   **[⚡ Database & Cloud](docs/supabase.md)**: Esquema PostgreSQL, Auth, Vector Search.
 *   **[🧠 Hybrid AI System](docs/ia.md)**: Detalles sobre la integración Edge-Cloud AI.
 *   **[🔔 Realtime & Notificaciones](docs/realtime.md)**: WebSocket, Alertas, Bitácora.
+*   **[📊 Dashboard & UI Components](docs/dashboard.md)**: Header Refactor, Command Menu, System Status.
 
 ---
 
@@ -116,6 +117,20 @@ La documentación ha sido reorganizada para facilitar el desarrollo:
 # Iniciar stack completo (DB + Backend + Frontend)
 ./start-dev.sh
 ```
+
+### 🌐 Acceso Remoto (Salidas de Campo)
+
+Para acceder a KEPLER desde tu móvil mientras estás fuera:
+
+```bash
+# Opción 1: Todo en uno (inicia servicios + túneles)
+./start-remote.sh
+
+# Opción 2: Solo túneles (si ya tienes los servicios corriendo)
+./tunnel.sh start
+```
+
+El script mostrará URLs públicas temporales y un código QR para escanear con tu móvil.
 
 Para más detalles, consulta la **[Guía de Inicio](docs/guia-inicio.md)**.
 
