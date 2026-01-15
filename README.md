@@ -99,7 +99,7 @@ La documentación ha sido reorganizada para facilitar el desarrollo:
 *   **[⚙️ Backend & AI Services](docs/backend.md)**: FastAPI, Python, Mistral 7B, CLIP.
 *   **[⚡ Database & Cloud](docs/supabase.md)**: Esquema PostgreSQL, Auth, Vector Search.
 *   **[🧠 Hybrid AI System](docs/ia.md)**: Detalles sobre la integración Edge-Cloud AI.
-*   **[🔔 Realtime & Notificaciones](docs/realtime.md)**: WebSocket, Alertas, Bitácora.
+*   **[🔔 Realtime, Notificaciones y Sync Offline](docs/realtime.md)**: WebSocket, Alertas, Bitácora, Sincronización.
 *   **[📊 Dashboard & UI Components](docs/dashboard.md)**: Header Refactor, Command Menu, System Status.
 *   **[⏳ Loading & Caching System](docs/loading-system.md)**: Initialization tasks, Model Preloading.
 
