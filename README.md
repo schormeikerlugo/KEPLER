@@ -35,7 +35,7 @@
 | Módulo | Estado | Descripción |
 |--------|--------|-------------|
 | 🔭 **Visual Core** | ✅ Activo | Detección de objetos en tiempo real (YOLOv11 Nano en browser). |
-| 🧠 **Cortex AI** | ✅ Activo | Análisis semántico profundo (CLIP + Llama 3). |
+| 🧠 **Cortex AI** | ✅ Activo | Análisis semántico profundo (CLIP + Mistral 7B). |
 | 💬 **AI Chat** | ✅ Activo | Chat streaming con intents inteligentes, tablas comparativas y títulos contextuales. |
 | 🗺️ **HoloMap** | ✅ Activo | Mapa táctico 3D (MapLibre) con filtros Odradek y tracking GPS. |
 | 📊 **Dashboard** | ✅ Activo | Telemetría vital, gestión de misiones y chat integrado. |
@@ -96,7 +96,7 @@ La documentación ha sido reorganizada para facilitar el desarrollo:
 
 *   **[🎨 Frontend Architecture](docs/frontend.md)**: UI Design, Animaciones Holográficas, Vite.
 *   **[🗺️ Map System](docs/map.md)**: MapLibre, Odradek Theme, Tile Proxy & Layers.
-*   **[⚙️ Backend & AI Services](docs/backend.md)**: FastAPI, Python, Llama 3, CLIP.
+*   **[⚙️ Backend & AI Services](docs/backend.md)**: FastAPI, Python, Mistral 7B, CLIP.
 *   **[⚡ Database & Cloud](docs/supabase.md)**: Esquema PostgreSQL, Auth, Vector Search.
 *   **[🧠 Hybrid AI System](docs/ia.md)**: Detalles sobre la integración Edge-Cloud AI.
 *   **[🔔 Realtime & Notificaciones](docs/realtime.md)**: WebSocket, Alertas, Bitácora.

@@ -10,7 +10,7 @@ El Backend de KEPLER es un servicio robusto construido en **Python** con **FastA
 *   **Lenguaje:** Python 3.10+
 *   **Framework:** [FastAPI](https://fastapi.tiangolo.com/) (Alto rendimiento, asíncrono).
 *   **Server:** Uvicorn (ASGI).
-*   **IA Core:** PyTorch, Sentence-Transformers (CLIP), Ollama (Llama 3).
+*   **IA Core:** PyTorch, Sentence-Transformers (CLIP), Ollama (Mistral 7B).
 *   **Base de Datos Relacional:** Supabase (PostgreSQL) vía cliente Python.
 
 ---
@@ -32,7 +32,7 @@ El Backend de KEPLER es un servicio robusto construido en **Python** con **FastA
 ### 3. Enriquecimiento de Datos (`/api/enrich-data`)
 *   **Método:** POST
 *   **Input:** Etiqueta o texto simple (ej: "Roca Volcánica").
-*   **Proceso:** Consulta a **Llama 3** (vía Ollama) para generar una descripción científica detallada y contextualizada del objeto.
+*   **Proceso:** Consulta a **Mistral 7B** (vía Ollama) para generar una descripción científica detallada y contextualizada del objeto.
 *   **Output:** Texto narrativo descriptivo.
 
 ### 4. Búsqueda por Similitud (`/api/search-similar`)
@@ -61,7 +61,7 @@ El Backend de KEPLER es un servicio robusto construido en **Python** con **FastA
 
 *   **`torch` (CPU Optimized):** Motor de cálculo tensorial para CLIP.
 *   **`sentence-transformers`:** Wrapper para facilitar el uso de modelos de visión.
-*   **`ollama`:** Cliente para comunicarse con el servicio local de Llama 3.
+*   **`ollama`:** Cliente para comunicarse con el servicio local de Mistral 7B.
 *   **`pillow`:** Procesamiento de imágenes antes del análisis.
 
 ---

@@ -25,7 +25,7 @@ Almacena todos los análisis realizados por los usuarios.
 | `image_url` | TEXT | URL pública de la imagen en Storage. |
 | `label` | TEXT | Nombre detectado (ej: "Crater"). |
 | `confidence` | FLOAT | Nivel de certeza de la IA (0-1). |
-| `description` | TEXT | Descripción generada por Llama 3. |
+| `description` | TEXT | Descripción generada por Mistral 7B. |
 | `embedding` | VECTOR(512) | Vector CLIP para búsqueda semántica. |
 | `created_at` | TIMESTAMPTZ | Fecha de captura. |
 
