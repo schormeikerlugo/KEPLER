@@ -7,7 +7,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Fase-Entrenamiento_Terrestre-cyan?style=for-the-badge&logo=target&logoColor=black" alt="Fase">
   <img src="https://img.shields.io/badge/Estado-Activo-green?style=for-the-badge&logo=statuspage&logoColor=black" alt="Estado">
-  <img src="https://img.shields.io/badge/Versión-0.4.0_Beta-blue?style=for-the-badge&logo=semver&logoColor=white" alt="Versión">
+  <img src="https://img.shields.io/badge/Versión-0.5.0_Beta-blue?style=for-the-badge&logo=semver&logoColor=white" alt="Versión">
 </p>
 
 ```
@@ -42,6 +42,27 @@
 | 📂 **Archives** | ✅ Activo | Base de datos vectorial de hallazgos. |
 | 🔔 **Realtime** | ✅ Activo | Alertas en tiempo real vía WebSocket (Supabase Realtime). |
 | 👤 **Perfil** | ✅ Activo | Gestión de usuario y personalización de avatar del asistente IA. |
+| 📱 **Mobile AI** | ✅ Nuevo | Optimizaciones automáticas para móvil (256px, 1 hilo, sin precarga). |
+| 📍 **GPS + IA** | ✅ Nuevo | Descripción automática de zona con GPS + Nominatim + Mistral. |
+
+---
+
+## 📱 Novedades v0.5.0 (Mobile & GPS)
+
+### Optimizaciones Móviles Automáticas
+El sistema detecta dispositivos móviles y ajusta la IA automáticamente:
+- **Resolución reducida:** 256px (vs 640px en desktop) = ~85% menos RAM
+- **Single-thread:** 1 hilo CPU para evitar errores de SharedArrayBuffer en HTTP
+- **Precarga desactivada:** El modelo YOLO se carga bajo demanda, no en la pantalla de carga
+- **WebGPU desactivado:** Forzado a WASM para máxima compatibilidad
+
+### Descripción de Zona con GPS + IA
+Al iniciar una misión, el sistema:
+1. 📍 Obtiene tu ubicación GPS
+2. 🗺️ Convierte coordenadas a nombre de lugar (Nominatim/OpenStreetMap)
+3. 🤖 Genera descripción con Mistral 7B incluyendo clima, terreno y fauna
+
+La descripción se guarda con la misión para uso en reportes y chat.
 
 ---
 

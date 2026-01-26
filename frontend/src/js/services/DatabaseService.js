@@ -1,20 +1,21 @@
 import { api } from './api.js';
 
 export class DatabaseService {
-    
+
     constructor() {
         this.currentMissionId = localStorage.getItem('mars_current_mission_id') || null;
     }
 
     // --- MISSION MANAGEMENT ---
-    
-    async startMission(title = "Nueva Misión", location = "Desconocido") {
+
+    async startMission(title = "Nueva Misión", location = "Desconocido", descripcionIA = null) {
         try {
             // Use API to Start Mission on Backend
             const res = await api.startMission({
                 titulo: title,
                 zona: location,
-                clima: {} 
+                clima: {},
+                descripcion_ia: descripcionIA
             });
 
             if (res.success && res.mission_id) {
@@ -32,13 +33,13 @@ export class DatabaseService {
     setMission(id, code) {
         this.currentMissionId = id;
         localStorage.setItem('mars_current_mission_id', id);
-        if(code) localStorage.setItem('mars_current_mission_code', code);
+        if (code) localStorage.setItem('mars_current_mission_code', code);
     }
 
     async getCurrentMission() {
-        if(!this.currentMissionId) return null;
+        if (!this.currentMissionId) return null;
         const code = localStorage.getItem('mars_current_mission_code') || "";
-        return { id: this.currentMissionId, status: 'active', code: code }; 
+        return { id: this.currentMissionId, status: 'active', code: code };
     }
 
     getLastMissionId() {
@@ -53,7 +54,7 @@ export class DatabaseService {
 
     async createObject(params) {
         const { title, type, lat, lng, embedding, metadata = {} } = params;
-        
+
         const payload = {
             source: 'manual', // or passed in params
             object_class: type,
@@ -68,11 +69,11 @@ export class DatabaseService {
         };
 
         const res = await api.createObject(payload);
-        if(!res.success) throw new Error(res.error);
-        
+        if (!res.success) throw new Error(res.error);
+
         return {
             ...res.data,
-            lat: lat, 
+            lat: lat,
             lng: lng,
             title: res.data.nombre || title
         };

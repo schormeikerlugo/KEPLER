@@ -171,6 +171,14 @@ async function loadMissions(userId) {
 }
 
 async function preloadYoloModel() {
+    // Skip preload on mobile to prevent OOM - model will load on-demand with optimized settings
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1);
+
+    if (isMobile) {
+        console.log('[Preload] Skipping YOLO preload on mobile (OOM prevention)');
+        return Promise.resolve();
+    }
+
     return new Promise((resolve) => {
         try {
             // Create worker

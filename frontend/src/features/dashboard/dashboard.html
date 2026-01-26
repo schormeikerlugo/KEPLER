@@ -282,35 +282,67 @@
 
 <!-- Mission Modal -->
 <div class="history-modal" id="mission-modal" style="display:none; align-items:center; justify-content:center;">
-  <div class="history-content" style="height:auto; min-height:300px; max-width:500px;">
+  <div class="history-content"
+    style="height:auto; min-height:300px; max-width:500px; max-height:90vh; overflow-y:auto;">
     <div class="history-header">
-      <h3>INICIAR NUEVA MISIÓN</h3>
+      <h3>🚀 INICIAR MISIÓN</h3>
       <button id="btn-close-mission" class="btn-close-history">×</button>
     </div>
     <div style="padding:25px; color:white; display:flex; flex-direction:column; gap:15px;">
-      <div>
-        <label style="display:block; margin-bottom:8px; color:#00aaff; font-weight:bold;">NOMBRE DE MISIÓN</label>
-        <input type="text" id="inp-dash-mission-title" placeholder="Ej: Exploración Sector 7"
-          style="width:100%; padding:12px 15px; background:rgba(0,0,0,0.3); border:1px solid #0055aa; color:white; border-radius:8px; box-sizing:border-box; font-family:'Jura',sans-serif;">
+
+      <!-- Loading Progress Bar -->
+      <div id="mission-loading-bar" style="display:none;">
+        <div style="background:rgba(0,100,200,0.2); border-radius:10px; overflow:hidden; height:6px;">
+          <div id="mission-loading-progress"
+            style="width:0%; height:100%; background:linear-gradient(90deg, #00aaff, #00ff88); transition:width 0.3s;">
+          </div>
+        </div>
+        <span id="mission-loading-text" style="font-size:0.75rem; color:#00aaff; display:block; margin-top:5px;">⏳
+          Detectando ubicación...</span>
       </div>
 
-
-
+      <!-- Auto-generated Mission Name -->
       <div>
-        <label style="display:block; margin-bottom:8px; color:#00aaff; font-weight:bold;">ZONA / OBJETIVO</label>
-        <input type="text" id="inp-dash-mission-zone" placeholder="Ej: Cráter Jezero Norte"
+        <label style="display:block; margin-bottom:8px; color:#00aaff; font-weight:bold;">NOMBRE DE MISIÓN</label>
+        <input type="text" id="inp-dash-mission-title" readonly
+          style="width:100%; padding:12px 15px; background:rgba(0,50,100,0.3); border:1px solid #0055aa; color:#88ccff; border-radius:8px; box-sizing:border-box; font-family:'Jura',sans-serif; cursor:not-allowed;">
+        <span style="font-size:0.7rem; color:#555; display:block; margin-top:3px;">📝 Puedes editar esto después de la
+          misión</span>
+      </div>
+
+      <!-- Zone (auto-filled by GPS) -->
+      <div>
+        <label style="display:block; margin-bottom:8px; color:#00aaff; font-weight:bold;">📍 ZONA DETECTADA</label>
+        <input type="text" id="inp-dash-mission-zone" readonly
+          style="width:100%; padding:12px 15px; background:rgba(0,50,100,0.3); border:1px solid #0055aa; color:#88ccff; border-radius:8px; box-sizing:border-box; font-family:'Jura',sans-serif; cursor:not-allowed;">
+        <span id="zone-description-helper"
+          style="font-size:0.75rem; color:#00ff88; display:none; margin-top:5px; line-height:1.4;"></span>
+      </div>
+
+      <!-- AI Model Version Selector -->
+      <div style="margin-top:10px;">
+        <label style="display:block; margin-bottom:8px; color:#00aaff; font-weight:bold;">VERSION MODELO IA</label>
+        <select id="select-ai-model-version"
           style="width:100%; padding:12px 15px; background:rgba(0,0,0,0.3); border:1px solid #0055aa; color:white; border-radius:8px; box-sizing:border-box; font-family:'Jura',sans-serif;">
+          <option value="auto">⚡ AUTO (Recomendado)</option>
+          <option value="v8">🏎️ YOLOv8 (Rápido/Móvil)</option>
+          <option value="v11">🧠 YOLOv11 (Preciso/PC)</option>
+        </select>
+        <span style="font-size:0.75rem; color:#666; display:block; margin-top:5px;">
+          💡 "Auto" elige v8 para móvil y v11 para PC
+        </span>
       </div>
 
       <div style="margin-top:10px; display:flex; gap:10px;">
-        <button id="btn-confirm-start-mission"
-          style="flex:1; padding:14px; background:#00aaff; border:none; color:white; font-weight:bold; cursor:pointer; border-radius:10px; font-family:'Jura',sans-serif;">
-          DESPEGAR 🚀
+        <button id="btn-confirm-start-mission" disabled
+          style="flex:1; padding:14px; background:#555; border:none; color:#999; font-weight:bold; cursor:not-allowed; border-radius:10px; font-family:'Jura',sans-serif; transition:all 0.3s;">
+          ⏳ PREPARANDO...
         </button>
       </div>
     </div>
   </div>
 </div>
+
 
 <!-- History Modal -->
 <div class="history-modal" id="history-modal">

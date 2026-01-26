@@ -21,6 +21,22 @@ KEPLER implementa una arquitectura de IA híbrida, dividiendo el procesamiento e
 ### 3. Object Tracking
 *   **Lógica:** Sistema de rastreo (`ObjectTracker.js`) que asigna IDs únicos a los objetos detectados para mantener su identidad a través de los frames, evitando parpadeos de etiquetas.
 
+### 4. Optimizaciones Móviles (v0.5.0)
+
+El sistema detecta automáticamente dispositivos móviles y aplica configuraciones optimizadas:
+
+| Parámetro | Desktop | Móvil | Beneficio |
+|-----------|---------|-------|-----------|
+| **Resolución** | 640px | 256px | ~85% menos RAM |
+| **Hilos CPU** | 4 | 1 | Evita SharedArrayBuffer errors |
+| **WebGPU** | Auto | Desactivado | Evita crashes experimentales |
+| **Precarga** | Activa | Desactivada | Evita OOM en loading |
+
+**Archivos Clave:**
+- `AIEngine_YOLO.js` - Detección de móvil y configuración dinámica
+- `yolo.worker.js` - Acepta `inputSize` dinámico
+- `loading/index.js` - Skip de precarga en móvil
+
 ---
 
 ## ☁️ Backend AI (Análisis Profundo)
@@ -34,6 +50,34 @@ KEPLER implementa una arquitectura de IA híbrida, dividiendo el procesamiento e
 *   **Modelo:** Mistral 7B (mistral:7b).
 *   **Ejecución:** Local vía [Ollama](https://ollama.ai).
 *   **Función:** Actúa como el "Científico a Bordo". Recibe datos simples (ej: "Roca") y genera descripciones detalladas, hipótesis geológicas y análisis contextuales ricos para el usuario.
+
+### 3. Descripción de Zona con GPS + IA (v0.5.0)
+
+Al iniciar una misión, el sistema genera automáticamente una descripción contextual basada en la ubicación:
+
+**Flujo:**
+1. **GPS:** El frontend obtiene coordenadas del dispositivo
+2. **Nominatim:** Reverse geocoding para nombre de ubicación (OpenStreetMap)
+3. **Mistral 7B:** Genera descripción para exploradores incluyendo:
+   - Tipo de clima (húmedo, cálido, templado)
+   - Tipo de terreno/suelo
+   - Fauna y flora típica de la región
+
+**Endpoint:** `POST /api/missions/describe-zone`
+
+```json
+// Request
+{ "latitude": 10.4806, "longitude": -66.9036 }
+
+// Response
+{
+  "success": true,
+  "location_name": "Caracas, Venezuela",
+  "description": "Zona de clima tropical húmedo con temperaturas cálidas..."
+}
+```
+
+**Persistencia:** La descripción se guarda en `misiones.descripcion_ia` para uso en reportes y chat.
 
 ---
 
