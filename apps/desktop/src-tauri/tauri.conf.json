@@ -1,0 +1,92 @@
+{
+    "$schema": "https://schema.tauri.app/config/2",
+    "productName": "KEPLER",
+    "identifier": "com.kepler.desktop",
+    "version": "0.5.0",
+    "build": {
+        "beforeDevCommand": "npm run dev",
+        "devUrl": "http://localhost:5173",
+        "beforeBuildCommand": "npm run build",
+        "frontendDist": "../dist"
+    },
+    "app": {
+        "withGlobalTauri": true,
+        "windows": [
+            {
+                "title": "🔭 KEPLER - Sistema de Exploración",
+                "width": 1400,
+                "height": 900,
+                "minWidth": 1000,
+                "minHeight": 700,
+                "resizable": true,
+                "fullscreen": false,
+                "decorations": true,
+                "transparent": false,
+                "center": true
+            }
+        ],
+        "security": {
+            "csp": null
+        },
+        "trayIcon": {
+            "iconPath": "icons/icon.png",
+            "iconAsMenu": true
+        }
+    },
+    "bundle": {
+        "active": true,
+        "icon": [
+            "icons/32x32.png",
+            "icons/128x128.png",
+            "icons/128x128@2x.png",
+            "icons/icon.icns",
+            "icons/icon.ico"
+        ],
+        "targets": "all",
+        "linux": {
+            "deb": {
+                "depends": [
+                    "libwebkit2gtk-4.1-0",
+                    "libgtk-3-0"
+                ]
+            },
+            "appimage": {
+                "bundleMediaFramework": true
+            }
+        },
+        "windows": {
+            "wix": null,
+            "nsis": {
+                "installMode": "currentUser"
+            }
+        },
+        "macOS": {
+            "minimumSystemVersion": "10.15"
+        }
+    },
+    "plugins": {
+        "shell": {
+            "open": true
+        },
+        "notification": {
+            "all": true
+        },
+        "fs": {
+            "all": true,
+            "scope": [
+                "$APP",
+                "$DOCUMENT",
+                "$DOWNLOAD"
+            ]
+        },
+        "dialog": {
+            "all": true
+        },
+        "updater": {
+            "endpoints": [
+                "https://kepler-updates.example.com/{{target}}/{{current_version}}"
+            ],
+            "pubkey": ""
+        }
+    }
+}

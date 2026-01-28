@@ -113,7 +113,7 @@ echo -e "${YELLOW}🌐 Paso 3: Iniciando Frontend...${NC}"
 if lsof -i:5180 >/dev/null 2>&1; then
     echo -e "${YELLOW}   ⚠️  Frontend ya está corriendo en puerto 5180${NC}"
 else
-    cd "$PROJECT_DIR/frontend"
+    cd "$PROJECT_DIR/apps/web"
     
     if [ -d "node_modules" ]; then
         nohup npm run dev > /tmp/kepler-frontend.log 2>&1 &
@@ -128,7 +128,7 @@ else
         fi
     else
         echo -e "${RED}   ❌ node_modules no encontrado. Ejecuta:${NC}"
-        echo "      cd frontend && npm install"
+        echo "      cd apps/web && npm install"
         exit 1
     fi
 fi

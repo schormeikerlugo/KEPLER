@@ -261,13 +261,13 @@ services:
   # ===========================================
   frontend:
     build:
-      context: ./frontend
+      context: ./apps/web
       dockerfile: Dockerfile.dev
     container_name: mars-sight-frontend
     ports:
       - "5180:5173"
     volumes:
-      - ./frontend:/app
+      - ./apps/web:/app
       - /app/node_modules
     networks:
       - mars-network

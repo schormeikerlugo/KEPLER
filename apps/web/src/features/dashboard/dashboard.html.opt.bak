@@ -1,0 +1,451 @@
+<div class="dashboard-container">
+
+  <!-- Header -->
+  <header class="dash-header">
+    <div class="dash-header-left">
+      <div class="header-title-group">
+        <div class="holo-logo-wrapper">
+          <img src="/assets/logotipo.svg" alt="KEPLER" class="dash-logo holo-logo-img">
+        </div>
+        <!-- System status for mobile -->
+        <div id="system-status-mobile" class="mobile-status-container"></div>
+      </div>
+
+      <!-- Mobile hamburger button -->
+      <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Abrir menú">
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+      </button>
+    </div>
+
+    <!-- Desktop navigation (hidden on mobile) -->
+    <div class="dash-header-right desktop-nav">
+
+      <!-- Main Command Menu -->
+      <div class="main-menu-container" style="margin-right: 15px; position: relative;">
+        <button id="btn-main-menu" class="btn-main-menu">
+          <span class="menu-icon-grid">
+            <span></span><span></span>
+            <span></span><span></span>
+          </span>
+          <span class="menu-label">COMANDOS</span>
+        </button>
+
+        <!-- Commands Dropdown -->
+        <div class="main-menu-dropdown" id="main-menu-dropdown">
+          <button id="btn-start-mission" class="menu-item-btn primary">
+            <span class="menu-item-icon">🚀</span>
+            <span class="menu-item-text">Iniciar Misión</span>
+          </button>
+          <div class="menu-divider"></div>
+          <button id="nav-btn-map" class="menu-item-btn" data-view="map">
+            <span class="menu-item-icon">🗺️</span>
+            <span class="menu-item-text">Mapa</span>
+          </button>
+          <button id="btn-archives" class="menu-item-btn">
+            <span class="menu-item-icon">📦</span>
+            <span class="menu-item-text">Archivos</span>
+          </button>
+          <button id="btn-taxonomia" class="menu-item-btn">
+            <span class="menu-item-icon">🏷️</span>
+            <span class="menu-item-text">Taxonomía</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- System Status Slot (Injected by JS) -->
+      <div id="system-status-container"></div>
+
+      <div class="header-divider"></div>
+
+      <!-- Notifications -->
+      <button class="btn-notifications" id="btn-notifications-header">
+        <img src="/icons/dashboard/notifications.svg" alt="Notifications" class="icon-btn" />
+        <span class="notification-badge" id="notification-badge" style="display:none">0</span>
+      </button>
+
+      <!-- User Profile -->
+      <div class="user-profile-dropdown" id="user-profile-container" style="position:relative;">
+        <button class="btn-user-profile" id="btn-user-profile">
+          <span class="user-name" id="user-name">Schormaker .L</span>
+          <div class="user-avatar-container">
+            <div class="user-avatar-bg"></div>
+            <span class="user-avatar" id="user-avatar">S</span>
+          </div>
+        </button>
+        <div class="profile-dropdown-menu" id="profile-dropdown"
+          style="display:none; position:absolute; top:calc(100% + 12px); right:0; background:rgba(10,15,25,0.95); border:1px solid rgba(63,168,255,0.3); border-radius:12px; min-width:200px; z-index:1000; backdrop-filter:blur(20px); box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+          <div style="padding:15px; border-bottom:1px solid rgba(63,168,255,0.2);">
+            <div style="font-size:0.85rem; color:#888;">Conectado como</div>
+            <div style="font-weight:bold; color:#3fa8ff;" id="dropdown-email">user@email.com</div>
+          </div>
+          <button id="btn-profile"
+            style="width:100%; padding:12px 15px; background:transparent; border:none; color:#3fa8ff; font-family:'Jura',sans-serif; font-size:0.95rem; cursor:pointer; text-align:left; transition:background 0.2s; border-bottom:1px solid rgba(63,168,255,0.1);">
+            👤 Mi Perfil
+          </button>
+          <button id="btn-logout"
+            style="width:100%; padding:12px 15px; background:transparent; border:none; color:#ff6b6b; font-family:'Jura',sans-serif; font-size:0.95rem; cursor:pointer; text-align:left; transition:background 0.2s;">
+            🚪 Cerrar Sesión
+          </button>
+        </div>
+      </div>
+
+
+
+    </div>
+  </header>
+
+  <!-- Mobile navigation overlay -->
+  <div class="mobile-nav-overlay" id="mobile-nav-overlay"></div>
+
+  <!-- Mobile slide-out menu -->
+  <nav class="mobile-nav" id="mobile-nav">
+    <div class="mobile-nav-header">
+      <span class="mobile-nav-title">MENÚ</span>
+      <button class="mobile-nav-close" id="mobile-nav-close">✕</button>
+    </div>
+
+    <div class="mobile-nav-user" id="mobile-nav-user">
+      <span class="mobile-user-avatar" id="mobile-user-avatar">S</span>
+      <div class="mobile-user-info">
+        <span class="mobile-user-name" id="mobile-user-name">Schormaker</span>
+        <span class="mobile-user-email" id="mobile-user-email">user@email.com</span>
+      </div>
+    </div>
+
+    <div class="mobile-nav-items">
+      <button class="mobile-nav-item" id="mobile-btn-start-mission">
+        🚀 <span>Iniciar Misión</span>
+      </button>
+      <button class="mobile-nav-item" id="mobile-btn-archives">
+        📦 <span>Archivos</span>
+      </button>
+      <button class="mobile-nav-item" id="mobile-btn-taxonomia">
+        🏷️ <span>Taxonomía</span>
+      </button>
+      <button class="mobile-nav-item" id="mobile-btn-notifications">
+        🔔 <span>Notificaciones</span>
+        <span class="mobile-badge">3</span>
+      </button>
+      <button class="mobile-nav-item" id="mobile-btn-map">
+        🗺️ <span>Mapa</span>
+      </button>
+    </div>
+
+    <div class="mobile-nav-footer">
+      <button class="mobile-nav-logout" id="mobile-btn-logout">
+        🚪 Cerrar Sesión
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Content Grid -->
+  <div class="dash-main">
+
+    <!-- Left: Telemetry Panel -->
+    <aside class="dash-telemetry scanline-effect">
+      <h3 class="telem-title">Telemetría</h3>
+
+      <div class="telem-metric">
+        <span class="telem-value" id="telem-temp">20°C</span>
+        <span class="telem-label">TEMPERATURA</span>
+      </div>
+
+      <div class="telem-metric">
+        <span class="telem-value" id="telem-o2">96%</span>
+        <span class="telem-label">O2</span>
+      </div>
+
+      <div class="telem-metric">
+        <span class="telem-value" id="telem-bpm">75</span>
+        <span class="telem-label">BPM</span>
+      </div>
+
+      <div class="telem-metric">
+        <span class="telem-value" id="telem-rad">0.011</span>
+        <span class="telem-label">RAD</span>
+      </div>
+    </aside>
+
+    <!-- Center: Interactive Central Panel -->
+    <!-- Center: AI Chat -->
+    <section class="dash-ai-chat">
+      <div class="chat-header">
+        <img src="/icons/dashboard/IA.svg" alt="IA" class="chat-icon-img" />
+        <span class="chat-title">Llama 3.8</span>
+
+        <div class="chat-actions">
+          <button id="btn-chat-history" class="icon-action-btn" title="Historial">
+            <img src="/icons/history.svg" alt="History" />
+          </button>
+          <button id="btn-new-chat" class="icon-action-btn" title="Nuevo Chat">
+            <img src="/icons/new-chat.svg" alt="New Chat" />
+          </button>
+        </div>
+      </div>
+
+      <div class="chat-messages" id="chat-messages">
+        <div class="chat-message ai-message">
+          ¿Cómo puedo ayudarte hoy?
+        </div>
+      </div>
+
+      <div class="chat-suggestions" id="chat-suggestions">
+        <button class="suggestion-btn" data-prompt="Examinar los objetos que se han registrado en este último viaje">
+          Examinar los objetos que se han registrado en este último viaje
+        </button>
+        <button class="suggestion-btn" data-prompt="Revisar los últimos POIs y medí la distancia que se ha recorrido">
+          Revisar los últimos POIs y medí la distancia que se ha recorrido
+        </button>
+        <button class="suggestion-btn" data-prompt="Examinar los objetos que no tienen descripción y darles una">
+          Examinar los objetos que no tienen descripción y darles una
+        </button>
+      </div>
+
+      <div class="chat-input-container">
+        <input type="text" id="chat-input" class="chat-input" placeholder="Pregúntale algo a la IA..."
+          autocomplete="off" />
+        <button id="btn-send-chat" class="btn-send-chat">
+          <span>→</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Right: Data Grid -->
+    <aside class="dash-data-grid">
+
+      <!-- POIs Card -->
+      <div class="data-card">
+        <div class="data-card-header">
+          <img src="/icons/dashboard/POIs.svg" alt="POIs" class="card-icon-img" />
+          <span class="card-title">POIs</span>
+          <span class="data-count" id="pois-count">20</span>
+        </div>
+        <div class="data-list" id="pois-list">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <!-- Minerals Card -->
+      <div class="data-card">
+        <div class="data-card-header">
+          <img src="/icons/dashboard/Minerals.svg" alt="Minerals" class="card-icon-img" />
+          <span class="card-title">Minerals</span>
+          <span class="data-count" id="minerals-count">85</span>
+        </div>
+        <div class="data-list" id="minerals-list">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <!-- Missions Card -->
+      <div class="data-card">
+        <div class="data-card-header">
+          <img src="/icons/dashboard/Missions.png" alt="Missions" class="card-icon-img" />
+          <span class="card-title">Missions</span>
+          <span class="data-count" id="missions-count">24</span>
+        </div>
+        <div class="data-list" id="missions-list">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <!-- Objects Card -->
+      <div class="data-card">
+        <div class="data-card-header">
+          <img src="/icons/dashboard/Objects.svg" alt="Objects" class="card-icon-img" />
+          <span class="card-title">Objects</span>
+          <span class="data-count" id="objects-count">85</span>
+        </div>
+        <div class="data-list" id="objects-list">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+    </aside>
+
+  </div>
+
+  <!-- Map View Section (Fullscreen Overlay) -->
+  <div id="map-view-section" class="map-view-section"
+    style="display:none; width:100%; height:100vh; position:fixed; top:0; left:0; background:#050a14; z-index:150;">
+
+    <!-- Floating Back Button -->
+    <!-- Floating Back Button (Hidden, triggered from menu) -->
+    <button id="btn-close-map" class="map-back-btn" style="display: none;">← VOLVER</button>
+
+    <!-- Map Container (full screen) -->
+    <div id="map-view-container" style="width:100%; height:100vh;"></div>
+  </div>
+</div>
+
+<!-- Mission Modal -->
+<div class="history-modal" id="mission-modal" style="display:none; align-items:center; justify-content:center;">
+  <div class="history-content"
+    style="height:auto; min-height:300px; max-width:500px; max-height:90vh; overflow-y:auto;">
+    <div class="history-header">
+      <h3>🚀 INICIAR MISIÓN</h3>
+      <button id="btn-close-mission" class="btn-close-history">×</button>
+    </div>
+    <div style="padding:25px; color:white; display:flex; flex-direction:column; gap:15px;">
+
+      <!-- Loading Progress Bar -->
+      <div id="mission-loading-bar" style="display:none;">
+        <div style="background:rgba(0,100,200,0.2); border-radius:10px; overflow:hidden; height:6px;">
+          <div id="mission-loading-progress"
+            style="width:0%; height:100%; background:linear-gradient(90deg, #00aaff, #00ff88); transition:width 0.3s;">
+          </div>
+        </div>
+        <span id="mission-loading-text" style="font-size:0.75rem; color:#00aaff; display:block; margin-top:5px;">⏳
+          Detectando ubicación...</span>
+      </div>
+
+      <!-- Auto-generated Mission Name -->
+      <div>
+        <label style="display:block; margin-bottom:8px; color:#00aaff; font-weight:bold;">NOMBRE DE MISIÓN</label>
+        <input type="text" id="inp-dash-mission-title" readonly
+          style="width:100%; padding:12px 15px; background:rgba(0,50,100,0.3); border:1px solid #0055aa; color:#88ccff; border-radius:8px; box-sizing:border-box; font-family:'Jura',sans-serif; cursor:not-allowed;">
+        <span style="font-size:0.7rem; color:#555; display:block; margin-top:3px;">📝 Puedes editar esto después de la
+          misión</span>
+      </div>
+
+      <!-- Zone (auto-filled by GPS) -->
+      <div>
+        <label style="display:block; margin-bottom:8px; color:#00aaff; font-weight:bold;">📍 ZONA DETECTADA</label>
+        <input type="text" id="inp-dash-mission-zone" readonly
+          style="width:100%; padding:12px 15px; background:rgba(0,50,100,0.3); border:1px solid #0055aa; color:#88ccff; border-radius:8px; box-sizing:border-box; font-family:'Jura',sans-serif; cursor:not-allowed;">
+        <span id="zone-description-helper"
+          style="font-size:0.75rem; color:#00ff88; display:none; margin-top:5px; line-height:1.4;"></span>
+      </div>
+
+      <!-- AI Model Version Selector -->
+      <div style="margin-top:10px;">
+        <label style="display:block; margin-bottom:8px; color:#00aaff; font-weight:bold;">VERSION MODELO IA</label>
+        <select id="select-ai-model-version"
+          style="width:100%; padding:12px 15px; background:rgba(0,0,0,0.3); border:1px solid #0055aa; color:white; border-radius:8px; box-sizing:border-box; font-family:'Jura',sans-serif;">
+          <option value="auto">⚡ AUTO (Recomendado)</option>
+          <option value="v8">🏎️ YOLOv8 (Rápido/Móvil)</option>
+          <option value="v11">🧠 YOLOv11 (Preciso/PC)</option>
+        </select>
+        <span style="font-size:0.75rem; color:#666; display:block; margin-top:5px;">
+          💡 "Auto" elige v8 para móvil y v11 para PC
+        </span>
+      </div>
+
+      <div style="margin-top:10px; display:flex; gap:10px;">
+        <button id="btn-confirm-start-mission" disabled
+          style="flex:1; padding:14px; background:#555; border:none; color:#999; font-weight:bold; cursor:not-allowed; border-radius:10px; font-family:'Jura',sans-serif; transition:all 0.3s;">
+          ⏳ PREPARANDO...
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- History Modal -->
+<div class="history-modal" id="history-modal">
+  <div class="history-content">
+    <div class="history-header">
+      <h3>Historial de Conversaciones</h3>
+      <button id="btn-close-history" class="btn-close-history">×</button>
+    </div>
+    <div class="history-list" id="history-list">
+      <!-- Dyn items -->
+    </div>
+  </div>
+</div>
+
+<!-- Chat FAB (Mobile Only) -->
+<button class="chat-fab" id="chat-fab" aria-label="Abrir chat">
+  <svg class="chat-fab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </svg>
+</button>
+
+<!-- Chat Modal (Mobile Fullscreen - OpenWebUI Style) -->
+<div class="chat-modal-overlay" id="chat-modal-overlay">
+
+  <!-- Header with menu and close button -->
+  <div class="chat-modal-header">
+    <div class="chat-modal-header-left">
+      <img src="/icons/dashboard/IA.svg" alt="AI" class="chat-icon-img" />
+      <span class="chat-title">LLAMA 3.1</span>
+    </div>
+    <div class="chat-modal-header-right">
+      <!-- Menu button -->
+      <button class="chat-modal-menu-btn" id="chat-modal-menu-btn">☰</button>
+    </div>
+
+    <!-- Dropdown menu -->
+    <div class="chat-modal-menu" id="chat-modal-menu">
+      <button class="chat-menu-item" id="modal-new-chat">
+        <span>✨</span> Nuevo Chat
+      </button>
+      <button class="chat-menu-item" id="modal-history">
+        <span>📜</span> Historial
+      </button>
+      <button class="chat-menu-item" id="modal-open-map">
+        <span>🗺️</span> Mapa
+      </button>
+      <button class="chat-menu-item danger" id="modal-exit">
+        <span>🚪</span> Volver al Dashboard
+      </button>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="chat-modal-body">
+
+    <!-- Welcome section (shown initially) -->
+    <div class="chat-modal-welcome" id="chat-modal-welcome">
+      <img src="/icons/dashboard/IA.svg" alt="AI" class="chat-modal-icon" />
+      <div class="chat-modal-model-name">LLAMA 3.1</div>
+
+      <!-- Input box -->
+      <div class="chat-modal-input-wrapper">
+        <div class="chat-modal-input-box">
+          <input type="text" class="chat-modal-input" id="chat-modal-input" placeholder="¿Cómo puedo ayudarte hoy?" />
+          <div class="chat-modal-input-actions">
+            <button class="btn-send-modal" id="btn-send-modal">➤</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Suggestions -->
+      <div class="chat-modal-suggestions" id="chat-modal-suggestions">
+        <div class="suggestions-label">
+          <span>✨</span> Sugerido
+        </div>
+        <div class="suggestion-card" data-prompt="¿Qué minerales puedo analizar en Marte?">
+          <div class="suggestion-title">🔬 Análisis de minerales</div>
+          <div class="suggestion-desc">Tipos y métodos de detección</div>
+        </div>
+        <div class="suggestion-card" data-prompt="¿Cómo inicio una nueva misión de exploración?">
+          <div class="suggestion-title">🚀 Nueva misión</div>
+          <div class="suggestion-desc">Guía paso a paso</div>
+        </div>
+        <div class="suggestion-card" data-prompt="¿Qué significa cada indicador de telemetría?">
+          <div class="suggestion-title">📊 Telemetría</div>
+          <div class="suggestion-desc">Explicación de indicadores</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Messages (shown when chatting) -->
+    <div class="chat-modal-messages" id="chat-modal-messages">
+      <!-- Messages will appear here -->
+    </div>
+
+  </div>
+
+  <!-- Bottom input (shown when chatting) -->
+  <div class="chat-modal-input-bottom" id="chat-modal-input-bottom">
+    <input type="text" class="chat-input" id="chat-modal-input-active" placeholder="Escribe tu mensaje...">
+    <button class="btn-send-chat" id="btn-send-modal-active">➤</button>
+  </div>
+
+</div>
+
+</div>

@@ -1,0 +1,58 @@
+{
+  "expo": {
+    "name": "KEPLER",
+    "slug": "kepler-mobile",
+    "version": "0.5.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": false,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0a1a"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kepler.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "KEPLER necesita acceso a la cámara para detección de objetos en AR",
+        "NSLocationWhenInUseUsageDescription": "KEPLER necesita tu ubicación para rastrear rutas de exploración"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0a0a1a"
+      },
+      "package": "com.kepler.mobile",
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "KEPLER necesita acceso a la cámara para AR"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "KEPLER usa tu ubicación para rastrear rutas"
+        }
+      ]
+    ],
+    "extra": {
+      "supabaseUrl": "http://localhost:54321",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzY3MDIyNTc1LCJleHAiOjQ5MjA2MjI1NzV9.ar9_aoOo-Cd7VVibO00kL0qCTa3lGh0IRmoFPmstrq8",
+      "backendUrl": "http://localhost:8000"
+    }
+  }
+}
