@@ -1,9 +1,66 @@
 /**
- * KEPLER Mobile - Main Entry Point
+ * KEPLER Mobile - Main App
+ * Stack navigation with hamburger menu (no bottom tabs)
  */
-import React from 'react';
-import RootNavigator from './src/navigation/RootNavigator';
+import React, { useState } from 'react';
+import { View, StyleSheet } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { StatusBar } from 'expo-status-bar';
 
+// Screens
+import DashboardScreen from './src/screens/DashboardScreen';
+import MapScreen from './src/screens/MapScreen';
+import ArchivesScreen from './src/screens/ArchivesScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
+import LoginScreen from './src/screens/LoginScreen';
+import ARCameraScreen from './src/screens/ARCameraScreen';
+
+// Types
+export type RootStackParamList = {
+  Login: undefined;
+  Dashboard: undefined;
+  Map: undefined;
+  Archives: undefined;
+  Profile: undefined;
+  ARCamera: { missionId?: string };
+};
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
+
+// Main App
 export default function App() {
-  return <RootNavigator />;
+  const [isLoggedIn] = useState(true);
+
+  return (
+    <NavigationContainer>
+      <StatusBar style="light" />
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: '#000' },
+          animation: 'fade',
+        }}
+      >
+        {!isLoggedIn ? (
+          <Stack.Screen name="Login" component={LoginScreen} />
+        ) : (
+          <>
+            <Stack.Screen name="Dashboard" component={DashboardScreen} />
+            <Stack.Screen name="Map" component={MapScreen} />
+            <Stack.Screen name="Archives" component={ArchivesScreen} />
+            <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen
+              name="ARCamera"
+              component={ARCameraScreen}
+              options={{
+                presentation: 'fullScreenModal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+          </>
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
 }

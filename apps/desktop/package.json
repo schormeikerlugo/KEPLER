@@ -1,27 +1,41 @@
 {
-    "name": "@kepler/desktop",
-    "version": "0.5.0",
-    "private": true,
-    "type": "module",
-    "scripts": {
-        "dev": "vite",
-        "build": "vite build",
-        "preview": "vite preview",
-        "tauri": "tauri",
-        "tauri:dev": "tauri dev",
-        "tauri:build": "tauri build"
+  "name": "@kepler/desktop",
+  "version": "0.5.0",
+  "description": "KEPLER Desktop - Electron Wrapper",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "NODE_ENV=development electron .",
+    "build": "electron-builder",
+    "pack": "electron-builder --dir"
+  },
+  "author": "KEPLER Team",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.kepler.desktop",
+    "productName": "KEPLER",
+    "directories": {
+      "output": "dist"
     },
-    "dependencies": {
-        "@tauri-apps/api": "^2.1.0",
-        "@tauri-apps/plugin-shell": "^2.0.0",
-        "@tauri-apps/plugin-notification": "^2.0.0",
-        "@tauri-apps/plugin-dialog": "^2.0.0",
-        "@tauri-apps/plugin-fs": "^2.0.0",
-        "@tauri-apps/plugin-process": "^2.0.0",
-        "@tauri-apps/plugin-updater": "^2.0.0"
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "assets/icon.png",
+      "category": "Science"
     },
-    "devDependencies": {
-        "@tauri-apps/cli": "^2.0.0",
-        "vite": "^6.0.0"
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns"
     }
+  }
 }

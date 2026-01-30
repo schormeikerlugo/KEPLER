@@ -1,11 +1,38 @@
 #!/bin/bash
 # KEPLER - Script de Inicio de Desarrollo
 # Inicia todos los servicios en el orden correcto
+# Soporta: Web, Desktop (Electron), Mobile (React Native/Expo)
 
 set -e
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$PROJECT_DIR"
+
+# Opciones de línea de comandos (por defecto: todo activado)
+START_DESKTOP=true
+START_MOBILE=true
+
+# Parsear argumentos
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --web-only) START_DESKTOP=false; START_MOBILE=false; shift ;;
+        --no-desktop) START_DESKTOP=false; shift ;;
+        --no-mobile) START_MOBILE=false; shift ;;
+        -h|--help)
+            echo "Uso: ./start-dev.sh [opciones]"
+            echo ""
+            echo "Por defecto inicia: Web + Desktop + Mobile"
+            echo ""
+            echo "Opciones para deshabilitar:"
+            echo "  --web-only      Solo Web (sin Desktop ni Mobile)"
+            echo "  --no-desktop    Sin Electron Desktop"
+            echo "  --no-mobile     Sin React Native/Expo"
+            echo "  -h, --help      Mostrar esta ayuda"
+            exit 0
+            ;;
+        *) echo "Opción desconocida: $1"; exit 1 ;;
+    esac
+done
 
 echo "========================================"
 echo "  🚀 KEPLER System - Iniciando..."
@@ -105,9 +132,9 @@ cd "$PROJECT_DIR"
 echo ""
 
 # ========================================
-# PASO 3: Iniciar Frontend
+# PASO 3: Iniciar Frontend Web
 # ========================================
-echo -e "${YELLOW}🌐 Paso 3: Iniciando Frontend...${NC}"
+echo -e "${YELLOW}🌐 Paso 3: Iniciando Frontend Web...${NC}"
 
 # Verificar si ya está corriendo el frontend
 if lsof -i:5180 >/dev/null 2>&1; then
@@ -137,6 +164,71 @@ cd "$PROJECT_DIR"
 echo ""
 
 # ========================================
+# PASO 4: Iniciar Electron Desktop (Opcional)
+# ========================================
+if [ "$START_DESKTOP" = true ]; then
+    echo -e "${YELLOW}🖥️  Paso 4: Iniciando Electron Desktop...${NC}"
+    
+    if [ -d "$PROJECT_DIR/apps/desktop" ]; then
+        # En monorepo, las dependencias están en la raíz
+        if [ -f "$PROJECT_DIR/apps/desktop/package.json" ]; then
+            cd "$PROJECT_DIR"
+            nohup npm run dev -w @kepler/desktop > /tmp/kepler-desktop.log 2>&1 &
+            DESKTOP_PID=$!
+            echo "   Desktop PID: $DESKTOP_PID"
+            sleep 3
+            
+            if kill -0 $DESKTOP_PID 2>/dev/null; then
+                echo -e "${GREEN}   ✅ Electron Desktop iniciado${NC}"
+            else
+                echo -e "${RED}   ❌ Error al iniciar desktop. Ver: /tmp/kepler-desktop.log${NC}"
+            fi
+        else
+            echo -e "${RED}   ❌ package.json no encontrado en apps/desktop${NC}"
+        fi
+    else
+        echo -e "${YELLOW}   ⚠️  Directorio apps/desktop no existe aún${NC}"
+    fi
+    
+    cd "$PROJECT_DIR"
+    echo ""
+fi
+
+# ========================================
+# PASO 5: Iniciar React Native / Expo (Opcional)
+# ========================================
+if [ "$START_MOBILE" = true ]; then
+    echo -e "${YELLOW}📱 Paso 5: Iniciando React Native / Expo...${NC}"
+    
+    if [ -d "$PROJECT_DIR/apps/mobile" ]; then
+        cd "$PROJECT_DIR/apps/mobile"
+        
+        if [ -d "node_modules" ]; then
+            # Iniciar Expo en modo desarrollo
+            nohup npx expo start --tunnel > /tmp/kepler-mobile.log 2>&1 &
+            MOBILE_PID=$!
+            echo "   Mobile PID: $MOBILE_PID"
+            sleep 5
+            
+            if kill -0 $MOBILE_PID 2>/dev/null; then
+                echo -e "${GREEN}   ✅ React Native / Expo iniciado${NC}"
+                echo -e "${YELLOW}   📱 Escanea el QR en /tmp/kepler-mobile.log o usa Expo Go${NC}"
+            else
+                echo -e "${RED}   ❌ Error al iniciar mobile. Ver: /tmp/kepler-mobile.log${NC}"
+            fi
+        else
+            echo -e "${RED}   ❌ node_modules no encontrado. Ejecuta:${NC}"
+            echo "      cd apps/mobile && npm install"
+        fi
+    else
+        echo -e "${YELLOW}   ⚠️  Directorio apps/mobile no existe aún${NC}"
+    fi
+    
+    cd "$PROJECT_DIR"
+    echo ""
+fi
+
+# ========================================
 # RESUMEN
 # ========================================
 echo "========================================"
@@ -145,15 +237,33 @@ echo "========================================"
 echo ""
 echo "  Servicios KEPLER disponibles:"
 echo "  ─────────────────────────────────────"
-echo "  🌐 Frontend:     https://localhost:5180"
-echo "  🐍 Backend API:  http://localhost:8000"
-echo "  📦 Supabase:     http://localhost:54321"
-echo "  🗄️  Database:     localhost:54322"
+echo "  🌐 Frontend Web:   https://localhost:5180"
+echo "  🐍 Backend API:    http://localhost:8000"
+echo "  📦 Supabase:       http://localhost:54321"
+echo "  🗄️  Database:       localhost:54322"
+
+if [ "$START_DESKTOP" = true ]; then
+    echo "  🖥️  Desktop:        Electron (dev mode)"
+fi
+
+if [ "$START_MOBILE" = true ]; then
+    echo "  📱 Mobile:         Expo (tunnel mode)"
+fi
+
 echo ""
-echo "  logs:"
+echo "  Logs:"
 echo "  ─────────────────────────────────────"
 echo "  Backend:  tail -f /tmp/kepler-backend.log"
 echo "  Frontend: tail -f /tmp/kepler-frontend.log"
+
+if [ "$START_DESKTOP" = true ]; then
+    echo "  Desktop:  tail -f /tmp/kepler-desktop.log"
+fi
+
+if [ "$START_MOBILE" = true ]; then
+    echo "  Mobile:   tail -f /tmp/kepler-mobile.log"
+fi
+
 echo "  Docker:   docker-compose logs -f"
 echo ""
 echo "  Para detener todo: ./stop-dev.sh"

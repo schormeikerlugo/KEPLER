@@ -11,32 +11,29 @@ import {
     SafeAreaView,
     KeyboardAvoidingView,
     Platform,
+    Alert,
 } from 'react-native';
-import { supabase } from '../services/supabase';
 
-export default function LoginScreen() {
+export default function LoginScreen({ navigation }: any) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [isSignUp, setIsSignUp] = useState(false);
 
     const handleAuth = async () => {
-        setLoading(true);
-        try {
-            if (isSignUp) {
-                const { error } = await supabase.auth.signUp({ email, password });
-                if (error) throw error;
-                alert('Revisa tu email para confirmar tu cuenta');
-            } else {
-                const { error } = await supabase.auth.signInWithPassword({ email, password });
-                if (error) throw error;
-                // Navigation handled by auth state listener
-            }
-        } catch (error: any) {
-            alert(error.message);
-        } finally {
-            setLoading(false);
+        if (!email || !password) {
+            Alert.alert('Error', 'Por favor ingresa email y contraseña');
+            return;
         }
+
+        setLoading(true);
+
+        // Simulate login
+        setTimeout(() => {
+            setLoading(false);
+            // Navigation would happen here after auth
+            Alert.alert('Login', 'Funcionalidad en desarrollo');
+        }, 1000);
     };
 
     return (

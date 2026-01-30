@@ -162,12 +162,22 @@ Para más detalles, consulta la **[Guía de Inicio](docs/guia-inicio.md)**.
 
 ```
 KEPLER/
-├── frontend/          # Interfaz Holográfica (Vite + Vanilla JS)
-│   └── src/features/  # Módulos: AR, Dashboard, Login, Archives
-├── backend/           # Cerebro Analítico (FastAPI + Python)
-│   └── app/           # Lógica de IA y Endpoints
-├── deployment/        # Configuración Docker
-└── docs/              # Manuales y Referencias
+├── apps/
+│   ├── web/               # Interfaz Holográfica (Vite + Vanilla JS)
+│   │   └── src/features/  # Módulos: AR, Dashboard, Login, Archives
+│   ├── mobile/            # App React Native (Expo)
+│   │   └── src/
+│   │       ├── features/  # Dashboard, Map (modular)
+│   │       ├── screens/   # Re-exports desde features
+│   │       ├── components/# Header compartido, Icons
+│   │       └── hooks/     # useSharedMenu, useApi
+│   └── desktop/           # Electron wrapper
+├── packages/
+│   └── shared/            # Tipos, constantes, utilities
+├── backend/               # Cerebro Analítico (FastAPI + Python)
+│   └── app/               # Lógica de IA y Endpoints
+├── deployment/            # Configuración Docker
+└── docs/                  # Manuales y Referencias
 ```
 
 ---

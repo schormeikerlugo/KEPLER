@@ -7,7 +7,7 @@
 ### Estructura del Proyecto
 
 ```
-mars-sight-ar/
+KEPLER/
 ├── 📂 frontend/              ← Aplicación React + WebXR
 │   ├── src/
 │   │   ├── components/      ← Componentes (UI, AR, Dashboard)
