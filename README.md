@@ -24,9 +24,17 @@
 
 ## 🌌 ¿Qué es KEPLER?
 
-**KEPLER** (anteriormente conocido como Mars-Sight AR) es una plataforma avanzada de exploración asistida por Inteligencia Artificial. Diseñada con una estética holográfica (HUI), su objetivo es asistir a astronautas y rovers en la **identificación, clasificación y análisis en tiempo real** de formaciones geológicas y artefactos en entornos desconocidos.
+**KEPLER** es una plataforma integral de exploración espacial asistida por Inteligencia Artificial, diseñada para operar como el **sistema operativo de campo** para astronautas y rovers de próxima generación.
 
-> 🚀 **Misión:** Proveer ojos inteligentes a la exploración espacial humana y robótica.
+Más que una simple interfaz, KEPLER actúa como un **copiloto inteligente** que procesa el entorno en tiempo real, cerrando la brecha entre la recolección de datos crudos y la inteligencia accionable en ambientes hostiles. Su arquitectura híbrida (Edge + Cloud) permite análisis complejos manteniendo una operatividad crítica incluso en condiciones de baja conectividad.
+
+Su **Interfaz Holográfica Industrial (HUI)** unifica cuatro pilares tecnológicos:
+1.  **Visión Computacional Táctica**: Identificación instantánea de minerales, peligros y artefactos mediante modelos YOLO optimizados en el dispositivo (WASM/Mobile).
+2.  **Inteligencia Contextual**: Un cerebro LLM (Cortex AI) que entiende la semántica del entorno, sugiere objetivos de misión y responde consultas técnicas complejas.
+3.  **Telemetría & Mapeo**: Visualización geoespacial avanzada con seguimiento de constantes vitales del sistema y del operador.
+4.  **Sincronización Multi-Plataforma**: Continuidad operativa total entre el Centro de Control (Web/Desktop) y las Unidades de Campo (Mobile AR).
+
+> 🚀 **Misión:** "Iluminar lo desconocido" — Transformar lo inexplorado en conocimiento estructurado mediante la fusión de visión artificial y exploración humana.
 
 ---
 
