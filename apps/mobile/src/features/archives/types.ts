@@ -13,6 +13,10 @@ export interface MissionObject {
     metadata?: {
         image_base64?: string;
         confidence?: number;
+        description?: string;
+        descripcion?: string; // Legacy support
+        source?: string;
+        heading?: number;
     };
     created_at: string;
 }

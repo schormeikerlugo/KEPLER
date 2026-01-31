@@ -1,8 +1,11 @@
 import React from 'react';
 import { View, Text, Image, FlatList, Dimensions, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { styles } from '../styles';
 import { MissionObject } from '../types';
 import { COLORS } from '../../../constants/config';
+import { RootStackParamList } from '../../../navigation/types';
 
 interface ObjectGridProps {
     objects?: MissionObject[];
@@ -12,6 +15,8 @@ const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 40 - 15) / 2; // (Screen - Padding - Gap) / 2
 
 export const ObjectGrid = ({ objects }: ObjectGridProps) => {
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
     if (!objects || objects.length === 0) {
         return (
             <View style={styles.emptyContainer}>
@@ -22,27 +27,34 @@ export const ObjectGrid = ({ objects }: ObjectGridProps) => {
         );
     }
 
+    const handlePress = (item: MissionObject) => {
+        navigation.navigate('ObjectDetail', { object: item });
+    };
+
     const renderItem = ({ item }: { item: MissionObject }) => {
         // Handle potential different image formats or missing image
         const imageSource = item.metadata?.image_base64
             ? { uri: item.metadata.image_base64 }
             : null;
-        // Could add a placeholder image here if null
 
         const confidence = item.metadata?.confidence
             ? Math.round(item.metadata.confidence * 100) + '%'
             : 'N/A';
 
         return (
-            <View style={{
-                width: CARD_WIDTH,
-                backgroundColor: 'rgba(255,255,255,0.05)',
-                borderRadius: 8,
-                marginBottom: 15,
-                overflow: 'hidden',
-                borderWidth: 1,
-                borderColor: COLORS.border // Make sure COLORS.border exists or use hex
-            }}>
+            <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => handlePress(item)}
+                style={{
+                    width: CARD_WIDTH,
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    borderRadius: 8,
+                    marginBottom: 15,
+                    overflow: 'hidden',
+                    borderWidth: 1,
+                    borderColor: COLORS.border // Make sure COLORS.border exists or use hex
+                }}
+            >
                 <View style={{ height: 120, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}>
                     {imageSource ? (
                         <Image
@@ -66,7 +78,7 @@ export const ObjectGrid = ({ objects }: ObjectGridProps) => {
                         Confianza: {confidence}
                     </Text>
                 </View>
-            </View>
+            </TouchableOpacity>
         );
     };
 

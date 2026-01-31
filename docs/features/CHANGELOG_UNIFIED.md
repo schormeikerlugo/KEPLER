@@ -36,6 +36,8 @@
 - `[MOBILE]` **Real Authentication** - Integración completa con Supabase Auth (Login/Signup real)
 - `[MOBILE]` **API Security** - Implementación de Bearer Token en todas las peticiones al backend
 - `[MOBILE]` **Endpoint Sync** - Corrección de rutas de API para coincidir con Backend (`/api/missions`)
+- `[MOBILE]` **Object Grid** - UI completa para visualizar imágenes de evidencia en misiones
+- `[MOBILE]` **Object Detail** - Pantalla inmersiva para inspeccionar objetos (Imagen, Taxonomía, Metadata)
 
 ### Modificado
 - `[BACKEND]` Endpoint `/api/describe-zone` mejorado con Nominatim + Ollama

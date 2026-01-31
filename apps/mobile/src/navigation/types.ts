@@ -4,12 +4,15 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 
+import { MissionObject } from '../features/archives/types';
+
 // Root Stack
 export type RootStackParamList = {
     Login: undefined;
+    Dashboard: undefined; // Aligning wih App.tsx usage somewhat
     Main: undefined;
     ARCamera: { missionId?: string };
-    ObjectDetail: { objectId: string };
+    ObjectDetail: { object: MissionObject };
     MissionDetail: { missionId: string };
 };
 
