@@ -33,7 +33,9 @@
 - `[MOBILE]` **Shared Header** - Header unificado con menú drawer animado desde la derecha
 - `[MOBILE]` **useSharedMenu hook** - Hook reutilizable para animaciones de menú y toast
 - `[MOBILE]` **Archives Features** - Gestión completa de misiones (Ver, Finalizar, Eliminar) con conexión a API
-- `[MOBILE]` **API Service** - Soporte para CRUD de misiones (`updateMission`, `deleteMission`)
+- `[MOBILE]` **Real Authentication** - Integración completa con Supabase Auth (Login/Signup real)
+- `[MOBILE]` **API Security** - Implementación de Bearer Token en todas las peticiones al backend
+- `[MOBILE]` **Endpoint Sync** - Corrección de rutas de API para coincidir con Backend (`/api/missions`)
 
 ### Modificado
 - `[BACKEND]` Endpoint `/api/describe-zone` mejorado con Nominatim + Ollama

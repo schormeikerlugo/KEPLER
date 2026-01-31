@@ -27,6 +27,20 @@ export const API_TIMEOUT = 5000;
  */
 export const REFRESH_INTERVAL = 5000;
 
+// =============================================================================
+// SUPABASE CONFIGURATION
+// =============================================================================
+
+/**
+ * Supabase URL - Change this to your local IP:54321 if self-hosted
+ */
+export const SUPABASE_URL = 'http://192.168.68.114:54321';
+
+/**
+ * Supabase Anon Key
+ */
+export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzY3MDIyNTc1LCJleHAiOjQ5MjA2MjI1NzV9.ar9_aoOo-Cd7VVibO00kL0qCTa3lGh0IRmoFPmstrq8';
+
 
 // =============================================================================
 // THEME COLORS

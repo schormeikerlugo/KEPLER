@@ -13,6 +13,7 @@ import {
     Platform,
     Alert,
 } from 'react-native';
+import { supabase } from '../services/supabase';
 
 export default function LoginScreen({ navigation }: any) {
     const [email, setEmail] = useState('');
@@ -28,12 +29,28 @@ export default function LoginScreen({ navigation }: any) {
 
         setLoading(true);
 
-        // Simulate login
-        setTimeout(() => {
+        try {
+            if (isSignUp) {
+                const { error } = await supabase.auth.signUp({
+                    email,
+                    password,
+                });
+                if (error) throw error;
+                Alert.alert('Registro exitoso', 'Por favor inicia sesión.');
+                setIsSignUp(false);
+            } else {
+                const { error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password,
+                });
+                if (error) throw error;
+                // Navigation is handled by App.tsx checking auth state
+            }
+        } catch (error: any) {
+            Alert.alert('Error de Autenticación', error.message);
+        } finally {
             setLoading(false);
-            // Navigation would happen here after auth
-            Alert.alert('Login', 'Funcionalidad en desarrollo');
-        }, 1000);
+        }
     };
 
     return (

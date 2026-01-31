@@ -8,6 +8,7 @@
  */
 
 import { API_BASE_URL, API_TIMEOUT } from '../constants/config';
+import { supabase } from './supabase';
 
 // =============================================================================
 // TYPES
@@ -105,6 +106,29 @@ class ApiService {
         this.baseUrl = API_BASE_URL;
     }
 
+    /**
+     * Get current auth token
+     */
+    private async getToken(): Promise<string | null> {
+        const { data } = await supabase.auth.getSession();
+        return data.session?.access_token || null;
+    }
+
+    /**
+     * Fetch with auth header
+     */
+    private async fetchWithAuth(url: string, options: RequestInit = {}) {
+        const token = await this.getToken();
+        const headers: any = {
+            'Content-Type': 'application/json',
+            ...options.headers,
+        };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        return fetchWithTimeout(url, { ...options, headers });
+    }
+
     // ---------------------------------------------------------------------------
     // TELEMETRY
     // ---------------------------------------------------------------------------
@@ -117,11 +141,11 @@ class ApiService {
      */
     async getTelemetry(): Promise<TelemetryData> {
         try {
-            const response = await fetchWithTimeout(`${this.baseUrl}/api/telemetry`, {
+            // Telemetry endpoint might be protected now
+            const response = await this.fetchWithAuth(`${this.baseUrl}/api/telemetry`, {
                 method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
             });
-
+            // ... same logic
             if (response.ok) {
                 const data = await response.json();
                 return {
@@ -131,7 +155,6 @@ class ApiService {
                     radiation: data.radiation ?? this.getMockTelemetry().radiation,
                 };
             }
-
             return this.getMockTelemetry();
         } catch (error) {
             console.log('[API] Telemetry fetch error:', error);
@@ -181,15 +204,13 @@ class ApiService {
     // ---------------------------------------------------------------------------
 
     /**
-     * Fetch list of missions from database
-     * 
-     * @returns Promise<Mission[]>
+     * Fetch list of missions
      */
     async getMissions(): Promise<Mission[]> {
         try {
-            const response = await fetchWithTimeout(`${this.baseUrl}/api/misiones`, {
+            console.log('[API] Fetching missions from:', `${this.baseUrl}/api/missions/list`);
+            const response = await this.fetchWithAuth(`${this.baseUrl}/api/missions/list`, {
                 method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
             });
 
             if (response.ok) {
@@ -197,13 +218,14 @@ class ApiService {
                 if (Array.isArray(data)) {
                     return data.map((m: any) => ({
                         id: m.id,
-                        code: this.formatMissionCode(m.id, m.created_at),
-                        status: m.status || 'ACTIVA',
-                        created_at: m.created_at,
+                        code: m.codigo || this.formatMissionCode(m.id, m.inicio_at),
+                        status: m.estado === 'activa' ? 'ACTIVA' : 'COMPLETADA',
+                        created_at: m.inicio_at || new Date().toISOString(),
+                        ...m
                     }));
                 }
             }
-
+            console.log('[API] Missions fetch failed, status:', response.status);
             return this.getMockMissions();
         } catch (error) {
             console.log('[API] Missions fetch error:', error);
@@ -212,31 +234,40 @@ class ApiService {
     }
 
     /**
-     * Fetch single mission details
-     * @param id - Mission ID
+     * Fetch single mission details (Simulated via List + Objects)
      */
     async getMissionDetails(id: string): Promise<any> {
         try {
-            const response = await fetchWithTimeout(`${this.baseUrl}/api/misiones/${id}`, {
-                method: 'GET',
+            // 1. Get mission basic info (from list or cache ideally, but fetching list for now)
+            const missions = await this.getMissions();
+            const mission = missions.find(m => m.id === id);
+
+            if (!mission) throw new Error('Mission not found locally');
+
+            // 2. Get objects
+            const responseObj = await this.fetchWithAuth(`${this.baseUrl}/api/missions/${id}/objects`, {
+                method: 'GET'
             });
 
-            if (response.ok) {
-                return await response.json();
-            }
-            throw new Error('Mission not found');
+            const objects = responseObj.ok ? await responseObj.json() : [];
+
+            return {
+                ...mission,
+                description: (mission as any).zona_geografica || 'Zona desconocida',
+                location: (mission as any).zona_geografica,
+                tags: ['Exploración'],
+                objects: objects,
+                stats: { dist: 'N/A', time: 'N/A' } // Backend doesn't provide this yet
+            };
         } catch (error) {
             console.log('[API] Mission details error:', error);
-            // Return mock detail for demo if API fails
+            // Mock fallback
             const mockList = this.getMockMissions();
             const mockMission = mockList.find(m => m.id === id) || mockList[0];
             return {
                 ...mockMission,
-                description: 'Misión de exploración geológica en sector Alpha-9.',
-                location: 'Cráter Gale',
-                tags: ['Geología', 'Exploración'],
                 objects: [],
-                stats: { dist: '4.2 km', time: '2h 15m' }
+                stats: { dist: '0km', time: '0m' }
             };
         }
     }
@@ -248,15 +279,18 @@ class ApiService {
      */
     async updateMission(id: string, updates: Partial<Mission>): Promise<boolean> {
         try {
-            const response = await fetchWithTimeout(`${this.baseUrl}/api/misiones/${id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updates),
-            });
-            return response.ok;
+            // Only support END mission for now as per backend
+            if (updates.status === 'COMPLETADA') {
+                const response = await this.fetchWithAuth(`${this.baseUrl}/api/missions/end`, {
+                    method: 'POST',
+                    body: JSON.stringify({ mission_id: id }),
+                });
+                return response.ok;
+            }
+            return false;
         } catch (error) {
             console.log('[API] Update mission error:', error);
-            return true; // Optimistic success for demo
+            return false;
         }
     }
 
@@ -266,13 +300,13 @@ class ApiService {
      */
     async deleteMission(id: string): Promise<boolean> {
         try {
-            const response = await fetchWithTimeout(`${this.baseUrl}/api/misiones/${id}`, {
+            const response = await this.fetchWithAuth(`${this.baseUrl}/api/missions/delete/${id}`, {
                 method: 'DELETE',
             });
             return response.ok;
         } catch (error) {
             console.log('[API] Delete mission error:', error);
-            return true; // Optimistic success for demo
+            return false;
         }
     }
 

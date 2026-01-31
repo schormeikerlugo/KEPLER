@@ -28,11 +28,28 @@ export type RootStackParamList = {
   ARCamera: { missionId?: string };
 };
 
+import { supabase } from './src/services/supabase';
+import { Session } from '@supabase/supabase-js';
+
+// ... Screens ...
+
+// ... Types ...
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 // Main App
 export default function App() {
-  const [isLoggedIn] = useState(true);
+  const [session, setSession] = useState<Session | null>(null);
+
+  React.useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+  }, []);
 
   return (
     <NavigationContainer>
@@ -44,7 +61,7 @@ export default function App() {
           animation: 'fade',
         }}
       >
-        {!isLoggedIn ? (
+        {!session ? (
           <Stack.Screen name="Login" component={LoginScreen} />
         ) : (
           <>
