@@ -95,18 +95,20 @@ export default function DashboardScreen() {
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-            <ScrollView
-                style={styles.scrollView}
-                contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 0 }]}
-                showsVerticalScrollIndicator={false}
-            >
-                {/* Header Tile */}
+            {/* Header Tile (Fixed at top) */}
+            <View style={{ paddingTop: insets.top }}>
                 <DashboardHeader
                     isSystemOnline={data.isSystemOnline}
                     onStatusPress={() => setStatusVisible(true)}
                     onMenuPress={menu.toggleMenu}
                 />
+            </View>
 
+            <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={[styles.scrollContent, { paddingTop: 0 }]}
+                showsVerticalScrollIndicator={false}
+            >
                 {/* Telemetry Panel */}
                 <TelemetryPanel
                     telemetry={data.telemetry}
