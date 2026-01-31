@@ -12,7 +12,6 @@
 // API hooks
 export {
     useTelemetry,
-    useSystemStatus,
     useMissions
 } from './useApi';
 
@@ -24,4 +23,6 @@ export {
 
 // Shared menu hook
 export { useSharedMenu } from './useSharedMenu';
+
+// System Status (New implementation)
 export * from './useSystemStatus';
