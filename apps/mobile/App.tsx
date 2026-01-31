@@ -72,7 +72,6 @@ export default function App() {
             <Stack.Screen name="Map" component={MapScreen} />
             <Stack.Screen name="Archives" component={ArchivesScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
-            <Stack.Screen name="Profile" component={ProfileScreen} />
             <Stack.Screen name="MissionDetail" component={MissionDetailScreen} />
             <Stack.Screen name="ObjectDetail" component={ObjectDetailScreen} />
             <Stack.Screen
