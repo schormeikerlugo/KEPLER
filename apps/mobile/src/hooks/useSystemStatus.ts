@@ -20,7 +20,7 @@ export function useSystemStatus(): UseSystemStatusReturn {
         setIsChecking(true);
         try {
             const status = await api.getSystemStatus();
-            setSystemStatus(status);
+            setSystemStatus(status || { backend: false, supabase: false, ollama: false });
         } catch (e) {
             console.error('Status check failed', e);
             setSystemStatus({ backend: false, supabase: false, ollama: false });

@@ -21,6 +21,8 @@ export function StatusModal({
     isSystemOnline,
     onClose,
 }: StatusModalProps) {
+    const safeStatus = systemStatus || { backend: false, supabase: false, ollama: false };
+
     return (
         <Modal
             visible={visible}
@@ -37,7 +39,7 @@ export function StatusModal({
                         <Text style={styles.statusLabel}>Backend API</Text>
                         <View style={[
                             styles.statusIndicatorDot,
-                            systemStatus.backend && styles.statusIndicatorOnline
+                            safeStatus.backend && styles.statusIndicatorOnline
                         ]} />
                     </View>
 
@@ -45,7 +47,7 @@ export function StatusModal({
                         <Text style={styles.statusLabel}>Supabase DB</Text>
                         <View style={[
                             styles.statusIndicatorDot,
-                            systemStatus.supabase && styles.statusIndicatorOnline
+                            safeStatus.supabase && styles.statusIndicatorOnline
                         ]} />
                     </View>
 
@@ -53,7 +55,7 @@ export function StatusModal({
                         <Text style={styles.statusLabel}>Ollama AI</Text>
                         <View style={[
                             styles.statusIndicatorDot,
-                            systemStatus.ollama && styles.statusIndicatorOnline
+                            safeStatus.ollama && styles.statusIndicatorOnline
                         ]} />
                     </View>
 
