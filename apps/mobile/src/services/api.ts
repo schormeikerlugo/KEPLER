@@ -59,6 +59,36 @@ export interface Mission {
 // =============================================================================
 
 /**
+ * Taxonomy Types
+ */
+export interface Category {
+    id: string;
+    nombre: string;
+    descripcion?: string;
+    color?: string;
+    icono?: string;
+}
+
+export interface Subcategory {
+    id: string;
+    categoria_id: string;
+    nombre: string;
+    descripcion?: string;
+}
+
+export interface Tag {
+    id: string;
+    nombre: string;
+    color?: string;
+}
+
+export interface TaxonomyAssignment {
+    categoria_id?: string;
+    subcategoria_id?: string;
+    etiqueta_ids?: string[];
+}
+
+/**
  * Fetch with timeout support for React Native
  * 
  * @param url - URL to fetch
@@ -352,6 +382,38 @@ class ApiService {
             console.log('[API] Delete mission error:', error);
             return false;
         }
+    }
+
+    // ---------------------------------------------------------------------------
+    // TAXONOMY
+    // ---------------------------------------------------------------------------
+
+    async getCategories(): Promise<Category[]> {
+        const res = await this.fetchWithAuth(`${this.baseUrl}/api/taxonomia/categorias`);
+        return res.ok ? await res.json() : [];
+    }
+
+    async getSubcategories(categoryId: string): Promise<Subcategory[]> {
+        const res = await this.fetchWithAuth(`${this.baseUrl}/api/taxonomia/subcategorias/${categoryId}`);
+        return res.ok ? await res.json() : [];
+    }
+
+    async getTags(): Promise<Tag[]> {
+        const res = await this.fetchWithAuth(`${this.baseUrl}/api/taxonomia/etiquetas`);
+        return res.ok ? await res.json() : [];
+    }
+
+    async getObjectTaxonomy(objectId: string): Promise<{ categoria_id?: string; subcategoria_id?: string; etiquetas: Tag[] }> {
+        const res = await this.fetchWithAuth(`${this.baseUrl}/api/taxonomia/objetos/${objectId}/taxonomia`);
+        return res.ok ? await res.json() : { etiquetas: [] };
+    }
+
+    async assignTaxonomy(objectId: string, assignment: TaxonomyAssignment): Promise<boolean> {
+        const res = await this.fetchWithAuth(`${this.baseUrl}/api/taxonomia/objetos/${objectId}/asignar`, {
+            method: 'POST',
+            body: JSON.stringify(assignment)
+        });
+        return res.ok;
     }
 
     // ---------------------------------------------------------------------------
