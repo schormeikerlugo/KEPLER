@@ -39,7 +39,7 @@ export function StatusModal({
                         <Text style={styles.statusLabel}>Backend API</Text>
                         <View style={[
                             styles.statusIndicatorDot,
-                            safeStatus.backend && styles.statusIndicatorOnline
+                            { backgroundColor: safeStatus.backend ? '#00ff88' : '#ff4444' }
                         ]} />
                     </View>
 
@@ -47,7 +47,7 @@ export function StatusModal({
                         <Text style={styles.statusLabel}>Supabase DB</Text>
                         <View style={[
                             styles.statusIndicatorDot,
-                            safeStatus.supabase && styles.statusIndicatorOnline
+                            { backgroundColor: safeStatus.supabase ? '#00ff88' : '#ff4444' }
                         ]} />
                     </View>
 
@@ -55,7 +55,7 @@ export function StatusModal({
                         <Text style={styles.statusLabel}>Ollama AI</Text>
                         <View style={[
                             styles.statusIndicatorDot,
-                            safeStatus.ollama && styles.statusIndicatorOnline
+                            { backgroundColor: safeStatus.ollama ? '#00ff88' : '#ff4444' }
                         ]} />
                     </View>
 
