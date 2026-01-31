@@ -2,5 +2,5 @@
  * Dashboard Constants Barrel Export
  */
 
-export * from './menuItems';
+// export * from './menuItems'; // Removed
 export * from './quickActions';

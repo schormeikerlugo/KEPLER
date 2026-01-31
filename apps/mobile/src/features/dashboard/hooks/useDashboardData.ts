@@ -10,14 +10,12 @@ import { api, TelemetryData, SystemStatus, Mission } from '../../../services/api
 export interface UseDashboardDataReturn {
     // Data
     telemetry: TelemetryData;
-    systemStatus: SystemStatus;
     missions: Mission[];
     pois: number;
     minerals: number;
     objects: number;
 
     // Status
-    isSystemOnline: boolean;
     isScanning: boolean;
 
     // Animation
@@ -36,11 +34,7 @@ export function useDashboardData(): UseDashboardDataReturn {
         bpm: 60,
         radiation: 0.033,
     });
-    const [systemStatus, setSystemStatus] = useState<SystemStatus>({
-        backend: false,
-        supabase: false,
-        ollama: false,
-    });
+    // systemStatus removed
     const [missions, setMissions] = useState<Mission[]>([]);
     const [pois] = useState(0);
     const [minerals] = useState(0);
@@ -72,14 +66,12 @@ export function useDashboardData(): UseDashboardDataReturn {
     const refreshData = useCallback(async () => {
         runScanAnimation();
 
-        const [telemetryData, statusData, missionsData] = await Promise.all([
+        const [telemetryData, missionsData] = await Promise.all([
             api.getTelemetry(),
-            api.getSystemStatus(),
             api.getMissions(),
         ]);
 
         setTelemetry(telemetryData);
-        setSystemStatus(statusData);
         setMissions(missionsData);
     }, [runScanAnimation]);
 
@@ -92,12 +84,10 @@ export function useDashboardData(): UseDashboardDataReturn {
 
     return {
         telemetry,
-        systemStatus,
         missions,
         pois,
         minerals,
         objects,
-        isSystemOnline: systemStatus.backend,
         isScanning,
         scanAnim,
         scanTranslateY,

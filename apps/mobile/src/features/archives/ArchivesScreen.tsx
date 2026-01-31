@@ -11,10 +11,14 @@ import { styles } from './styles';
 import { useArchives } from './hooks';
 import { MissionCard, MissionFilters } from './components';
 
+import { useSystemStatus } from '../../hooks';
+// ... imports
+
 export default function ArchivesScreen() {
     const navigation = useNavigation();
     const insets = useSafeAreaInsets();
     const { missions, filter, setFilter, loading, refresh } = useArchives();
+    const { isOnline } = useSystemStatus(); // Global status
 
     const handleMissionPress = (id: string) => {
         // @ts-ignore - known type issue with dynamic stack
@@ -23,7 +27,12 @@ export default function ArchivesScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <Header currentScreen="Archives" />
+            <Header
+                currentScreen="Archives"
+                isOnline={isOnline}
+                showStatus={true}
+                onStatusPress={() => { }}
+            />
 
             <ScrollView
                 style={styles.scrollView}

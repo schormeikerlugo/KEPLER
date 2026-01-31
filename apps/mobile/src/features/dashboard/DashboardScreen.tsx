@@ -1,12 +1,6 @@
 /**
  * KEPLER Mobile - Dashboard Screen
  * Orchestrator component that composes all dashboard modules
- * 
- * Structure:
- * - hooks/      → State management (menu, data)
- * - components/ → UI elements (menu, cards, sections)
- * - constants/  → Configuration (menu items)
- * - styles/     → StyleSheet definitions
  */
 
 import React, { useState } from 'react';
@@ -17,17 +11,16 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 
 // Hooks
-import { useDashboardMenu, useDashboardData } from './hooks';
+import { useDashboardData } from './hooks';
+import { useSystemStatus } from '../../hooks';
+import Header from '../../components/Header';
 
 // Components
 import {
-    DashboardMenu,
-    DashboardHeader,
     TelemetryPanel,
     SectionCard,
     MissionsSection,
     StatusModal,
-    DashboardToast,
 } from './components';
 
 // Icons
@@ -46,63 +39,30 @@ export default function DashboardScreen() {
     const navigation = useNavigation<NavigationProp>();
     const insets = useSafeAreaInsets();
 
-    // ============================================================
     // Hooks
-    // ============================================================
-
-    const menu = useDashboardMenu();
+    // We can keep useDashboardData for telemetry/missions but use global status for Header
     const data = useDashboardData();
+    const { isOnline, systemStatus, checkStatus } = useSystemStatus();
 
-    // ============================================================
     // Local State
-    // ============================================================
-
     const [statusVisible, setStatusVisible] = useState(false);
 
-    // ============================================================
     // Handlers
-    // ============================================================
-
-    const handleNavigate = (screen: string) => {
-        menu.closeMenu();
-
-        if (screen === 'ARCamera') {
-            navigation.navigate('ARCamera', { missionId: 'new' });
-        } else {
-            (navigation as any).navigate(screen);
-        }
-    };
-
     const handleARPress = () => {
-        menu.showToast('📷 Abriendo cámara AR...');
         navigation.navigate('ARCamera', { missionId: 'new' });
     };
-
-    const handleMapPress = () => {
-        (navigation as any).navigate('Map');
-    };
-
-    const handleRefreshPress = () => {
-        data.refreshData();
-        menu.showToast('🔄 Datos actualizados');
-    };
-
-    // ============================================================
-    // Render
-    // ============================================================
 
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-            {/* Header Tile (Fixed at top) */}
-            <View style={{ paddingTop: insets.top }}>
-                <DashboardHeader
-                    isSystemOnline={data.isSystemOnline}
-                    onStatusPress={() => setStatusVisible(true)}
-                    onMenuPress={menu.toggleMenu}
-                />
-            </View>
+            {/* Shared Header (Fixed) */}
+            <Header
+                currentScreen="Dashboard"
+                isOnline={isOnline}
+                showStatus={true}
+                onStatusPress={() => setStatusVisible(true)}
+            />
 
             <ScrollView
                 style={styles.scrollView}
@@ -143,22 +103,11 @@ export default function DashboardScreen() {
                 <View style={{ height: 100 }} />
             </ScrollView>
 
-            {/* Sliding Menu (from right) */}
-            <DashboardMenu
-                visible={menu.menuOpen}
-                menuTranslateX={menu.menuTranslateX}
-                overlayOpacity={menu.overlayOpacity}
-                topInset={insets.top}
-                currentScreen="Dashboard"
-                onClose={menu.closeMenu}
-                onNavigate={handleNavigate}
-            />
-
-            {/* Status Modal */}
+            {/* Status Modal - Using local visibility but global data */}
             <StatusModal
                 visible={statusVisible}
-                systemStatus={data.systemStatus}
-                isSystemOnline={data.isSystemOnline}
+                systemStatus={systemStatus}
+                isSystemOnline={isOnline}
                 onClose={() => setStatusVisible(false)}
             />
 
@@ -167,12 +116,6 @@ export default function DashboardScreen() {
                 <Text style={styles.chatFabIcon}>💬</Text>
             </TouchableOpacity>
 
-            {/* Toast */}
-            <DashboardToast
-                bottomInset={insets.bottom}
-                message={menu.toast.message}
-                visible={menu.toast.visible}
-            />
         </SafeAreaView>
     );
 }
