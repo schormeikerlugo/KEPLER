@@ -15,6 +15,7 @@ import ArchivesScreen from './src/screens/ArchivesScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import ARCameraScreen from './src/screens/ARCameraScreen';
+import MissionDetailScreen from './src/screens/MissionDetailScreen';
 
 // Types
 export type RootStackParamList = {
@@ -23,6 +24,7 @@ export type RootStackParamList = {
   Map: undefined;
   Archives: undefined;
   Profile: undefined;
+  MissionDetail: { missionId: string };
   ARCamera: { missionId?: string };
 };
 
@@ -50,6 +52,7 @@ export default function App() {
             <Stack.Screen name="Map" component={MapScreen} />
             <Stack.Screen name="Archives" component={ArchivesScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="MissionDetail" component={MissionDetailScreen} />
             <Stack.Screen
               name="ARCamera"
               component={ARCameraScreen}

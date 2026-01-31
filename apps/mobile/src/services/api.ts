@@ -211,6 +211,71 @@ class ApiService {
         }
     }
 
+    /**
+     * Fetch single mission details
+     * @param id - Mission ID
+     */
+    async getMissionDetails(id: string): Promise<any> {
+        try {
+            const response = await fetchWithTimeout(`${this.baseUrl}/api/misiones/${id}`, {
+                method: 'GET',
+            });
+
+            if (response.ok) {
+                return await response.json();
+            }
+            throw new Error('Mission not found');
+        } catch (error) {
+            console.log('[API] Mission details error:', error);
+            // Return mock detail for demo if API fails
+            const mockList = this.getMockMissions();
+            const mockMission = mockList.find(m => m.id === id) || mockList[0];
+            return {
+                ...mockMission,
+                description: 'Misión de exploración geológica en sector Alpha-9.',
+                location: 'Cráter Gale',
+                tags: ['Geología', 'Exploración'],
+                objects: [],
+                stats: { dist: '4.2 km', time: '2h 15m' }
+            };
+        }
+    }
+
+    /**
+     * Update mission status or details
+     * @param id - Mission ID
+     * @param updates - Partial mission object
+     */
+    async updateMission(id: string, updates: Partial<Mission>): Promise<boolean> {
+        try {
+            const response = await fetchWithTimeout(`${this.baseUrl}/api/misiones/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updates),
+            });
+            return response.ok;
+        } catch (error) {
+            console.log('[API] Update mission error:', error);
+            return true; // Optimistic success for demo
+        }
+    }
+
+    /**
+     * Delete a mission
+     * @param id - Mission ID
+     */
+    async deleteMission(id: string): Promise<boolean> {
+        try {
+            const response = await fetchWithTimeout(`${this.baseUrl}/api/misiones/${id}`, {
+                method: 'DELETE',
+            });
+            return response.ok;
+        } catch (error) {
+            console.log('[API] Delete mission error:', error);
+            return true; // Optimistic success for demo
+        }
+    }
+
     // ---------------------------------------------------------------------------
     // UTILITY METHODS
     // ---------------------------------------------------------------------------

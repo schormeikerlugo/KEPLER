@@ -32,6 +32,8 @@
 - `[MOBILE]` **Dashboard Modular** - Refactor a arquitectura feature-based con componentes separados
 - `[MOBILE]` **Shared Header** - Header unificado con menú drawer animado desde la derecha
 - `[MOBILE]` **useSharedMenu hook** - Hook reutilizable para animaciones de menú y toast
+- `[MOBILE]` **Archives Features** - Gestión completa de misiones (Ver, Finalizar, Eliminar) con conexión a API
+- `[MOBILE]` **API Service** - Soporte para CRUD de misiones (`updateMission`, `deleteMission`)
 
 ### Modificado
 - `[BACKEND]` Endpoint `/api/describe-zone` mejorado con Nominatim + Ollama

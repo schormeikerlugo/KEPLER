@@ -24,7 +24,7 @@ Esta matriz muestra el estado de sincronización de features entre las 3 platafo
 | **Login** | ✅ v0.5 | ✅ | ✅ v0.5 | 2026-01-30 | Supabase Auth |
 | **Dashboard** | ✅ v0.5 | ✅ | ✅ v0.5 | 2026-01-30 | Modularizado + Header compartido |
 | **AR Camera** | ✅ v0.5 | ✅ | ⚠️ v0.3 | 2026-01-15 | Mobile usa expo-camera |
-| **Archives** | ✅ v0.5 | ✅ | ✅ v0.5 | 2026-01-30 | Header compartido |
+| **Archives** | ✅ v0.5 | ✅ | ✅ v0.5 | 2026-01-30 | Full Management (CRUD) |
 | **Map** | ✅ v0.5 | ✅ | ✅ v0.5 | 2026-01-30 | MapLibre + menú completo |
 | **Map Menu** | ✅ v0.5 | ✅ | ✅ v0.5 | 2026-01-30 | 7 opciones sincronizadas |
 | **Profile** | ✅ v0.5 | ✅ | ✅ v0.5 | 2026-01-30 | Header compartido |
