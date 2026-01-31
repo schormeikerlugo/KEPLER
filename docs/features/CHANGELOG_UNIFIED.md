@@ -38,6 +38,8 @@
 - `[MOBILE]` **Endpoint Sync** - Corrección de rutas de API para coincidir con Backend (`/api/missions`)
 - `[MOBILE]` **Object Grid** - UI completa para visualizar imágenes de evidencia en misiones
 - `[MOBILE]` **Object Detail** - Pantalla inmersiva para inspeccionar objetos (Imagen, Taxonomía, Metadata)
+- `[MOBILE]` **Modo Edición** - Capacidad de editar Título/Descripción de misiones y Taxonomía de objetos
+
 
 ### Modificado
 - `[BACKEND]` Endpoint `/api/describe-zone` mejorado con Nominatim + Ollama

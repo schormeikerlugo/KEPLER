@@ -253,7 +253,8 @@ class ApiService {
 
             return {
                 ...mission,
-                description: (mission as any).zona_geografica || 'Zona desconocida',
+                code: (mission as any).titulo || mission.code, // Prefer title if set
+                description: (mission as any).descripcion_ia || (mission as any).zona_geografica || 'Sin descripción',
                 location: (mission as any).zona_geografica,
                 tags: ['Exploración'],
                 objects: objects,
@@ -277,9 +278,9 @@ class ApiService {
      * @param id - Mission ID
      * @param updates - Partial mission object
      */
-    async updateMission(id: string, updates: Partial<Mission>): Promise<boolean> {
+    async updateMission(id: string, updates: Partial<Mission> & { title?: string; location?: string; description?: string }): Promise<boolean> {
         try {
-            // Only support END mission for now as per backend
+            // Handle status change (End Mission)
             if (updates.status === 'COMPLETADA') {
                 const response = await this.fetchWithAuth(`${this.baseUrl}/api/missions/end`, {
                     method: 'POST',
@@ -287,9 +288,52 @@ class ApiService {
                 });
                 return response.ok;
             }
-            return false;
+
+            // Handle metadata update
+            const body = {
+                titulo: updates.title || updates.code, // Map code/title update
+                zona_geografica: updates.location,
+                descripcion_ia: updates.description,
+            };
+
+            const response = await this.fetchWithAuth(`${this.baseUrl}/api/missions/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify(body),
+            });
+
+            return response.ok;
         } catch (error) {
             console.log('[API] Update mission error:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Update object metadata
+     */
+    async updateObject(id: string, updates: {
+        nombre?: string;
+        description?: string;
+        tipo?: string;
+        subcategoria?: string;
+        genero?: string;
+    }): Promise<boolean> {
+        try {
+            const body = {
+                nombre: updates.nombre, // Backend expects 'nombre'
+                descripcion: updates.description, // Backend 'descripcion'
+                tipo: updates.tipo,
+                subcategoria: updates.subcategoria,
+                genero: updates.genero,
+            };
+
+            const response = await this.fetchWithAuth(`${this.baseUrl}/api/objects/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify(body),
+            });
+            return response.ok;
+        } catch (error) {
+            console.log('[API] Update object error:', error);
             return false;
         }
     }

@@ -144,6 +144,26 @@ async def list_missions(user = Depends(get_current_user)):
     except:
         return []
 
+class MissionUpdateRequest(BaseModel):
+    titulo: Optional[str] = None
+    zona_geografica: Optional[str] = None
+    descripcion_ia: Optional[str] = None
+
+@router.put("/{mission_id}")
+async def update_mission_details(mission_id: str, req: MissionUpdateRequest, user = Depends(get_current_user)):
+    """Update mission details (title, zone, description)"""
+    supabase = get_supabase()
+    if not supabase: return {"success": False, "error": "DB Error"}
+    try:
+        data = {k: v for k, v in req.dict().items() if v is not None}
+        if not data: return {"success": True} # Nothing to update
+        
+        # Ensure user owns mission (optional check if RLS is on, but strict check here doesn't hurt)
+        supabase.table("misiones").update(data).eq("id", mission_id).eq("user_id", user.id).execute()
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 @router.get("/orphaned/objects")
 async def list_orphaned_objects():
     supabase = get_supabase()
