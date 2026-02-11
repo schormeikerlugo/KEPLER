@@ -40,7 +40,7 @@ export function useSharedMenu(): UseSharedMenuReturn {
     // Menu slides from RIGHT side
     const menuTranslateX = menuAnim.interpolate({
         inputRange: [0, 1],
-        outputRange: [SCREEN_WIDTH * 0.75, 0],
+        outputRange: [SCREEN_WIDTH, 0], // Fully hide menu independently of width
     });
 
     const overlayOpacity = menuAnim.interpolate({

@@ -22,19 +22,109 @@
 
 ---
 
-## 🌌 ¿Qué es KEPLER?
+## 🌍 El Problema
 
-**KEPLER** es una plataforma integral de exploración espacial asistida por Inteligencia Artificial, diseñada para operar como el **sistema operativo de campo** para astronautas y rovers de próxima generación.
+La exploración de entornos desconocidos —ya sea un terreno geológico remoto, un paisaje extraterrestre simulado o una zona de difícil acceso— enfrenta un obstáculo fundamental: **la brecha entre la percepción humana y la inteligencia analítica disponible en campo.**
 
-Más que una simple interfaz, KEPLER actúa como un **copiloto inteligente** que procesa el entorno en tiempo real, cerrando la brecha entre la recolección de datos crudos y la inteligencia accionable en ambientes hostiles. Su arquitectura híbrida (Edge + Cloud) permite análisis complejos manteniendo una operatividad crítica incluso en condiciones de baja conectividad.
+Hoy, un explorador en terreno se encuentra con estas limitaciones:
 
-Su **Interfaz Holográfica Industrial (HUI)** unifica cuatro pilares tecnológicos:
-1.  **Visión Computacional Táctica**: Identificación instantánea de minerales, peligros y artefactos mediante modelos YOLO optimizados en el dispositivo (WASM/Mobile).
-2.  **Inteligencia Contextual**: Un cerebro LLM (Cortex AI) que entiende la semántica del entorno, sugiere objetivos de misión y responde consultas técnicas complejas.
-3.  **Telemetría & Mapeo**: Visualización geoespacial avanzada con seguimiento de constantes vitales del sistema y del operador.
-4.  **Sincronización Multi-Plataforma**: Continuidad operativa total entre el Centro de Control (Web/Desktop) y las Unidades de Campo (Mobile AR).
+- **Datos crudos sin contexto.** Una roca, un mineral, una formación: el ojo humano observa, pero sin un laboratorio no puede identificar, clasificar ni comparar en tiempo real.
+- **Conectividad intermitente o nula.** En zonas remotas, enviar datos a la nube para análisis significa esperar minutos u horas, o simplemente no tener respuesta.
+- **Herramientas fragmentadas.** GPS en una app, cámara en otra, notas en papel, análisis después en la oficina. No existe un sistema unificado que conecte la visión, la ubicación, la telemetría y la inteligencia artificial en un solo flujo de trabajo.
+- **Pérdida de conocimiento.** Sin un registro estructurado e inmediato, los hallazgos se pierden, se descontextualizan o nunca se correlacionan con observaciones anteriores.
 
-> 🚀 **Misión:** "Iluminar lo desconocido" — Transformar lo inexplorado en conocimiento estructurado mediante la fusión de visión artificial y exploración humana.
+El resultado: **un explorador con tecnología del siglo XXI pero flujos de trabajo del siglo XX.**
+
+---
+
+## 🚀 La Solución: KEPLER
+
+**KEPLER** es una plataforma integral de exploración asistida por Inteligencia Artificial que actúa como el **sistema operativo de campo** para exploradores de próxima generación.
+
+Cierra la brecha entre la recolección de datos crudos y la **inteligencia accionable en tiempo real**, fusionando cuatro capacidades críticas en una sola interfaz:
+
+### 🔬 1. Visión que Comprende
+No es solo una cámara. KEPLER ejecuta modelos de detección de objetos (YOLOv11) **directamente en el dispositivo** del explorador — sin necesidad de internet. Apunta tu cámara a una roca y en milisegundos sabrás qué tipo de mineral es, su relevancia geológica y si ya lo has catalogado antes.
+
+### 🧠 2. Un Cerebro que Razona
+El módulo **Cortex AI** (LLM local con Mistral 7B) no solo detecta, sino que *entiende*. Puedes preguntarle: _"¿Qué relación tiene este mineral con los que encontré en la misión anterior?"_ y recibirás un análisis contextual completo con datos de tu historial de exploración.
+
+### 🗺️ 3. Mapeo que Conecta
+Cada hallazgo se geolocaliza automáticamente en un **mapa táctico 3D**. Visualiza patrones de distribución, compara zonas exploradas, y genera descripciones de terreno asistidas por IA combinando GPS + imágenes satelitales + modelos de lenguaje.
+
+### 🔄 4. Sincronización que No Falla
+Opera desde el **Centro de Control** (Web/Desktop) para planificar misiones, o desde la **Unidad de Campo** (Mobile AR) para ejecutarlas. Todo se sincroniza en tiempo real cuando hay conexión, y sigue funcionando offline cuando no la hay.
+
+> 🎯 **Misión:** *"Iluminar lo desconocido"* — Transformar lo inexplorado en conocimiento estructurado mediante la fusión de visión artificial y exploración humana.
+
+---
+
+## ⚙️ Arquitectura Híbrida (Edge + Cloud)
+
+KEPLER no depende de la nube para funcionar. Su arquitectura está diseñada para **operar en el borde** (edge computing) con sincronización inteligente:
+
+```
+┌────────────────────────────────────────────────────────┐
+│                    CENTRO DE CONTROL                   │
+│        Web (Vite + JS) · Desktop (Electron)            │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────┐ │
+│  │Dashboard │ │ Archives │ │ HoloMap  │ │ AI Chat   │ │
+│  │Telemetría│ │ Búsqueda │ │ 3D Tác.  │ │ Streaming │ │
+│  └──────────┘ └──────────┘ └──────────┘ └───────────┘ │
+└──────────────────────┬─────────────────────────────────┘
+                       │ WebSocket / REST
+              ┌────────┴────────┐
+              │   SUPABASE DB   │
+              │  PostgreSQL +   │
+              │  Vector Search  │
+              │  + Realtime     │
+              └────────┬────────┘
+                       │
+┌──────────────────────┴─────────────────────────────────┐
+│                   UNIDAD DE CAMPO                      │
+│              Mobile (React Native / Expo)              │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────┐ │
+│  │ AR Cam   │ │ GPS +    │ │ Offline  │ │ YOLO      │ │
+│  │ Scanner  │ │ Mapping  │ │ Cache    │ │ On-Device │ │
+│  └──────────┘ └──────────┘ └──────────┘ └───────────┘ │
+└────────────────────────────────────────────────────────┘
+              ┌────────────────────┐
+              │   BACKEND IA       │
+              │  FastAPI + Python  │
+              │  Mistral 7B (LLM)  │
+              │  CLIP (Embeddings) │
+              │  Ollama Runtime    │
+              └────────────────────┘
+```
+
+---
+
+---
+
+## 📸 Galería del Sistema
+
+<div align="center">
+  <img src="capture/1.png" width="100%" alt="Captura 1">
+  <p><em>Vista Principal del Centro de Control</em></p>
+  
+  <br>
+
+  <img src="capture/2.png" width="100%" alt="Captura 2">
+  <p><em>Interfaz de Análisis de Misión</em></p>
+
+  <br>
+
+  <div style="display: flex; justify-content: center; gap: 2%; margin-top: 20px;">
+    <div style="width: 49%;">
+      <img src="capture/3.png" width="100%" alt="Captura 3">
+      <p><em>Visualización Móvil</em></p>
+    </div>
+    <div style="width: 49%;">
+      <img src="capture/4.png" width="100%" alt="Captura 4">
+      <p><em>Interfaz AR</em></p>
+    </div>
+  </div>
+</div>
 
 ---
 
@@ -50,7 +140,8 @@ Su **Interfaz Holográfica Industrial (HUI)** unifica cuatro pilares tecnológic
 | 📂 **Archives** | ✅ Activo | Base de datos vectorial de hallazgos. |
 | 🔔 **Realtime** | ✅ Activo | Alertas en tiempo real vía WebSocket (Supabase Realtime). |
 | 👤 **Perfil** | ✅ Activo | Gestión de usuario y personalización de avatar del asistente IA. |
-| 📱 **Mobile AI** | ✅ Nuevo | Optimizaciones automáticas para móvil (256px, 1 hilo, sin precarga). |
+| 📱 **Mobile AI** 
+```| ✅ Nuevo | Optimizaciones automáticas para móvil (256px, 1 hilo, sin precarga). |
 | 📍 **GPS + IA** | ✅ Nuevo | Descripción automática de zona con GPS + Nominatim + Mistral. |
 
 ---

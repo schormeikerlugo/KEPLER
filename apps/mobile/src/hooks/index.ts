@@ -26,3 +26,4 @@ export { useSharedMenu } from './useSharedMenu';
 
 // System Status (New implementation)
 export * from './useSystemStatus';
+export * from './useUserProfile';

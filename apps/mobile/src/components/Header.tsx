@@ -16,13 +16,14 @@ import {
     Animated,
     ScrollView,
     Dimensions,
+    Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
 import { COLORS, SPACING, RADIUS, FONT_SIZES, LETTER_SPACING, SCREENS } from '../constants/config';
-import { useSharedMenu } from '../hooks';
+import { useSharedMenu, useUserProfile } from '../hooks';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -50,17 +51,17 @@ interface MenuItem {
     id: string;
     icon: string;
     label: string;
-    desc: string;
-    screen?: string;  // Screen name as string
-    type?: 'divider';
+    screen?: string;
+    badge?: number;
+    action?: () => void;
 }
 
 const MENU_ITEMS: MenuItem[] = [
-    { id: 'dashboard', icon: '📊', label: 'Dashboard', desc: 'Panel principal', screen: 'Dashboard' },
-    { id: 'map', icon: '🗺️', label: 'Mapa', desc: 'Explorar zona', screen: 'Map' },
-    { id: 'divider1', icon: '', label: '', desc: '', type: 'divider' },
-    { id: 'archives', icon: '📁', label: 'Archivos', desc: 'Galería de hallazgos', screen: 'Archives' },
-    { id: 'profile', icon: '👤', label: 'Perfil', desc: 'Mi cuenta', screen: 'Profile' },
+    { id: 'mission', icon: '🚀', label: 'Iniciar Misión', screen: 'ARCamera' }, // Updated to ARCamera
+    { id: 'archives', icon: '📦', label: 'Archivos', screen: 'Archives' },
+    { id: 'taxonomy', icon: '🏷️', label: 'Taxonomía', screen: 'Taxonomy' }, // Placeholders
+    { id: 'notifications', icon: '🔔', label: 'Notificaciones', screen: 'Notifications', badge: 3 },
+    { id: 'map', icon: '🗺️', label: 'Mapa', screen: 'Map' },
 ];
 
 // =============================================================================
@@ -79,16 +80,24 @@ export default function Header({
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const insets = useSafeAreaInsets();
     const menu = useSharedMenu();
+    const { profile } = useUserProfile();
 
     const handleNavigate = (screen: string) => {
         menu.closeMenu();
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        (navigation as any).navigate(screen);
+        // @ts-ignore - Dynamic navigation
+        if (screen === 'Notifications' || screen === 'Taxonomy') {
+            menu.showToast('Funcionalidad disponible próximamente');
+        } else {
+            (navigation as any).navigate(screen);
+        }
     };
 
-    const handleMenuItemPress = (item: MenuItem) => {
-        if (item.type === 'divider' || !item.screen) return;
-        handleNavigate(item.screen);
+    const handleLogout = () => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        menu.showToast('Sesión cerrada correctamente');
+        // Logic to clear session would go here
+        setTimeout(() => menu.closeMenu(), 1000);
     };
 
     return (
@@ -140,42 +149,81 @@ export default function Header({
                     { transform: [{ translateX: menu.menuTranslateX }] }
                 ]}
             >
-                <View style={[styles.menuHeader, { paddingTop: insets.top + 16 }]}>
-                    <Text style={styles.menuLogo}>K E P L E R</Text>
-                    <TouchableOpacity onPress={menu.closeMenu}>
-                        <Text style={styles.menuCloseIcon}>×</Text>
+                {/* Menu Header: Title + Close Config */}
+                <View style={[styles.menuHeader, { paddingTop: insets.top + 20 }]}>
+                    <Text style={styles.menuTitle}>MENÚ</Text>
+                    <TouchableOpacity onPress={menu.closeMenu} style={styles.closeButton}>
+                        <Text style={styles.closeButtonText}>×</Text>
                     </TouchableOpacity>
                 </View>
 
-                <ScrollView style={styles.menuItems} showsVerticalScrollIndicator={false}>
-                    {MENU_ITEMS.map((item) => {
-                        if (item.type === 'divider') {
-                            return <View key={item.id} style={styles.menuDivider} />;
-                        }
+                <ScrollView style={styles.menuContent} showsVerticalScrollIndicator={false}>
 
-                        const isActive = item.screen === currentScreen ||
-                            (item.screen === 'Main' && currentScreen === 'Dashboard');
+                    {/* Profile Section */}
+                    <TouchableOpacity
+                        style={styles.profileSection}
+                        onPress={() => handleNavigate('Profile')}
+                    >
+                        <View style={styles.avatarContainer}>
+                            {profile?.avatar_url ? (
+                                profile.is_emoji ? (
+                                    <Text style={{ fontSize: 24 }}>
+                                        {profile.avatar_url.replace('emoji:', '')}
+                                    </Text>
+                                ) : (
+                                    <Image
+                                        source={{ uri: profile.avatar_url }}
+                                        style={{ width: '100%', height: '100%' }}
+                                        resizeMode="cover"
+                                    />
+                                )
+                            ) : (
+                                <Text style={styles.avatarText}>
+                                    {profile?.username ? profile.username.charAt(0).toUpperCase() : 'S'}
+                                </Text>
+                            )}
+                        </View>
+                        <View style={styles.profileInfo}>
+                            <Text style={styles.profileName}>
+                                {profile?.username || 'schormeikerl'}
+                            </Text>
+                            <Text style={styles.profileEmail}>
+                                {profile?.email || 'schormeikerl@gmail.com'}
+                            </Text>
+                        </View>
+                    </TouchableOpacity>
 
-                        return (
+                    <View style={styles.divider} />
+
+                    {/* Menu Items (Cards) */}
+                    <View style={styles.cardsContainer}>
+                        {MENU_ITEMS.map((item) => (
                             <TouchableOpacity
                                 key={item.id}
-                                style={[styles.menuItem, isActive && styles.menuItemActive]}
-                                onPress={() => handleMenuItemPress(item)}
+                                style={styles.menuCard}
+                                onPress={() => item.screen && handleNavigate(item.screen)}
                             >
-                                <Text style={styles.menuItemIcon}>{item.icon}</Text>
-                                <View style={styles.menuItemText}>
-                                    <Text style={[
-                                        styles.menuItemLabel,
-                                        isActive && styles.menuItemLabelActive
-                                    ]}>
-                                        {item.label}
-                                    </Text>
-                                    <Text style={styles.menuItemDesc}>{item.desc}</Text>
+                                <View style={styles.cardContent}>
+                                    <Text style={styles.cardIcon}>{item.icon}</Text>
+                                    <Text style={styles.cardLabel}>{item.label}</Text>
                                 </View>
+                                {item.badge && (
+                                    <View style={styles.badge}>
+                                        <Text style={styles.badgeText}>{item.badge}</Text>
+                                    </View>
+                                )}
                             </TouchableOpacity>
-                        );
-                    })}
+                        ))}
+                    </View>
                 </ScrollView>
+
+                {/* Logout Button (Footer) */}
+                <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
+                    <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+                        <Text style={styles.logoutIcon}>🚪</Text>
+                        <Text style={styles.logoutText}>Cerrar Sesión</Text>
+                    </TouchableOpacity>
+                </View>
             </Animated.View>
 
             {/* Toast */}
@@ -193,7 +241,7 @@ export default function Header({
 // =============================================================================
 
 const styles = StyleSheet.create({
-    // Header Tile
+    // Header Tile (Unchanged logic, minor tweaks)
     headerTile: {
         backgroundColor: COLORS.backgroundSecondary,
         borderRadius: RADIUS.xl,
@@ -262,76 +310,168 @@ const styles = StyleSheet.create({
         zIndex: 200,
     },
 
-    // Sliding Menu (from right)
+    // Sliding Menu Panel
     menu: {
         position: 'absolute',
         right: 0,
         top: 0,
         bottom: 0,
-        width: SCREEN_WIDTH * 0.75,
-        maxWidth: 300,
-        backgroundColor: 'rgba(13, 18, 24, 0.98)',
+        width: SCREEN_WIDTH * 0.85, // Slightly wider for card layout
+        maxWidth: 340,
+        backgroundColor: '#060B10', // Darker blue/black background from screenshot
         borderLeftWidth: 1,
         borderLeftColor: 'rgba(63, 168, 255, 0.2)',
         zIndex: 300,
+        display: 'flex',
     },
     menuHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingBottom: 16,
+        paddingHorizontal: 24,
+        paddingBottom: 20,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(63, 168, 255, 0.15)',
+        borderBottomColor: 'rgba(255,255,255,0.05)',
     },
-    menuLogo: {
-        fontSize: 14,
-        fontWeight: '300',
+    menuTitle: {
+        fontSize: 16,
+        fontWeight: '400',
         color: COLORS.cyan,
-        letterSpacing: 6,
+        letterSpacing: 4,
     },
-    menuCloseIcon: {
-        fontSize: 28,
-        color: COLORS.textMuted,
+    closeButton: {
+        padding: 5,
+        backgroundColor: 'rgba(255, 68, 68, 0.15)',
+        borderRadius: 8,
+        width: 32,
+        height: 32,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 68, 68, 0.3)',
     },
-    menuItems: {
+    closeButtonText: {
+        fontSize: 20,
+        color: '#ff4444',
+        lineHeight: 22,
+    },
+
+    // Scroll Content
+    menuContent: {
         flex: 1,
-        paddingVertical: 8,
     },
-    menuItem: {
+
+    // Profile Section
+    profileSection: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 14,
-        paddingHorizontal: 20,
+        padding: 24,
+        gap: 16,
     },
-    menuItemActive: {
-        backgroundColor: 'rgba(63, 168, 255, 0.1)',
+    avatarContainer: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        backgroundColor: '#1E2329',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
+        overflow: 'hidden',
     },
-    menuItemIcon: {
-        fontSize: 22,
-        marginRight: 14,
+    avatarText: {
+        fontSize: 24,
+        color: '#fff',
+        fontWeight: 'bold',
     },
-    menuItemText: {
+    profileInfo: {
         flex: 1,
     },
-    menuItemLabel: {
-        fontSize: 15,
+    profileName: {
+        fontSize: 16,
         fontWeight: '600',
-        color: COLORS.textPrimary,
+        color: '#fff',
+        marginBottom: 2,
     },
-    menuItemLabelActive: {
-        color: COLORS.cyan,
+    profileEmail: {
+        fontSize: 12,
+        color: '#888',
     },
-    menuItemDesc: {
-        fontSize: 11,
-        color: COLORS.textMuted,
-        marginTop: 2,
-    },
-    menuDivider: {
+
+    divider: {
         height: 1,
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        marginVertical: 8,
-        marginHorizontal: 20,
+        backgroundColor: 'rgba(255,255,255,0.05)',
+        marginHorizontal: 0,
+    },
+
+    // Menu Cards
+    cardsContainer: {
+        padding: 24,
+        gap: 12,
+    },
+    menuCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: 'rgba(19, 26, 35, 0.6)', // Card bg
+        paddingVertical: 16,
+        paddingHorizontal: 20,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(63, 168, 255, 0.15)', // Subtle blue border
+    },
+    cardContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 16,
+    },
+    cardIcon: {
+        fontSize: 20,
+    },
+    cardLabel: {
+        fontSize: 15,
+        color: '#d1d5db', // Light gray text
+        fontWeight: '400',
+    },
+    badge: {
+        backgroundColor: '#ff4444',
+        borderRadius: 10,
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        minWidth: 20,
+        alignItems: 'center',
+    },
+    badgeText: {
+        color: '#fff',
+        fontSize: 11,
+        fontWeight: 'bold',
+    },
+
+    // Footer Logout
+    footer: {
+        paddingHorizontal: 24,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255,255,255,0.05)',
+    },
+    logoutButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255, 68, 68, 0.08)',
+        paddingVertical: 16,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 68, 68, 0.2)',
+        gap: 10,
+    },
+    logoutIcon: {
+        fontSize: 18,
+    },
+    logoutText: {
+        color: '#ff8888',
+        fontSize: 15,
+        fontWeight: '500',
     },
 
     // Toast
