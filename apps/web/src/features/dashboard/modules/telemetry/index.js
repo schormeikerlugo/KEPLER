@@ -60,7 +60,7 @@ export async function initTelemetry() {
             // Active Crew (Simulated or fetched)
             if (tCrew) {
                 // Fetch active missions from Supabase
-                const { supabase } = await import('../../../js/auth.js');
+                const { supabase } = await import('../../../../js/auth.js');
                 const { count, error } = await supabase
                     .from('misiones')
                     .select('*', { count: 'exact', head: true })
