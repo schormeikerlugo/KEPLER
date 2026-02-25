@@ -7,12 +7,12 @@ KEPLER implementa una arquitectura de IA híbrida, dividiendo el procesamiento e
 
 ## ⚡ Frontend AI (Tiempo Real)
 
-### 1. Detección de Objetos (YOLOv11)
-*   **Modelo:** YOLOv11 Nano (`yolo11n.onnx`).
-*   **Ejecución:** [ONNX Runtime Web](https://onnxruntime.ai/) con backend WebAssembly (WASM) / WebGL.
-*   **Rendimiento:** Optimizado para correr directamente en el navegador a 15-30 FPS.
-*   **Propósito:** Detectar e identificar objetos instantáneamente en el feed de video del usuario (AR Mode).
-*   **Nota:** Se precarga al inicio de sesión (`ModelPreloaderService`) para minimizar latencia. Ver [Loading System](loading-system.md).
+### 1. Detección de Objetos (YOLOv26 / YOLOv11)
+*   **Modelo:** Familia YOLO (yolov26n.pt / yolo11n.pt).
+*   **Ejecución:** Backend Nativo (PyTorch / Ultralytics) vía WebSockets (`ws://localhost:8000/api/ws/detect`).
+*   **Rendimiento:** Optimizado para la ejecución nativa en el sistema host (Desktop) evitando bloqueos en el hilo de la interfaz de Electron.
+*   **Propósito:** Detectar e identificar objetos enviando frames a la terminal de Python para recibir Bounding Boxes en milisegundos.
+*   **Nota:** Se ejecuta del lado del servidor/local sin cargar la RAM del navegador (Browser).
 
 ### 2. Estabilización (Filtro de Kalman)
 *   **Algoritmo:** Implementación personalizada en JS (`KalmanFilter.js`).
@@ -33,9 +33,9 @@ El sistema detecta automáticamente dispositivos móviles y aplica configuracion
 | **Precarga** | Activa | Desactivada | Evita OOM en loading |
 
 **Archivos Clave:**
-- `AIEngine_YOLO.js` - Detección de móvil y configuración dinámica
-- `yolo.worker.js` - Acepta `inputSize` dinámico
-- `loading/index.js` - Skip de precarga en móvil
+- `AIEngine_YOLO.js` - Cliente WebSocket para streamear Canvas al Backend
+- `inference.py` - (Backend) Host nativo de PyTorch y servidor de predicciones
+- `loading-overlay.js` - Ping al `/api/status` para confirmar conexión al Motor Python
 
 ---
 
