@@ -10,6 +10,16 @@ export async function initTelemetry() {
     const tO2 = document.getElementById('telem-o2');
     const tBpm = document.getElementById('telem-bpm');
     const tRad = document.getElementById('telem-rad');
+    const tPwr = document.getElementById('telem-pwr');
+    const tDist = document.getElementById('telem-dist');
+    const tCrew = document.getElementById('telem-crew');
+    const tNearbyObj = document.getElementById('telem-nearby-obj');
+
+    // Init Battery
+    let batteryManager = null;
+    if (navigator.getBattery) {
+        navigator.getBattery().then(b => batteryManager = b);
+    }
 
     const update = async () => {
         if (!document.getElementById('telem-temp')) return;
@@ -30,6 +40,37 @@ export async function initTelemetry() {
                 if (tRad) tRad.textContent = (0.011 + Math.random() * 0.001).toFixed(3);
             }
 
+            // Update Battery
+            if (tPwr) {
+                if (batteryManager) {
+                    tPwr.textContent = Math.floor(batteryManager.level * 100) + '%';
+                    if (batteryManager.level <= 0.2) tPwr.style.color = '#ff4444';
+                    else tPwr.style.color = '';
+                } else {
+                    tPwr.textContent = '100%';
+                }
+            }
+
+            // Sync Nearby Objects from the UI Data Grid
+            if (tNearbyObj) {
+                const globalObjCount = document.getElementById('objects-count');
+                tNearbyObj.textContent = globalObjCount ? globalObjCount.textContent : '0';
+            }
+
+            // Active Crew (Simulated or fetched)
+            if (tCrew) {
+                // Fetch active missions from Supabase
+                const { supabase } = await import('../../../js/auth.js');
+                const { count, error } = await supabase
+                    .from('misiones')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('estado', 'activa');
+
+                if (!error && count !== null) {
+                    tCrew.textContent = Math.max(1, count); // at least 1 (self)
+                }
+            }
+
         } catch (err) {
             console.error('Telemetry error:', err);
         }
@@ -39,10 +80,24 @@ export async function initTelemetry() {
 
     update();
 
-    // Init GPS Check for Status Badge
+    // Init GPS Check for Status Badge & Distance Calculation
     import('../../../../js/engines/GPSEngine.js').then(module => {
         const GPSEngine = module.GPSEngine;
         const gps = new GPSEngine();
+
+        let totalDistanceKm = 0;
+        let lastPos = null;
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
 
         gps.onPositionUpdate = (pos) => {
             const el = document.getElementById('dash-gps-status');
@@ -54,8 +109,20 @@ export async function initTelemetry() {
                 else if (source === 'MANUAL') el.style.color = 'orange';
                 else el.style.color = '#ffff00';
             }
-            // We only need the first fix to know the mode usually, but keep updating is fine
-            // gps.stop(); // Optional: stop if we only want initial status
+
+            // Calculate Distance
+            if (lastPos && pos.source !== 'IP') {
+                const dist = calculateDistance(lastPos.lat, lastPos.lng, pos.lat, pos.lng);
+                // Only add if reasonable (e.g. less than 1km jump to avoid GPS spikes)
+                if (dist > 0.001 && dist < 1.0) {
+                    totalDistanceKm += dist;
+                }
+            }
+            lastPos = pos;
+
+            if (tDist) {
+                tDist.textContent = totalDistanceKm.toFixed(2) + ' km';
+            }
         };
 
         gps.start(); // Will fallback to IP/Manual if needed
