@@ -4,7 +4,6 @@
  * Blocks dashboard interaction until everything is ready
  */
 
-import { modelPreloader } from '../../../js/services/ModelPreloader.js';
 import { supabase } from '../../../js/auth.js';
 
 // ============================================================
@@ -25,9 +24,9 @@ const EXPLORATION_TIPS = [
 ];
 
 const TASKS = [
-    { id: 'profile', label: 'Cargando perfil...', weight: 15 },
-    { id: 'missions', label: 'Sincronizando misiones...', weight: 15 },
-    { id: 'model', label: 'Preparando IA de detección...', weight: 60 },
+    { id: 'profile', label: 'Cargando perfil...', weight: 30 },
+    { id: 'missions', label: 'Sincronizando misiones...', weight: 30 },
+    { id: 'model', label: 'Abriendo conexión con Backend Core...', weight: 30 },
     { id: 'finalize', label: 'Finalizando...', weight: 10 }
 ];
 
@@ -388,8 +387,8 @@ async function runPreloadTasks(userId) {
     await loadMissions(userId);
     completeTask('missions');
 
-    // Task 3: Pre-load YOLO Model (heaviest)
-    updateStatus('🧠 Preparando IA de detección...');
+    // Task 3: Check Python Backend Core
+    updateStatus('🧠 Conectando con Motor Local...');
     await preloadModel();
     completeTask('model');
 
@@ -435,24 +434,26 @@ async function loadMissions(userId) {
 }
 
 async function preloadModel() {
-    // Start model preload
-    const preloadPromise = modelPreloader.preload();
-
-    // Simulate progress while model loads
+    // Simulate progress while waiting for backend
     let modelProgress = 0;
     const baseProgress = getBaseProgress('model');
     const taskWeight = getTaskWeight('model');
 
     const progressInterval = setInterval(() => {
-        if (modelProgress < 95 && !modelPreloader.ready()) {
-            modelProgress += 2;
+        if (modelProgress < 95) {
+            modelProgress += 10;
             const subProgress = (modelProgress / 100) * taskWeight;
             setProgress(baseProgress + subProgress);
         }
-    }, 300);
+    }, 150);
 
-    // Wait for actual model to be ready
-    await preloadPromise;
+    // Ping backend to ensure it's alive
+    try {
+        await fetch('/api/status?t=' + Date.now());
+    } catch {
+        // Continue anyway if backend is down, UI will show 'Desconectado'
+        console.warn('[LoadingOverlay] Backend no responde al inicio');
+    }
 
     clearInterval(progressInterval);
 }

@@ -321,15 +321,13 @@
 
       <!-- AI Model Version Selector -->
       <div style="margin-top:10px;">
-        <label style="display:block; margin-bottom:8px; color:#00aaff; font-weight:bold;">VERSION MODELO IA</label>
-        <select id="select-ai-model-version"
-          style="width:100%; padding:12px 15px; background:rgba(0,0,0,0.3); border:1px solid #0055aa; color:white; border-radius:8px; box-sizing:border-box; font-family:'Jura',sans-serif;">
-          <option value="auto">⚡ AUTO (Recomendado)</option>
-          <option value="v8">🏎️ YOLOv8 (Rápido/Móvil)</option>
-          <option value="v11">🧠 YOLOv11 (Preciso/PC)</option>
+        <label style="display:block; margin-bottom:8px; color:#00aaff; font-weight:bold;">MOTOR DE IA</label>
+        <select id="select-ai-model-version" disabled
+          style="width:100%; padding:12px 15px; background:rgba(0,0,0,0.3); border:1px solid #0055aa; color:#00ff88; border-radius:8px; box-sizing:border-box; font-family:'Jura',sans-serif; cursor:not-allowed;">
+          <option value="v26_backend">🔥 Local Python Core (YOLOv26) - 📡 Online</option>
         </select>
         <span style="font-size:0.75rem; color:#666; display:block; margin-top:5px;">
-          💡 "Auto" elige v8 para móvil y v11 para PC
+          💡 Inferencia de alta velocidad procesada vía WebSockets
         </span>
       </div>
 

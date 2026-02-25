@@ -1,26 +1,28 @@
-// AIEngine.js - YOLOv8 Implementation using Web Workers
-import YoloWorker from '../workers/yolo.worker.js?worker'; // Vite Worker Import
+// AIEngine_YOLO.js - WebSocket Native YOLOv26 Client
 import { ObjectTracker } from '../utils/ObjectTracker.js';
 
 export class AIEngine {
     constructor() {
-        this.worker = null;
         this.videoElement = null;
         this.predictions = [];
-        this.tracker = new ObjectTracker(); // Specialized Tracker
+        this.tracker = new ObjectTracker();
         this.onDetectionUpdate = null;
         this.onStatusUpdate = null;
 
         this.isProcessing = false;
         this.isLoaded = false;
-        this.isPaused = false; // New Pause State
+        this.isPaused = false;
 
-        // Config - Optimized for Mobile
-        this.inputSize = 640; // Reverted to 640 (Model Requirement)
-        this.inferenceInterval = 150; // ~6 FPS target
+        // Config - Optimized for WebSocket streaming
+        this.inputSize = 640;
+        this.inferenceInterval = 100; // ~10 FPS Target 
         this.lastInferenceTime = 0;
 
-        // Offscreen canvas
+        // WebSocket Connection
+        this.ws = null;
+        this.backendUrl = 'ws://localhost:8000/api/ws/detect';
+
+        // Offscreen canvas for extracting frames
         this.canvas = document.createElement('canvas');
         this.canvas.width = this.inputSize;
         this.canvas.height = this.inputSize;
@@ -31,107 +33,60 @@ export class AIEngine {
         this.videoElement = videoElement;
 
         try {
-            console.log("AI: Initializing YOLO Worker...");
+            console.log("AI: Initializing YOLO WebSocket Client...");
+            if (this.onStatusUpdate) this.onStatusUpdate("Conectando al Motor Core (Python)... 📡");
 
-            // Check if worker was preloaded by loading screen
-            if (window.__keplerYoloWorker && window.__keplerModelReady) {
-                console.log("AI: Reusing preloaded YOLO worker! 🚀");
-                this.worker = window.__keplerYoloWorker;
+            this.ws = new WebSocket(this.backendUrl);
+
+            this.ws.onopen = () => {
+                console.log("AI: WebSocket Connected! 🚀");
                 this.isLoaded = true;
-
-                // Rebind message handler for this instance
-                this.worker.onmessage = (e) => {
-                    const { type, predictions, error } = e.data;
-                    if (type === 'RESULT') {
-                        this.handlePredictions(predictions);
-                        this.isProcessing = false;
-                    } else if (type === 'ERROR') {
-                        console.error("AI Worker Error:", error);
-                        if (this.onStatusUpdate) this.onStatusUpdate("Error de Visión: " + error);
-                        this.isProcessing = false;
-                    }
-                };
-
-                // Notify immediately
-                if (this.onStatusUpdate) this.onStatusUpdate("Sistema de Visión Activo 👁️ (Pre-cargado)");
+                if (this.onStatusUpdate) this.onStatusUpdate("Sistema de Visión Activo (YOLOv26) 👁️");
                 this.startDetection();
-                return;
-            }
+            };
 
-            // No preloaded worker, create new one
-            console.log("AI: No preloaded worker found, creating new...");
-            this.worker = new YoloWorker();
-
-            // Handle Worker Messages
-            this.worker.onmessage = (e) => {
-                const { type, predictions, error } = e.data;
-
-                if (type === 'INIT_SUCCESS') {
-                    this.isLoaded = true;
-                    // Notification via Toast
-                    if (this.onStatusUpdate) this.onStatusUpdate("Sistema de Visión Activo 👁️");
-                    this.startDetection();
-                } else if (type === 'RESULT') {
-                    this.handlePredictions(predictions);
-                    this.isProcessing = false;
-                } else if (type === 'ERROR') {
-                    console.error("AI Worker Error:", error);
-                    // Only alert on critical failures if needed, or just log
-                    if (this.onStatusUpdate) this.onStatusUpdate("Error de Visión: " + error);
-                    this.isProcessing = false;
+            this.ws.onmessage = (e) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    if (data.success && data.predictions) {
+                        this.handlePredictions(data.predictions);
+                    } else if (data.error) {
+                        console.error("AI Server Error:", data.error);
+                    }
+                } catch (err) {
+                    console.error("AI Parse Error:", err);
+                } finally {
+                    this.isProcessing = false; // Allow next frame
                 }
             };
 
-            // Configure Paths
-            const isDev = import.meta.env.DEV; // Vite env
-            const wasmPath = isDev ? '/node_modules/onnxruntime-web/dist/' : '/wasm/';
+            this.ws.onerror = (err) => {
+                console.error("AI WebSocket Error:", err);
+                if (this.onStatusUpdate) this.onStatusUpdate("Error de Conexión IA ❌");
+                this.isProcessing = false;
+            };
 
-            // Check WebGPU Support
-            const useWebGPU = await this.checkWebGPUSupport();
-            const executionProviders = useWebGPU ? ['webgpu', 'wasm'] : ['wasm'];
-
-            if (useWebGPU && this.onStatusUpdate) {
-                this.onStatusUpdate("🚀 Aceleración WebGPU Activa");
-            }
-
-            // Send INIT to Worker
-            this.worker.postMessage({
-                type: 'INIT',
-                data: {
-                    modelPath: '/models/yolo11n.onnx',
-                    wasmPath: wasmPath,
-                    numThreads: navigator.hardwareConcurrency ? Math.min(navigator.hardwareConcurrency, 4) : 2,
-                    inputSize: 640,
-                    executionProviders: executionProviders
-                }
-            });
+            this.ws.onclose = () => {
+                console.log("AI: WebSocket Connection Closed.");
+                this.isLoaded = false;
+                if (this.onStatusUpdate) this.onStatusUpdate("Motor de Visión Desconectado 🔌");
+            };
 
         } catch (error) {
-            console.error('AI: Failed to init worker:', error);
-        }
-    }
-
-    async checkWebGPUSupport() {
-        if (!navigator.gpu) return false;
-        try {
-            const adapter = await navigator.gpu.requestAdapter();
-            return !!adapter;
-        } catch (e) {
-            return false;
+            console.error('AI: Failed to init websocket:', error);
+            if (this.onStatusUpdate) this.onStatusUpdate("Error Inicialización IA ❌");
         }
     }
 
     startDetection() {
         const loop = (timestamp) => {
-            if (this.isLoaded && this.videoElement && this.videoElement.readyState === 4) {
+            if (this.isLoaded && this.ws.readyState === WebSocket.OPEN && this.videoElement && this.videoElement.readyState === 4) {
                 // 1. Inference (If not paused)
                 if (!this.isPaused && !this.isProcessing && (timestamp - this.lastInferenceTime > this.inferenceInterval)) {
                     this.detect(timestamp);
                 }
 
-                // 2. Smooth & Publish (Always run to clear old boxes smoothly)
-                // If paused, maybe we want boxes to fade out? 
-                // For now, let's keep smoothing what we have or clear?
+                // 2. Smooth & Publish
                 if (!this.isPaused) {
                     this.predictions = this.tracker.getSmoothedObjects();
 
@@ -140,7 +95,6 @@ export class AIEngine {
                         this.onDetectionUpdate({ predictions: this.predictions, target });
                     }
                 } else {
-                    // If paused, send empty updates to clear UI
                     if (this.onDetectionUpdate) this.onDetectionUpdate({ predictions: [], target: null });
                 }
             }
@@ -153,13 +107,14 @@ export class AIEngine {
         this.isProcessing = true;
         this.lastInferenceTime = timestamp;
 
+        // Draw video frame to canvas
         this.ctx.drawImage(this.videoElement, 0, 0, this.inputSize, this.inputSize);
-        const imageData = this.ctx.getImageData(0, 0, this.inputSize, this.inputSize);
 
-        this.worker.postMessage({
-            type: 'DETECT',
-            data: { pixelData: imageData.data }
-        }, [imageData.data.buffer]);
+        // Convert canvas to jpeg base64 (faster encoding/decoding than PNG, smaller size)
+        const base64Frame = this.canvas.toDataURL('image/jpeg', 0.6);
+
+        // Send over WebSocket
+        this.ws.send(base64Frame);
     }
 
     handlePredictions(rawPredictions) {
@@ -168,6 +123,10 @@ export class AIEngine {
         // Scale predictions back to Video Dimensions
         const videoW = this.videoElement.videoWidth;
         const videoH = this.videoElement.videoHeight;
+
+        // Ensure scale values are valid
+        if (videoW === 0 || videoH === 0) return;
+
         const scaleX = videoW / this.inputSize;
         const scaleY = videoH / this.inputSize;
 
@@ -187,7 +146,6 @@ export class AIEngine {
         this.tracker.update(newDetections);
     }
 
-    // ... findCentralTarget and estimateDepth remain distinct helper methods ...
     findCentralTarget(predictions) {
         if (!predictions || predictions.length === 0) return null;
 
@@ -222,13 +180,12 @@ export class AIEngine {
 
     setPaused(bool) {
         this.isPaused = bool;
-        if (bool) {
-            // Clear tracker state so boxes don't get stuck
-            // this.tracker = new ObjectTracker(); // Optional reset
-        }
     }
 
     stop() {
-        if (this.worker) this.worker.terminate();
+        if (this.ws) {
+            this.ws.close();
+            this.ws = null;
+        }
     }
 }

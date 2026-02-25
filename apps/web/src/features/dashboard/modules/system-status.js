@@ -5,7 +5,6 @@
  */
 
 import { offlineSync } from '../../../js/services/api.js';
-import { modelPreloader } from '../../../js/services/ModelPreloader.js';
 
 // ============================================================
 // STATE
@@ -339,26 +338,28 @@ function startStatusMonitoring() {
         updateMainIndicator();
     });
 
-    // AI Model monitoring
-    const updateAI = () => {
-        if (modelPreloader.ready() || window.__keplerModelReady) {
-            updateStatus('ai', 'ok', 'Listo');
-        } else {
-            updateStatus('ai', 'loading', 'Cargando...');
+    // AI Model monitoring (Backend via WebSocket)
+    const updateAI = async () => {
+        try {
+            const res = await fetch('/api/status?t=' + Date.now());
+            if (res.ok) {
+                const data = await res.json();
+                if (data.available) {
+                    updateStatus('ai', 'ok', 'Native Core');
+                } else {
+                    updateStatus('ai', 'warning', 'Inactivo');
+                }
+            } else {
+                updateStatus('ai', 'error', 'Fallo API');
+            }
+        } catch {
+            updateStatus('ai', 'error', 'Desconectado');
         }
         updateMainIndicator();
     };
 
     updateAI();
-    modelPreloader.onReady(updateAI);
-
-    // Polling fallback
-    const checkInterval = setInterval(() => {
-        if (modelPreloader.ready() || window.__keplerModelReady) {
-            updateAI();
-            clearInterval(checkInterval);
-        }
-    }, 1000);
+    setInterval(updateAI, 30000);
 
     // Backend check
     checkBackendStatus();

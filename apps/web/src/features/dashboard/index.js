@@ -14,7 +14,6 @@ import { initTelemetry } from './modules/telemetry/index.js';
 import { initChat } from './modules/chat/index.js';
 import { loadDashboardData } from './modules/data/index.js';
 import { MapController } from '../../features/map/MapController.js';
-import { modelPreloader } from '../../js/services/ModelPreloader.js';
 import { showLoadingOverlay } from './modules/loading-overlay.js';
 import { initSystemStatus } from './modules/system-status.js';
 import { initMainMenu } from './modules/main-menu.js';
@@ -30,14 +29,10 @@ export async function render(container) {
     // Inject template first (so overlay appears on top)
     container.innerHTML = template;
 
-    // Show loading overlay and wait for all resources to be ready
-    // This blocks interaction until profile, missions, and AI model are cached
+    // Show loading overlay and wait for user data 
     if (!sessionStorage.getItem('kepler_preload_done')) {
         await showLoadingOverlay(user.id);
         sessionStorage.setItem('kepler_preload_done', 'true');
-    } else {
-        // Already preloaded this session, just ensure model is loading
-        modelPreloader.preload();
     }
 
     // Initialize UI Components

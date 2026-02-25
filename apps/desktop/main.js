@@ -139,7 +139,7 @@ app.on('window-all-closed', () => {
 
 // Handle certificate errors for local development
 app.on('certificate-error', (event, webContents, url, error, certificate, callback) => {
-    if (url.startsWith('https://localhost')) {
+    if (url.startsWith('https://localhost') || url.startsWith('wss://localhost')) {
         event.preventDefault();
         callback(true);
     } else {
