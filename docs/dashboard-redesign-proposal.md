@@ -45,6 +45,14 @@ Al ir a Figma, te recomiendo diseñar los siguientes componentes intermedios (Wi
 *   **Datos Clave:** Muestra el punto azul (Tú) y puntos verdes (Los otros miembros de la **Tripulación** activos en el planeta).
 *   **Utilidad:** Conocer la ubicación relativa de tus compañeros sin tener que oscurecer todo y abrir el "Mapa Completo".
 
+### ⚡ Módulo 6: "Hub de Micro-Telemetría Rápida" (Top-bar / Header Sci-Fi)
+*   **Problema que Resuelve:** Tal como sugeriste, tener los datos duros dispersos en bloques grandes rompe el diseño Sci-Fi y retrasa la lectura en emergencias.
+*   **Diseño (Sci-Fi Glassmorphism):** Una pequeña barra delgada, acoplada al borde superior o inferior de la pantalla (como el "HUD" del casco de Iron Man o Halo). Con un fondo semi-transparente de vidrio negro/azulado mate (backdrop-filter).
+*   **Estructura Visual:** 
+    *   **Icono Neon Pequeño + Dato Alfanumérico Corto.**
+    *   Ejemplo alineado horizontalmente: `[❄️ 20°C] | [💨 96% O2] | [💓 75 BPM] | [🔋 100% PWR]`
+*   **Utilidad:** Es tu "Estatus Vital de Vista Rápida". Siempre flotando, siempre visible. Los gráficos grandes (Módulos 1-4) solo se usan para ver "Historia y Tendencia", pero este *Hub* te da la respuesta inmediata en 1 segundo de lectura.
+
 ---
 
 ## 3. Propuesta de Reestructuración de la Pantalla (Layout)
@@ -53,7 +61,7 @@ Cuando estructures los componentes en Figma, intenta crear este Layout o Marco d
 
 *   **Top Bar (Global):** Tu logo, el indicador de conexión (YOLOv26 Activo), perfil y notificaciones.
 *   **Izquierda (Status Crítico - 25% ancho):** Módulo de Vida (Biometría en gráfico de curva), Módulo de Batería y Radiación (Tacómetros concéntricos).
-*   **Centro Arriba (Módulo de Visión/Contexto - 50% ancho):** El Canvas/Cámara simulada de YOLO (que el visor AR no esté ocuilto sino que el Dashboard se sobreponga como marco Glassmorphism).
+*   **Centro Arriba (Módulo de Visión/Contexto - 50% ancho):** El Canvas/Cámara simulada de YOLO (que el visor AR no esté oculto sino que el Dashboard se sobreponga como marco Glassmorphism).
 *   **Centro Abajo (Data y Radar - 50% ancho):** El gráfico de Dona (Bio-Firmas) y el Mini-Mapa de tus compañeros de tripulación.
 *   **Derecha (Comunicaciones e Inventario - 25% ancho):** El Chat de IA optimizado/colapsado y una lista estilizada de tus últimos Objetos scaneados.
 
