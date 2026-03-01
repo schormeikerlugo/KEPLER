@@ -22,15 +22,15 @@
 
 ---
 
-## � Acerca del Proyecto
+## 🌌 Acerca del Proyecto
 
-**KEPLER** es una demostración conceptual y técnica de una interfaz de exploración (HUD) asistida por Inteligencia Artificial, diseñada originalmente con una estética *Sci-Fi Glassmorphism* inspirada en cascos espaciales y paneles de mando futuristas.
+**KEPLER** es una plataforma operativa real asistida por Inteligencia Artificial, diseñada para enfrentarse a los desafíos de la exploración de campo. Inspirada en los sistemas de telemetría y HUDs espaciales, su propósito va mucho más allá de lo estético: fue concebida como una herramienta funcional para la búsqueda de recursos y el análisis geológico.
 
-El proyecto nació como una simulación web interactiva para visualizar cómo un explorador planetario o geólogo de campo moderno interactuaría con su entorno mediante el uso de modelos de Machine Learning on-edge. KEPLER está evolucionando actualmente de ser una simple "Prueba de Concepto en el navegador" para convertirse en un ecosistema de software dedicado:
-- Un **Cliente Desktop** ultra-ligero (Electron) que se conecta a un backend local de Python para procesar visión artificial (YOLOv26) a extrema velocidad.
-- Una **Unidad de Campo Móvil** nativa (React Native) para verdadera exploración en terreno usando las cámaras del hardware del celular.
+El ecosistema KEPLER está siendo desarrollado y probado actualmente en la Tierra, sirviendo como banco de pruebas para condiciones extremas, con la mira puesta en su futura aplicabilidad en la **exploración planetaria y misiones extraterrestres**. El proyecto se consolida en un ecosistema de software dedicado compuesto por:
+- Un **Centro de Control (Desktop)** ultra-ligero que se conecta a un backend local de Python para procesar visión artificial (YOLOv26) a extrema velocidad.
+- Una **Unidad de Campo Móvil** nativa (React Native) para verdadera exploración en terreno usando las cámaras y sensores del hardware del celular.
 
-Con componentes construidos desde cero en HTML/CSS Vanilla puro integrados mediante Vite, el diseño de KEPLER es radicalmente modular. Integra widgets de mapas satelitales tácticos 3D, chat conversacional nativo con LLMs (Llama 3/Mistral), biometría espacial simulada y sistemas de base de datos distribuidas (Supabase).
+Con componentes construidos desde cero en HTML/CSS integrados mediante Vite, el diseño de KEPLER es radicalmente modular. Integra widgets de mapas satelitales tácticos 3D, chat conversacional nativo con LLMs (Llama 3/Mistral) para asistencia científica, biometría viva y un sistema avanzado de bases de datos distribuidas (Supabase) para asegurar que ningún hallazgo se pierda, incluso sin conexión a internet.
 
 ---
 
