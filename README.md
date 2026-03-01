@@ -22,7 +22,19 @@
 
 ---
 
-## 🌍 El Problema
+## � Acerca del Proyecto
+
+**KEPLER** es una demostración conceptual y técnica de una interfaz de exploración (HUD) asistida por Inteligencia Artificial, diseñada originalmente con una estética *Sci-Fi Glassmorphism* inspirada en cascos espaciales y paneles de mando futuristas.
+
+El proyecto nació como una simulación web interactiva para visualizar cómo un explorador planetario o geólogo de campo moderno interactuaría con su entorno mediante el uso de modelos de Machine Learning on-edge. KEPLER está evolucionando actualmente de ser una simple "Prueba de Concepto en el navegador" para convertirse en un ecosistema de software dedicado:
+- Un **Cliente Desktop** ultra-ligero (Electron) que se conecta a un backend local de Python para procesar visión artificial (YOLOv26) a extrema velocidad.
+- Una **Unidad de Campo Móvil** nativa (React Native) para verdadera exploración en terreno usando las cámaras del hardware del celular.
+
+Con componentes construidos desde cero en HTML/CSS Vanilla puro integrados mediante Vite, el diseño de KEPLER es radicalmente modular. Integra widgets de mapas satelitales tácticos 3D, chat conversacional nativo con LLMs (Llama 3/Mistral), biometría espacial simulada y sistemas de base de datos distribuidas (Supabase).
+
+---
+
+## �🌍 El Problema
 
 La exploración de entornos desconocidos —ya sea un terreno geológico remoto, un paisaje extraterrestre simulado o una zona de difícil acceso— enfrenta un obstáculo fundamental: **la brecha entre la percepción humana y la inteligencia analítica disponible en campo.**
 
