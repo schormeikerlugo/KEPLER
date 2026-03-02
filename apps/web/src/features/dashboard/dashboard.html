@@ -41,8 +41,14 @@
           <div class="menu-divider"></div>
           <button id="nav-btn-map" class="menu-item-btn" data-view="map">
             <span class="menu-item-icon">🗺️</span>
-            <span class="menu-item-text">Mapa</span>
+            <span class="menu-item-text">Mapa Táctico</span>
           </button>
+          <a href="/ia" style="text-decoration:none;">
+            <button class="menu-item-btn">
+              <span class="menu-item-icon">🧠</span>
+              <span class="menu-item-text">Inteligencia IA</span>
+            </button>
+          </a>
           <button id="btn-archives" class="menu-item-btn">
             <span class="menu-item-icon">📦</span>
             <span class="menu-item-text">Archivos</span>
@@ -147,91 +153,68 @@
     <aside class="dash-telemetry scanline-effect">
       <h3 class="telem-title">Telemetría</h3>
 
-      <div class="telem-scroll-container">
-        <div class="telem-metric">
-          <span class="telem-value" id="telem-temp">20°C</span>
-          <span class="telem-label">TEMPERATURA</span>
+      <div class="telem-tactical-grid">
+        <!-- Card 1: O2 -->
+        <div class="telem-card">
+          <div class="card-header">BIOMETRICS - O2 TANK</div>
+          <div class="card-value" id="telem-o2">96%</div>
+          <div class="card-chart" id="chart-o2"></div>
         </div>
 
-        <div class="telem-metric">
-          <span class="telem-value" id="telem-o2">96%</span>
-          <span class="telem-label">O2</span>
+        <!-- Card 2: BPM -->
+        <div class="telem-card">
+          <div class="card-header">BIOMETRICS - BPM <span style="color:#3FA8FF">♥</span></div>
+          <div class="card-value" id="telem-bpm">75</div>
+          <div class="card-chart" id="chart-bpm"></div>
         </div>
 
-        <div class="telem-metric">
-          <span class="telem-value" id="telem-bpm">75</span>
-          <span class="telem-label">BPM</span>
+        <!-- Card 3: RAD -->
+        <div class="telem-card">
+          <div class="card-header">EQUIPMENT STATUS - RAD</div>
+          <div class="card-value warning" id="telem-rad">0.011 <span class="unit">mSv/h</span></div>
+          <div class="card-chart" id="chart-rad"></div>
         </div>
 
-        <div class="telem-metric">
-          <span class="telem-value" id="telem-rad">0.011</span>
-          <span class="telem-label">RAD</span>
+        <!-- Card 4: PWR -->
+        <div class="telem-card">
+          <div class="card-header">SUIT POWER - BATTERY</div>
+          <div class="card-value" id="telem-pwr">100%</div>
+          <div class="card-chart" id="chart-pwr"></div>
         </div>
 
-        <div class="telem-metric">
-          <span class="telem-value" id="telem-pwr">100%</span>
-          <span class="telem-label">PWR (BATERÍA)</span>
+        <!-- Card 5: DIST -->
+        <div class="telem-card">
+          <div class="card-header">TACTICAL ROUTE - DIST</div>
+          <div class="card-value" id="telem-dist">0.0 <span class="unit">km</span></div>
+          <div class="card-chart" id="chart-dist"></div>
         </div>
 
-        <div class="telem-metric">
-          <span class="telem-value" id="telem-dist">0.0 km</span>
-          <span class="telem-label">DISTANCIA</span>
+        <!-- Card 6: CREW -->
+        <div class="telem-card">
+          <div class="card-header">TEAM STATUS - CREW</div>
+          <div class="card-value" id="telem-crew">1 <span class="unit">Active</span></div>
+          <div class="card-chart" id="chart-crew"></div>
         </div>
 
-        <div class="telem-metric" style="cursor:help;" title="Exploradores activos en la zona">
-          <span class="telem-value" id="telem-crew">1</span>
-          <span class="telem-label">TRIPULACIÓN</span>
+        <!-- Card 7: TEMP -->
+        <div class="telem-card">
+          <div class="card-header">ENVIRONMENT - TEMP</div>
+          <div class="card-value" id="telem-temp">20 <span class="unit">°C</span></div>
+          <div class="card-chart" id="chart-temp"></div>
         </div>
 
-        <div class="telem-metric" style="cursor:help;" title="Objetos registrados cerca de tu posición">
-          <span class="telem-value" id="telem-nearby-obj">0</span>
-          <span class="telem-label">OBJ CERCANOS</span>
+        <!-- Card 8: OBJ -->
+        <div class="telem-card">
+          <div class="card-header">SONAR - OBJECTS</div>
+          <div class="card-value" id="telem-nearby-obj">0 <span class="unit">Ping</span></div>
+          <div class="card-chart" id="chart-obj"></div>
         </div>
       </div>
     </aside>
 
     <!-- Center: Interactive Central Panel -->
-    <!-- Center: AI Chat -->
-    <section class="dash-ai-chat">
-      <div class="chat-header">
-        <img src="/icons/dashboard/IA.svg" alt="IA" class="chat-icon-img" />
-        <span class="chat-title">Llama 3.8</span>
-
-        <div class="chat-actions">
-          <button id="btn-chat-history" class="icon-action-btn" title="Historial">
-            <img src="/icons/history.svg" alt="History" />
-          </button>
-          <button id="btn-new-chat" class="icon-action-btn" title="Nuevo Chat">
-            <img src="/icons/new-chat.svg" alt="New Chat" />
-          </button>
-        </div>
-      </div>
-
-      <div class="chat-messages" id="chat-messages">
-        <div class="chat-message ai-message">
-          ¿Cómo puedo ayudarte hoy?
-        </div>
-      </div>
-
-      <div class="chat-suggestions" id="chat-suggestions">
-        <button class="suggestion-btn" data-prompt="Examinar los objetos que se han registrado en este último viaje">
-          Examinar los objetos que se han registrado en este último viaje
-        </button>
-        <button class="suggestion-btn" data-prompt="Revisar los últimos POIs y medí la distancia que se ha recorrido">
-          Revisar los últimos POIs y medí la distancia que se ha recorrido
-        </button>
-        <button class="suggestion-btn" data-prompt="Examinar los objetos que no tienen descripción y darles una">
-          Examinar los objetos que no tienen descripción y darles una
-        </button>
-      </div>
-
-      <div class="chat-input-container">
-        <input type="text" id="chat-input" class="chat-input" placeholder="Pregúntale algo a la IA..."
-          autocomplete="off" />
-        <button id="btn-send-chat" class="btn-send-chat">
-          <span>→</span>
-        </button>
-      </div>
+    <section class="dash-central-tactical">
+      <!-- Módulos Predictivos Placeholder (Añadiremos el mapa aquí luego) -->
     </section>
 
     <!-- Right: Data Grid -->
@@ -377,95 +360,6 @@
   </div>
 </div>
 
-<!-- Chat FAB (Mobile Only) -->
-<button class="chat-fab" id="chat-fab" aria-label="Abrir chat">
-  <svg class="chat-fab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-  </svg>
-</button>
 
-<!-- Chat Modal (Mobile Fullscreen - OpenWebUI Style) -->
-<div class="chat-modal-overlay" id="chat-modal-overlay">
-
-  <!-- Header with menu and close button -->
-  <div class="chat-modal-header">
-    <div class="chat-modal-header-left">
-      <img src="/icons/dashboard/IA.svg" alt="AI" class="chat-icon-img" />
-      <span class="chat-title">LLAMA 3.1</span>
-    </div>
-    <div class="chat-modal-header-right">
-      <!-- Menu button -->
-      <button class="chat-modal-menu-btn" id="chat-modal-menu-btn">☰</button>
-    </div>
-
-    <!-- Dropdown menu -->
-    <div class="chat-modal-menu" id="chat-modal-menu">
-      <button class="chat-menu-item" id="modal-new-chat">
-        <span>✨</span> Nuevo Chat
-      </button>
-      <button class="chat-menu-item" id="modal-history">
-        <span>📜</span> Historial
-      </button>
-      <button class="chat-menu-item" id="modal-open-map">
-        <span>🗺️</span> Mapa
-      </button>
-      <button class="chat-menu-item danger" id="modal-exit">
-        <span>🚪</span> Volver al Dashboard
-      </button>
-    </div>
-  </div>
-
-  <!-- Body -->
-  <div class="chat-modal-body">
-
-    <!-- Welcome section (shown initially) -->
-    <div class="chat-modal-welcome" id="chat-modal-welcome">
-      <img src="/icons/dashboard/IA.svg" alt="AI" class="chat-modal-icon" />
-      <div class="chat-modal-model-name">LLAMA 3.1</div>
-
-      <!-- Input box -->
-      <div class="chat-modal-input-wrapper">
-        <div class="chat-modal-input-box">
-          <input type="text" class="chat-modal-input" id="chat-modal-input" placeholder="¿Cómo puedo ayudarte hoy?" />
-          <div class="chat-modal-input-actions">
-            <button class="btn-send-modal" id="btn-send-modal">➤</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Suggestions -->
-      <div class="chat-modal-suggestions" id="chat-modal-suggestions">
-        <div class="suggestions-label">
-          <span>✨</span> Sugerido
-        </div>
-        <div class="suggestion-card" data-prompt="¿Qué minerales puedo analizar en Marte?">
-          <div class="suggestion-title">🔬 Análisis de minerales</div>
-          <div class="suggestion-desc">Tipos y métodos de detección</div>
-        </div>
-        <div class="suggestion-card" data-prompt="¿Cómo inicio una nueva misión de exploración?">
-          <div class="suggestion-title">🚀 Nueva misión</div>
-          <div class="suggestion-desc">Guía paso a paso</div>
-        </div>
-        <div class="suggestion-card" data-prompt="¿Qué significa cada indicador de telemetría?">
-          <div class="suggestion-title">📊 Telemetría</div>
-          <div class="suggestion-desc">Explicación de indicadores</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Messages (shown when chatting) -->
-    <div class="chat-modal-messages" id="chat-modal-messages">
-      <!-- Messages will appear here -->
-    </div>
-
-  </div>
-
-  <!-- Bottom input (shown when chatting) -->
-  <div class="chat-modal-input-bottom" id="chat-modal-input-bottom">
-    <input type="text" class="chat-input" id="chat-modal-input-active" placeholder="Escribe tu mensaje...">
-    <button class="btn-send-chat" id="btn-send-modal-active">➤</button>
-  </div>
-
-</div>
 
 </div>

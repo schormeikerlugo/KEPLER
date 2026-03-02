@@ -4,7 +4,7 @@
  * Includes in-session memory to maintain conversation context
  */
 
-import { getAuthToken } from '../../../../js/services/api.js';
+import { api } from '../../../js/services/api.js';
 
 // In-session conversation memory (persists until page refresh)
 let sessionHistory = [];

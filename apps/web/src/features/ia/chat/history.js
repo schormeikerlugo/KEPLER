@@ -3,7 +3,7 @@
  * Handles loading and managing chat history
  */
 
-import { api } from '../../../../js/services/api.js';
+import { api } from '../../../js/services/api.js';
 import { setCurrentChatId, clearSessionHistory } from './stream.js';
 import { appendMessage } from './ui.js';
 

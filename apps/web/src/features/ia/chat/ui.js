@@ -5,7 +5,7 @@
 
 import { parseMessageWithImages, formatTime } from './parser.js';
 import { runHTMLTypewriterEffect, runTextTypewriterEffect } from './animations.js';
-import { profileService } from '../../../../js/services/ProfileService.js';
+import { profileService } from '../../../js/services/ProfileService.js';
 
 // Cached AI avatar URL (loaded on init)
 let cachedAiAvatarUrl = '/icons/dashboard/IA.svg';

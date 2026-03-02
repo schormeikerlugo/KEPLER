@@ -1,8 +1,3 @@
-/**
- * Dashboard Main Module
- * Orchestrates all dashboard functionality by importing modular components
- */
-
 import { auth } from '../../js/auth.js';
 import './css/index.css';
 import template from './dashboard.html?raw';
@@ -11,7 +6,6 @@ import template from './dashboard.html?raw';
 import { initMobileMenu } from './modules/layout/mobile-menu.js';
 import { initMission } from './modules/mission/index.js';
 import { initTelemetry } from './modules/telemetry/index.js';
-import { initChat } from './modules/chat/index.js';
 import { loadDashboardData } from './modules/data/index.js';
 import { MapController } from '../../features/map/MapController.js';
 import { showLoadingOverlay } from './modules/loading-overlay.js';
@@ -141,7 +135,6 @@ export async function render(container) {
     const missionModal = initMission();
     initMobileMenu(user, missionModal);
     initTelemetry();
-    initChat();
     loadDashboardData();
 }
 
@@ -247,19 +240,5 @@ function setupNavigation(mapController) {
     // Back button in map header
     if (btnCloseMap) {
         btnCloseMap.addEventListener('click', closeMap);
-    }
-
-    // Mobile Menu Map Option
-    const modalOpenMap = document.getElementById('modal-open-map');
-    const chatModalOverlay = document.getElementById('chat-modal-overlay');
-    if (modalOpenMap) {
-        modalOpenMap.addEventListener('click', () => {
-            // Close chat modal first
-            if (chatModalOverlay) {
-                chatModalOverlay.classList.remove('active');
-            }
-            // Then open map
-            openMap();
-        });
     }
 }

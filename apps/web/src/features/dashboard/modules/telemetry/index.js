@@ -1,78 +1,154 @@
 /**
  * Telemetry Module
- * Handles real-time telemetry polling and display updates
+ * Handles real-time telemetry polling and display updates with ApexCharts
  */
 
 import { api } from '../../../../js/services/api.js';
+import ApexCharts from 'apexcharts';
 
 export async function initTelemetry() {
-    const tTemp = document.getElementById('telem-temp');
-    const tO2 = document.getElementById('telem-o2');
-    const tBpm = document.getElementById('telem-bpm');
-    const tRad = document.getElementById('telem-rad');
-    const tPwr = document.getElementById('telem-pwr');
-    const tDist = document.getElementById('telem-dist');
-    const tCrew = document.getElementById('telem-crew');
-    const tNearbyObj = document.getElementById('telem-nearby-obj');
+    const charts = {};
 
-    // Init Battery
+    // Common Sparkline Config
+    const sparkConfig = {
+        chart: {
+            type: 'area', width: '100%', height: 50,
+            sparkline: { enabled: true }, animations: { enabled: true, dynamicAnimation: { speed: 800 } }
+        },
+        stroke: { curve: 'smooth', width: 2 },
+        fill: { opacity: 0.3 },
+        tooltip: { fixed: { enabled: false }, x: { show: false }, y: { title: { formatter: () => '' } }, marker: { show: false } }
+    };
+
+    // 1. O2 Tank (Area)
+    const o2Data = Array(15).fill(96);
+    charts.o2 = new ApexCharts(document.querySelector("#chart-o2"), {
+        ...sparkConfig, colors: ['#00ffcc'], series: [{ data: o2Data }]
+    });
+
+    // 2. BPM (Line - EKG)
+    const bpmData = Array(20).fill(75);
+    charts.bpm = new ApexCharts(document.querySelector("#chart-bpm"), {
+        ...sparkConfig, chart: { ...sparkConfig.chart, type: 'line' }, colors: ['#3FA8FF'], fill: { opacity: 1 }, series: [{ data: bpmData }]
+    });
+
+    // 3. RAD (Bar)
+    const radData = Array(10).fill(0.011);
+    charts.rad = new ApexCharts(document.querySelector("#chart-rad"), {
+        ...sparkConfig, chart: { ...sparkConfig.chart, type: 'bar' }, colors: ['#FF4444'], series: [{ data: radData }]
+    });
+
+    // 4. PWR (RadialBar)
+    charts.pwr = new ApexCharts(document.querySelector("#chart-pwr"), {
+        chart: { type: 'radialBar', width: '100%', height: 90, sparkline: { enabled: true }, offsetY: -10 },
+        series: [100],
+        colors: ['#00ffcc'],
+        plotOptions: { radialBar: { hollow: { margin: 0, size: '50%' }, track: { background: 'rgba(255,255,255,0.1)' }, dataLabels: { show: false } } }
+    });
+
+    // 5. DIST (Area)
+    const distData = Array(15).fill(0);
+    charts.dist = new ApexCharts(document.querySelector("#chart-dist"), {
+        ...sparkConfig, colors: ['#A4B0C0'], series: [{ data: distData }]
+    });
+
+    // 6. CREW (Bar)
+    const crewData = Array(8).fill(1);
+    charts.crew = new ApexCharts(document.querySelector("#chart-crew"), {
+        ...sparkConfig, chart: { ...sparkConfig.chart, type: 'bar' }, colors: ['#3FA8FF'], series: [{ data: crewData }]
+    });
+
+    // 7. TEMP (Area)
+    const tempData = Array(15).fill(20);
+    charts.temp = new ApexCharts(document.querySelector("#chart-temp"), {
+        ...sparkConfig, colors: ['#00ffcc'], series: [{ data: tempData }]
+    });
+
+    // 8. OBJ (Scatter/Area)
+    const objData = Array(15).fill(0);
+    charts.obj = new ApexCharts(document.querySelector("#chart-obj"), {
+        ...sparkConfig, colors: ['#FFAA00'], series: [{ data: objData }]
+    });
+
+    // Render all charts
+    Object.values(charts).forEach(c => {
+        if (c.el) c.render(); // check if element exists
+    });
+
+    // Elements
+    const els = {
+        temp: document.getElementById('telem-temp'),
+        o2: document.getElementById('telem-o2'),
+        bpm: document.getElementById('telem-bpm'),
+        rad: document.getElementById('telem-rad'),
+        pwr: document.getElementById('telem-pwr'),
+        dist: document.getElementById('telem-dist'),
+        crew: document.getElementById('telem-crew'),
+        obj: document.getElementById('telem-nearby-obj')
+    };
+
+    // Battery Init
     let batteryManager = null;
-    if (navigator.getBattery) {
-        navigator.getBattery().then(b => batteryManager = b);
-    }
+    if (navigator.getBattery) navigator.getBattery().then(b => batteryManager = b);
+
+    // Helpers to push data safely
+    const pushData = (arr, val, limit) => { arr.push(val); if (arr.length > limit) arr.shift(); return arr; };
+
+    let totalDistBase = 0; // fallback if no GPS
 
     const update = async () => {
-        if (!document.getElementById('telem-temp')) return;
+        if (!els.temp) return; // Unmounted
 
         try {
             const data = await api.getTelemetry();
 
+            // Generate/Extract values
+            let vTemp = 20, vO2 = 96, vBpm = 75, vRad = 0.011, vObj = 0;
+
             if (data) {
-                if (tTemp) tTemp.textContent = data.temperature + '°C';
-                if (tO2) tO2.textContent = data.oxygen_level + '%';
-                if (tBpm) tBpm.textContent = data.heart_rate;
-                if (tRad) tRad.textContent = data.radiation;
+                vTemp = data.temperature; vO2 = data.oxygen_level;
+                vBpm = data.heart_rate; vRad = data.radiation;
             } else {
-                // Fallback Simulation
-                if (tTemp) tTemp.textContent = (20 + Math.random() * 0.5).toFixed(1) + '°C';
-                if (tO2) tO2.textContent = (96 + Math.random() * 0.2).toFixed(1) + '%';
-                if (tBpm) tBpm.textContent = Math.floor(75 + Math.random() * 5);
-                if (tRad) tRad.textContent = (0.011 + Math.random() * 0.001).toFixed(3);
+                vTemp = parseFloat((20 + Math.random() * 0.5).toFixed(1));
+                vO2 = parseFloat((96 + Math.random() * 0.2).toFixed(1));
+                vBpm = Math.floor(75 + Math.random() * 5);
+                vRad = parseFloat((0.011 + Math.random() * 0.005).toFixed(3));
             }
 
-            // Update Battery
-            if (tPwr) {
-                if (batteryManager) {
-                    tPwr.textContent = Math.floor(batteryManager.level * 100) + '%';
-                    if (batteryManager.level <= 0.2) tPwr.style.color = '#ff4444';
-                    else tPwr.style.color = '';
-                } else {
-                    tPwr.textContent = '100%';
-                }
+            // Obj count from UI
+            const globalObj = document.getElementById('objects-count');
+            if (globalObj) vObj = parseInt(globalObj.textContent) || 0;
+
+            // Update DOM text
+            els.temp.innerHTML = `${vTemp} <span class="unit">°C</span>`;
+            els.o2.innerHTML = `${vO2}%`;
+            els.bpm.innerHTML = `${vBpm}`;
+            els.rad.innerHTML = `${vRad} <span class="unit">mSv/h</span>`;
+            els.obj.innerHTML = `${vObj} <span class="unit">Ping</span>`;
+
+            // Update Charts
+            if (charts.temp) charts.temp.updateSeries([{ data: pushData(tempData, vTemp, 15) }]);
+            if (charts.o2) charts.o2.updateSeries([{ data: pushData(o2Data, vO2, 15) }]);
+            if (charts.bpm) charts.bpm.updateSeries([{ data: pushData(bpmData, vBpm, 20) }]);
+            if (charts.rad) charts.rad.updateSeries([{ data: pushData(radData, vRad, 10) }]);
+            if (charts.obj) charts.obj.updateSeries([{ data: pushData(objData, vObj, 15) }]);
+
+            // PWR
+            if (batteryManager) {
+                let lvl = Math.floor(batteryManager.level * 100);
+                els.pwr.innerHTML = `${lvl}%`;
+                if (charts.pwr) charts.pwr.updateSeries([lvl]);
             }
 
-            // Sync Nearby Objects from the UI Data Grid
-            if (tNearbyObj) {
-                const globalObjCount = document.getElementById('objects-count');
-                tNearbyObj.textContent = globalObjCount ? globalObjCount.textContent : '0';
-            }
-
-            // Active Crew (Simulated or fetched)
-            if (tCrew) {
-                // Fetch active missions from Supabase
-                const { supabase } = await import('../../../../js/auth.js');
-                const { count, error } = await supabase
-                    .from('misiones')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('estado', 'activa');
-
-                if (!error && count !== null) {
-                    tCrew.textContent = Math.max(1, count); // at least 1 (self)
-                }
-            }
+            // Crew
+            const { supabase } = await import('../../../../js/auth.js');
+            const { count } = await supabase.from('misiones').select('*', { count: 'exact', head: true }).eq('estado', 'activa');
+            let vCrew = Math.max(1, count || 1);
+            els.crew.innerHTML = `${vCrew} <span class="unit">Active</span>`;
+            if (charts.crew) charts.crew.updateSeries([{ data: pushData(crewData, vCrew, 8) }]);
 
         } catch (err) {
-            console.error('Telemetry error:', err);
+            console.error('Telemetry err:', err);
         }
 
         setTimeout(update, 2000);
@@ -88,43 +164,24 @@ export async function initTelemetry() {
         let totalDistanceKm = 0;
         let lastPos = null;
 
-        function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371; // km
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return R * c;
+        function calcDist(lat1, lon1, lat2, lon2) {
+            const R = 6371; const dLat = (lat2 - lat1) * Math.PI / 180; const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         }
 
         gps.onPositionUpdate = (pos) => {
-            const el = document.getElementById('dash-gps-status');
-            if (el) {
-                const source = pos.source || 'GPS';
-                el.textContent = `[${source}]`;
-
-                if (source === 'GPS') el.style.color = '#00ff00';
-                else if (source === 'MANUAL') el.style.color = 'orange';
-                else el.style.color = '#ffff00';
-            }
-
-            // Calculate Distance
             if (lastPos && pos.source !== 'IP') {
-                const dist = calculateDistance(lastPos.lat, lastPos.lng, pos.lat, pos.lng);
-                // Only add if reasonable (e.g. less than 1km jump to avoid GPS spikes)
-                if (dist > 0.001 && dist < 1.0) {
-                    totalDistanceKm += dist;
-                }
+                const dist = calcDist(lastPos.lat, lastPos.lng, pos.lat, pos.lng);
+                if (dist > 0.001 && dist < 1.0) totalDistanceKm += dist;
             }
             lastPos = pos;
-
-            if (tDist) {
-                tDist.textContent = totalDistanceKm.toFixed(2) + ' km';
+            if (els.dist) {
+                els.dist.innerHTML = `${totalDistanceKm.toFixed(2)} <span class="unit">km</span>`;
+                if (charts.dist) charts.dist.updateSeries([{ data: pushData(distData, totalDistanceKm, 15) }]);
             }
         };
 
-        gps.start(); // Will fallback to IP/Manual if needed
-    }).catch(e => console.error("Failed to load GPS for Dashboard", e));
+        gps.start(); // Fallback to IP
+    }).catch(e => console.error("GPS fail", e));
 }

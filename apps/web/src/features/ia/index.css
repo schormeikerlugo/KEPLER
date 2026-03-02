@@ -1,0 +1,15 @@
+/* Base Features for Dedicated IA View */
+@import './chat/css/chat.css';
+@import './chat/css/stream.css';
+
+/* Override Chat Container to be Full Screen */
+.dash-ai-chat {
+    width: 100%;
+    height: 100%;
+    border-radius: 12px;
+    background: var(--bg-dash-primary);
+    border: 1px solid rgba(63, 168, 255, 0.2);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+}

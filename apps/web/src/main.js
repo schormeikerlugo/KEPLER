@@ -56,6 +56,10 @@ async function route() {
             const controller = new module.default(document.getElementById('app'));
             controller.init();
         });
+    } else if (path === '/ia') {
+        import('./features/ia/index.js').then(module => {
+            module.render(document.getElementById('app'));
+        });
     } else if (path === '/profile') {
         // Profile is a separate page, redirect to it
         window.location.href = '/src/features/profile/profile.html';

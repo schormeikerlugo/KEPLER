@@ -18,7 +18,7 @@
 /* Main Layout Grid */
 .dash-main {
     display: grid;
-    grid-template-columns: 184px 770px minmax(0, 1fr);
+    grid-template-columns: 320px minmax(600px, 1fr) 320px;
     gap: 20px;
     flex: 1;
     min-height: 600px;

@@ -3,7 +3,8 @@
  * Handles AI chat, message history, and chat session management
  */
 
-import { api } from '../../../../js/services/api.js';
+import { api } from '../../../js/services/api.js';
+import { auth } from '../../../js/auth.js';
 import {
     streamChat,
     createThinkingIndicator,
