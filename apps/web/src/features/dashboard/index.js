@@ -17,6 +17,7 @@ import { MapController } from '../../features/map/MapController.js';
 import { showLoadingOverlay } from './modules/loading-overlay.js';
 import { initSystemStatus } from './modules/system-status.js';
 import { initMainMenu } from './modules/main-menu.js';
+import { profileService } from '../../js/services/ProfileService.js';
 
 /**
  * Main render function - initializes the dashboard
@@ -85,8 +86,6 @@ export async function render(container) {
 
     // Update user profile in header using ProfileService
     if (user) {
-        // Import profile service
-        const { profileService } = await import('../../js/services/ProfileService.js');
 
         const profile = await profileService.getProfile(true); // Force refresh on dashboard load
         const avatarDisplay = await profileService.getAvatarDisplay();

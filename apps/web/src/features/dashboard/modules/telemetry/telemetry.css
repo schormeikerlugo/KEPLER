@@ -7,10 +7,10 @@
     background: var(--bg-dash-primary);
     backdrop-filter: var(--blur-dash);
     border-radius: var(--radius-dash);
-    padding: 20px 15px;
+    padding: 20px 5px;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 8px;
     position: relative;
     overflow: hidden;
@@ -58,4 +58,28 @@
     margin-top: 6px;
     text-transform: uppercase;
     letter-spacing: 1px;
+}
+
+.telem-scroll-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    max-height: 700px;
+    padding-right: 5px;
+}
+
+.telem-scroll-container::-webkit-scrollbar {
+    width: 4px;
+}
+
+.telem-scroll-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.telem-scroll-container::-webkit-scrollbar-thumb {
+    background: rgba(63, 168, 255, 0.4);
+    border-radius: 4px;
 }
