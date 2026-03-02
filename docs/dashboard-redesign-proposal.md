@@ -1,74 +1,60 @@
-# 🎨 Propuesta de Reestructuración UI/UX del Dashboard (KEPLER)
+# 🎨 Propuesta de Reestructuración UI/UX del Dashboard (Enfoque Táctico y Datos)
 
-Para elevar llevar KEPLER al siguiente nivel visual y funcional, es necesario evolucionar el Dashboard de una simple vista de contadores a un **Centro de Comando Interactivo con Gráficos y Tendencias**. 
+Para elevar KEPLER al siguiente nivel visual y funcional, estamos pivotando la filosofía del Dashboard: alejándonos de ser un simple "visor de cámara AR" para convertirlo en un **Centro de Comando de Datos y Telemetría Táctica**. El objetivo es proporcionar al explorador información predictiva y en tiempo real para tomar decisiones estratégicas al trazar o cruzar rutas de exploración.
 
-Aquí tienes un análisis de lo que tenemos hoy y qué módulos nuevos deberías diseñar en **Figma** para que podamos programarlos en la próxima fase.
-
----
-
-## 1. Análisis de la Distribución Actual
-
-Actualmente nuestra grilla (`dash-main`) tiene tres columnas rígidas:
-
-1.  **Panel Izquierdo (Telemetría Básica):** Sólo tiene texto y números en tiempo real (Temp, O2, BPM, Rad, Pwr, Dist, Tripulación). *Es funcional, pero visualmente plano.*
-2.  **Panel Central (Chat IA):** Ocupa demasiado espacio vital en pantalla para ser solo texto. Debería ser colapsable o compartir espacio con el mapa visual.
-3.  **Panel Derecho (Data Grid):** Muestra el conteo de Objetos, Misiones, Minerales y POIs (Puntos de Interés). *Falta interactividad y desglose.*
+Mantenemos nuestra estética core: **Sci-Fi Glassmorphism**, fondos oscuros mate, desenfoques (blur), tipografía `Jura` técnica, y acentos en cyan (`#00ffcc`) y azul neón (`#3fa8ff`).
 
 ---
 
-## 2. Nuevos Módulos y Gráficos Propuestos para Figma
+## 1. Reconceptualización de la Telemetría (Panel Interactivo Fijo)
 
-Al ir a Figma, te recomiendo diseñar los siguientes componentes intermedios (Widgets o Tarjetas) que luego programaremos usando librerías modernas como `Chart.js`, `ApexCharts` o `D3.js`:
+Actualmente tenemos 8 puntos de telemetría en forma de lista vertical. Para evitar el scroll interno y mantener el diseño modular intacto (permitiendo agregar nuevos paneles sin romper la grilla), debemos **categorizar y compactar** estos datos en bloques de altura y posición fija.
 
-### 📊 Módulo 1: "Línea de Vida" (Gráfico de Área - Biometría)
-*   **Diseño:** Un gráfico de línea curva y suave (Area Chart) que muestre el historial de los últimos 10 minutos.
-*   **Datos Clave:** **BPM (Pulsaciones)** y **O2 (Oxígeno)** solapados.
-*   **Utilidad:** El explorador puede ver si su ritmo cardíaco lleva mucho tiempo acelerado o si su tanque de O2 se está vaciando más rápido de lo esperado según la pendiente del gráfico.
+**Propuesta de Categorización (Grid 2x2 / Mini-Widgets):**
 
-### ☢️ Módulo 2: "Espectrómetro Local" (Gráfico de Barras o Radial)
-*   **Diseño:** Un indicador circular tipo tacómetro o un gráfico de barras horizontales de progreso.
-*   **Datos Clave:** **Nivel de Radiación (RAD)** y **Temperatura Exterior**.
-*   **Utilidad:** Controles de peligro visual. Si el tacómetro de radiación pasa a la franja naranja/roja (Ej. > 0.050 µSv), una alarma visual salta.
+1. 🫀 **Biometría Crítica**: `BPM` (Ritmo Cardíaco) y `O2` (Nivel de Oxígeno). 
+   *Estilo: Barras de progreso ultra-delgadas o gráficos de línea minimalistas (sparklines) bordeando el contenedor.*
+2. 🔋 **Estado Hardware**: `PWR` (Batería de Traje/Rover) y `RAD` (Radiación Local). 
+   *Estilo: Trazos circulares minimalistas que cambian a rojo brillante en estado crítico.*
+3. � **Métricas de Ruta**: `DISTANCIA` (Recorrida) y `TRIPULACIÓN` (Aliados activos). 
+   *Estilo: Números grandes y prolijos con flechas vectoriales de tendencia.*
+4. 🌍 **Contexto Ambiental**: `TEMPERATURA` externa y `OBJ CERCANOS` no confirmados.
 
-### 🚶 Módulo 3: "Rastreabilidad de Ruta" (Gráfico de Progreso Lineal)
-*   **Diseño:** Una barra de pasos (Timeline) horizontal simple.
-*   **Datos Clave:** **Kilómetros recorridos** vs **Batería restante (PWR)**.
-*   **Utilidad:** Sirve como estimador de retomo de misión. *"He recorrido 5 km y me queda 40% de batería, debo volver"*. Debería mostrar el tiempo estimado de duración de la batería restante.
-
-### 📦 Módulo 4: "Radar de Bio-Firmas" (Gráfico de Dona / Pie Chart)
-*   **Diseño:** Un gráfico tipo dona moderna (hollow pie chart).
-*   **Datos Clave:** Desglose porcentual de los **Objetos Escaneados** localmente.
-*   **Utilidad:** Al ver el radar, el usuario sabe: "De 100 objetos que detectó YOLO a mi alrededor, 60% son Minerales, 30% es Flora y 10% son Peligros".
-
-### 🗺️ Módulo 5: "Mini-Mapa de Enjambre" (Componente Geográfico Pequeño)
-*   **Diseño:** Un recuadro satelital oscuro y pequeño (Mini-Map) incrustado en el propio dashboard (no a pantalla completa).
-*   **Datos Clave:** Muestra el punto azul (Tú) y puntos verdes (Los otros miembros de la **Tripulación** activos en el planeta).
-*   **Utilidad:** Conocer la ubicación relativa de tus compañeros sin tener que oscurecer todo y abrir el "Mapa Completo".
-
-### ⚡ Módulo 6: "Hub de Micro-Telemetría Rápida" (Top-bar / Header Sci-Fi)
-*   **Problema que Resuelve:** Tal como sugeriste, tener los datos duros dispersos en bloques grandes rompe el diseño Sci-Fi y retrasa la lectura en emergencias.
-*   **Diseño (Sci-Fi Glassmorphism):** Una pequeña barra delgada, acoplada al borde superior o inferior de la pantalla (como el "HUD" del casco de Iron Man o Halo). Con un fondo semi-transparente de vidrio negro/azulado mate (backdrop-filter).
-*   **Estructura Visual:** 
-    *   **Icono Neon Pequeño + Dato Alfanumérico Corto.**
-    *   Ejemplo alineado horizontalmente: `[❄️ 20°C] | [💨 96% O2] | [💓 75 BPM] | [🔋 100% PWR]`
-*   **Utilidad:** Es tu "Estatus Vital de Vista Rápida". Siempre flotando, siempre visible. Los gráficos grandes (Módulos 1-4) solo se usan para ver "Historia y Tendencia", pero este *Hub* te da la respuesta inmediata en 1 segundo de lectura.
+*Visualmente, estos 4 bloques/categorías encajarían en una cuadrícula ultra-limpia dentro del panel izquierdo, ocupando siempre el mismo espacio físico en la pantalla, independientemente de qué otros módulos se abran al centro.*
 
 ---
 
-## 3. Propuesta de Reestructuración de la Pantalla (Layout)
+## 2. Expansión de Absorción de Datos (Integraciones a Futuro)
 
-Cuando estructures los componentes en Figma, intenta crear este Layout o Marco de Alambre (Wireframe):
+Para que el explorador tome decisiones tangibles de ruta, necesitamos ingerir datos del entorno real mediante APIs, transformando los "datos vacíos" en variables operativas.
 
-*   **Top Bar (Global):** Tu logo, el indicador de conexión (YOLOv26 Activo), perfil y notificaciones.
-*   **Izquierda (Status Crítico - 25% ancho):** Módulo de Vida (Biometría en gráfico de curva), Módulo de Batería y Radiación (Tacómetros concéntricos).
-*   **Centro Arriba (Módulo de Visión/Contexto - 50% ancho):** El Canvas/Cámara simulada de YOLO (que el visor AR no esté oculto sino que el Dashboard se sobreponga como marco Glassmorphism).
-*   **Centro Abajo (Data y Radar - 50% ancho):** El gráfico de Dona (Bio-Firmas) y el Mini-Mapa de tus compañeros de tripulación.
-*   **Derecha (Comunicaciones e Inventario - 25% ancho):** El Chat de IA optimizado/colapsado y una lista estilizada de tus últimos Objetos scaneados.
+### 🌪️ Módulo A: Sistema de Condición Atmosférica (API Clima)
+*   **Concepto:** Integración con OpenWeatherMap o APIs meteorológicas satelitales.
+*   **Datos Claves:** Velocidad/Ráfagas de viento (vital para vuelo de pequeños drones), visibilidad atmosférica, alertas de tormenta extrema.
+*   **UI / UX:** Un pequeño widget transversal que, si el clima es severo, parpadea en color naranja de alerta (HUD Alert overrides).
+
+### ⛰️ Módulo B: Perfilador Topográfico y Esfuerzo Físico
+*   **Concepto:** Uso de APIs de elevación topográfica (Open Topo Data / Mapbox Elevation).
+*   **Dinámica:** Al trazar una ruta "Punto A al Punto B" en el centro de control, el módulo calcula el desnivel positivo.
+*   **UI / UX:** Un gráfico de montaña (área solapada) que cruza el desnivel *vs.* tu batería restante, prediciendo visualmente si tienes la energía necesaria para escalar esa colina.
+
+### � Módulo C: Radar Táctico de Proximidad Constelacional
+*   **Concepto:** Evolucionar el recuadro aburrido de "POIs Cercanos" a una brújula concéntrica o sonar.
+*   **Datos Claves:** Mostrar dónde están los clústers de objetos sin categorizar para que el explorador rote hacia esa dirección.
 
 ---
 
-## Próximos Pasos
+## 3. Hoja de Ruta de Desarrollo (Roadmap Táctico)
 
-Te sugiero que lleves estas 5 ideas de módulos (Gráfico de Pulsaciones/O2, Tacómetro de Radiación, Gráfico de Dona de Objetos, Barra de Kilometraje y Mini-mapa) directo a **Figma**.
+1.  **Fase de Estabilización Fija:** Refactorizar el panel izquierdo actual para agrupar las 8 telemetrías en un Grid 2x2 estricto (categorizado) eliminando por completo la necesidad de un scrollbar temporal.
+2.  **Fase Espacial Central:** Usar el enorme contenedor central (50% de la pantalla) para inyectar el **HoloMap 3D (MapLibre)** permanentemente, con herramientas de pin y trazado rápido.
+3.  **Fase de Expansión de Sensores:** Escoger la primera API externa (Ej. Clima) y añadir su respectivo módulo de lectura en el Dashboard.
+4.  **Fase Simbiosis IA:** Conectar el modelo Mistral para que genere conclusiones autónomas leyendo los módulos anteriores (Ej: *"Detecto terreno empinado y tormenta próxima; aconsejo cancelar ruta actual"*).
 
-Juega con los colores (cyan, aguamarina, rojo neón y fondos oscuros cristalinos tipo Glassmorphism). Una vez que tengas un diseño que te guste, me lo comunicas y **yo me encargaré de codificar cada uno de los gráficos** conectándolos al motor de telemetría y matemáticas que acabamos de construir.
+---
+
+## 🎨 Prompt de Visión (Generación AI Concept Art)
+
+Pega el siguiente texto en **Midjourney** (v6) o **DALL-E 3** para pre-visualizar cómo luciría este concepto radicalmente guiado a los datos:
+
+> **Prompt:** `A high-end UI/UX dashboard design for an advanced planetary exploration system. Sci-fi glassmorphism style, dark matte background with translucent blurred panels. Neon cyan, vibrant aqua, and soft glowing blue accent colors. Jura font or modern technical typography. Left panel contains extremely compact 2x2 grid widgets showing grouped telemetry: biometrics (O2, BPM with neon sparklines) and equipment status (Radiation, Battery). The center dominates with a massive, highly detailed 3D tactical topographic map showing an exploration route, alongside a cross-section elevation mountain graph predicting battery drain. The right panel features a clean, seamless AI assistant chat interface and a glowing circular sonar radar showing nearby signal anomalies. Minimalist, insanely data-dense, cinematic lighting, zero camera feeds, purely abstract data visualization and tactical UI mapping. --ar 16:9 --stylize 250 --v 6.0`
