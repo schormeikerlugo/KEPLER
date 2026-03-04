@@ -1,74 +1,68 @@
-<nav class="dash-header scanline-effect">
-    <div class="logo-container">
-        <div class="holo-logo">
-            <div class="glow-ring"></div>
-            <div class="core-dot"></div>
-            <div class="orbit-path">
-                <div class="orbit-dot"></div>
+<div class="dashboard-container">
+    <!-- Scanline filter overlay -->
+    <div class="scanlines"></div>
+
+    <!-- Global Header Container injected via Component -->
+    <div id="global-header-container"></div>
+
+    <div class="dash-main ia-dash-main">
+        <!-- History Modal (used as Sidebar on Desktop, Modal on Mobile) -->
+        <div class="history-modal" id="history-modal" style="display: none;">
+            <div class="history-content">
+                <div class="history-header">
+                    <h3>Historial de Conversaciones</h3>
+                    <button id="btn-close-history" class="btn-close-history">×</button>
+                </div>
+                <div class="history-list" id="history-list">
+                    <!-- Dyn items -->
+                </div>
             </div>
         </div>
-        <div class="brand-text">K E P L E R</div>
-    </div>
 
-    <div class="header-controls">
-        <a href="/" class="btn-primary" style="text-decoration: none;">← Volver al Dashboard</a>
-    </div>
+        <!-- Full Screen AI Chat -->
+        <section class="dash-ai-chat">
+            <div class="chat-header">
+                <img src="/icons/dashboard/IA.svg" alt="IA" class="chat-icon-img" />
+                <span class="chat-title">Llama 3.8 / Mistral AI Core</span>
 
-    <div class="user-profile">
-        <button class="btn-icon header-icon-btn" id="btn-notifications-header">
-            <img src="/icons/bell.svg" alt="Notificaciones" />
-        </button>
-        <div class="user-info">
-            <img src="/icons/user-avatar.png" alt="Avatar" class="user-avatar" id="user-avatar" />
-            <span class="user-name" id="user-name">...</span>
-        </div>
-    </div>
-</nav>
+                <div class="chat-actions">
+                    <button id="btn-chat-history" class="icon-action-btn" title="Historial">
+                        <img src="/icons/history.svg" alt="History" />
+                    </button>
+                    <button id="btn-new-chat" class="icon-action-btn" title="Nuevo Chat">
+                        <img src="/icons/new-chat.svg" alt="New Chat" />
+                    </button>
+                </div>
+            </div>
 
-<div class="dash-main" style="grid-template-columns: 1fr; padding: 20px;">
-    <!-- Full Screen AI Chat -->
-    <section class="dash-ai-chat" style="height: 100%;">
-        <div class="chat-header">
-            <img src="/icons/dashboard/IA.svg" alt="IA" class="chat-icon-img" />
-            <span class="chat-title">Llama 3.8 / Mistral AI Core</span>
+            <div class="chat-messages" id="chat-messages" style="flex: 1;">
+                <div class="chat-message ai-message">
+                    Sistemas en línea. Ingreso a modo Inteligencia Artificial Dedicada. ¿En qué puedo ayudarte en esta
+                    misión?
+                </div>
+            </div>
 
-            <div class="chat-actions">
-                <button id="btn-chat-history" class="icon-action-btn" title="Historial">
-                    <img src="/icons/history.svg" alt="History" />
+            <div class="chat-suggestions" id="chat-suggestions">
+                <button class="suggestion-btn"
+                    data-prompt="Examinar los objetos que se han registrado en este último viaje">
+                    Examinar los objetos que se han registrado en este último viaje
                 </button>
-                <button id="btn-new-chat" class="icon-action-btn" title="Nuevo Chat">
-                    <img src="/icons/new-chat.svg" alt="New Chat" />
+                <button class="suggestion-btn"
+                    data-prompt="Revisar los últimos POIs y medí la distancia que se ha recorrido">
+                    Revisar los últimos POIs y medí la distancia que se ha recorrido
+                </button>
+                <button class="suggestion-btn" data-prompt="Genera una inferencia táctica en base a los datos actuales">
+                    Genera una inferencia táctica en base a los datos actuales
                 </button>
             </div>
-        </div>
 
-        <div class="chat-messages" id="chat-messages" style="flex: 1;">
-            <div class="chat-message ai-message">
-                Sistemas en línea. Ingreso a modo Inteligencia Artificial Dedicada. ¿En qué puedo ayudarte en esta
-                misión?
+            <div class="chat-input-container">
+                <input type="text" id="chat-input" class="chat-input" placeholder="Pregúntale algo a la IA..."
+                    autocomplete="off" />
+                <button id="btn-send-chat" class="btn-send-chat">
+                    <span>→</span>
+                </button>
             </div>
-        </div>
-
-        <div class="chat-suggestions" id="chat-suggestions">
-            <button class="suggestion-btn"
-                data-prompt="Examinar los objetos que se han registrado en este último viaje">
-                Examinar los objetos que se han registrado en este último viaje
-            </button>
-            <button class="suggestion-btn"
-                data-prompt="Revisar los últimos POIs y medí la distancia que se ha recorrido">
-                Revisar los últimos POIs y medí la distancia que se ha recorrido
-            </button>
-            <button class="suggestion-btn" data-prompt="Genera una inferencia táctica en base a los datos actuales">
-                Genera una inferencia táctica en base a los datos actuales
-            </button>
-        </div>
-
-        <div class="chat-input-container">
-            <input type="text" id="chat-input" class="chat-input" placeholder="Pregúntale algo a la IA..."
-                autocomplete="off" />
-            <button id="btn-send-chat" class="btn-send-chat">
-                <span>→</span>
-            </button>
-        </div>
-    </section>
+        </section>
+    </div>
 </div>

@@ -15,8 +15,9 @@ import { MapObjectPanel } from './modules/MapObjectPanel.js';
 import { Protocol } from 'pmtiles';
 
 export class MapController {
-    constructor(containerId) {
+    constructor(containerId, isTactical = false) {
         this.containerId = containerId;
+        this.isTactical = isTactical;
         this.map = null;
         this.isInitialized = false;
         this.objects = [];
@@ -175,26 +176,32 @@ export class MapController {
 
             // Initialize Core Modules
             this.location = new MapLocation(this);
-            this.controls = new MapControls(this);
-            this.controls.createControls();
 
-            // Initialize Markers Module
+            // Only load UI and Objects if it's the main map
+            if (!this.isTactical) {
+                this.controls = new MapControls(this);
+                this.controls.createControls();
+
+                // Initialize Object Panel
+                this.panelMod = new MapObjectPanel(this);
+                this.panelMod.create();
+
+                // Search & Filters
+                this.searchMod = new MapSearch(this);
+                const searchContainer = this.searchMod.createUI();
+                this.filtersMod = new MapFilters(this);
+                this.filtersMod.createUI(searchContainer);
+            }
+
+            // Initialize Markers Module (Needed for User Location Marker)
             this.markersMod = new MapMarkers(this);
-
-            // Initialize Object Panel
-            this.panelMod = new MapObjectPanel(this);
-            this.panelMod.create();
-
-            // Search & Filters
-            this.searchMod = new MapSearch(this);
-            const searchContainer = this.searchMod.createUI();
-            this.filtersMod = new MapFilters(this);
-            this.filtersMod.createUI(searchContainer);
 
             this.isInitialized = true;
 
-            // Load Objects
-            await this.loadObjects();
+            // Load Objects only for main map
+            if (!this.isTactical) {
+                await this.loadObjects();
+            }
         });
     }
 

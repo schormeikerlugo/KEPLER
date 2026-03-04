@@ -46,8 +46,10 @@ Para que el explorador tome decisiones tangibles de ruta, necesitamos ingerir da
 
 ## 3. Hoja de Ruta de Desarrollo (Roadmap Táctico)
 
-1.  **Fase de Estabilización Fija:** Refactorizar el panel izquierdo actual para agrupar las 8 telemetrías en un Grid 2x2 estricto (categorizado) eliminando por completo la necesidad de un scrollbar temporal.
-2.  **Fase Espacial Central:** Usar el enorme contenedor central (50% de la pantalla) para inyectar el **HoloMap 3D (MapLibre)** permanentemente, con herramientas de pin y trazado rápido.
+1.  **Fase de Estabilización Fija:** Refactorizar el panel izquierdo actual para transformar las telemetrías en una Matriz de 8 tarjetas independientes con gráficos ApexCharts, eliminando el scrollbar y ganando legibilidad.
+2.  **Fase Espacial Central:** 
+    *   **Extracción de la IA:** Mover el Chat LLM actual a una vista externa dedicada (separada del dashboard) preservando su estilo.
+    *   **HoloMap y Módulos Nuevos:** Inyectar un HoloMap 3D topográfico de tamaño reducido para datos rápidos. En el resto del espacio central liberado, crear nuevos contenedores para módulos tácticos avanzados (ej. Gráficos de Elevación/Batería).
 3.  **Fase de Expansión de Sensores:** Escoger la primera API externa (Ej. Clima) y añadir su respectivo módulo de lectura en el Dashboard.
 4.  **Fase Simbiosis IA:** Conectar el modelo Mistral para que genere conclusiones autónomas leyendo los módulos anteriores (Ej: *"Detecto terreno empinado y tormenta próxima; aconsejo cancelar ruta actual"*).
 

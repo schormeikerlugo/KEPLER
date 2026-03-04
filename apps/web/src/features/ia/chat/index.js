@@ -148,6 +148,16 @@ export function initChat() {
     });
 
     // History management
+    if (historyList && historyModal) {
+        // Load history automatically for the Desktop Sidebar
+        loadHistoryList(historyList, historyModal, (id) => {
+            loadChatSession(id, messagesContainer, suggestions, (newId) => {
+                currentChatId = newId;
+                setCurrentChatId(newId);
+            });
+        });
+    }
+
     if (historyBtn && historyModal) {
         historyBtn.addEventListener('click', async () => {
             historyModal.style.display = 'flex';

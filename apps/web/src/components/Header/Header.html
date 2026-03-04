@@ -1,0 +1,78 @@
+<header class="dash-header">
+    <div class="dash-header-left">
+        <div class="header-title-group">
+            <div class="holo-logo-wrapper">
+                <a href="/">
+                    <img src="/assets/logotipo.svg" alt="KEPLER" class="dash-logo holo-logo-img">
+                </a>
+            </div>
+            <!-- System status for mobile -->
+            <div id="system-status-mobile" class="mobile-status-container"></div>
+        </div>
+
+        <!-- Mobile hamburger button -->
+        <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Abrir menú">
+            <span class="hamburger-line"></span>
+            <span class="hamburger-line"></span>
+            <span class="hamburger-line"></span>
+        </button>
+    </div>
+
+    <!-- Desktop navigation (hidden on mobile) -->
+    <div class="dash-header-right desktop-nav">
+
+        <!-- Main Command Menu -->
+        <div class="main-menu-container" style="margin-right: 15px; position: relative;" id="command-menu-wrapper">
+            <button id="btn-main-menu" class="btn-main-menu">
+                <span class="menu-icon-grid">
+                    <span></span><span></span>
+                    <span></span><span></span>
+                </span>
+                <span class="menu-label" id="main-menu-label">COMANDOS</span>
+            </button>
+
+            <!-- Commands Dropdown -->
+            <div class="main-menu-dropdown" id="main-menu-dropdown">
+                <!-- Injected via JS depending on context -->
+            </div>
+        </div>
+
+        <!-- System Status Slot (Injected by JS) -->
+        <div id="system-status-container"></div>
+
+        <div class="header-divider"></div>
+
+        <!-- Notifications -->
+        <button class="btn-notifications" id="btn-notifications-header">
+            <img src="/icons/dashboard/notifications.svg" alt="Notifications" class="icon-btn" />
+            <span class="notification-badge" id="notification-badge" style="display:none">0</span>
+        </button>
+
+        <!-- User Profile -->
+        <div class="user-profile-dropdown" id="user-profile-container" style="position:relative;">
+            <button class="btn-user-profile" id="btn-user-profile">
+                <span class="user-name" id="user-name">...</span>
+                <div class="user-avatar-container">
+                    <div class="user-avatar-bg"></div>
+                    <span class="user-avatar" id="user-avatar">?</span>
+                </div>
+            </button>
+            <div class="profile-dropdown-menu" id="profile-dropdown"
+                style="display:none; position:absolute; top:calc(100% + 12px); right:0; background:rgba(10,15,25,0.95); border:1px solid rgba(63,168,255,0.3); border-radius:12px; min-width:200px; z-index:1000; backdrop-filter:blur(20px); box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+                <div style="padding:15px; border-bottom:1px solid rgba(63,168,255,0.2);">
+                    <div style="font-size:0.85rem; color:#888;">Conectado como</div>
+                    <div style="font-weight:bold; color:#3fa8ff;" id="dropdown-email">user@email.com</div>
+                </div>
+                <button id="btn-profile"
+                    style="width:100%; padding:12px 15px; background:transparent; border:none; color:#3fa8ff; font-family:'Jura',sans-serif; font-size:0.95rem; cursor:pointer; text-align:left; transition:background 0.2s; border-bottom:1px solid rgba(63,168,255,0.1);">
+                    👤 Mi Perfil
+                </button>
+                <button id="btn-logout"
+                    style="width:100%; padding:12px 15px; background:transparent; border:none; color:#ff6b6b; font-family:'Jura',sans-serif; font-size:0.95rem; cursor:pointer; text-align:left; transition:background 0.2s;">
+                    🚪 Cerrar Sesión
+                </button>
+            </div>
+        </div>
+
+    </div>
+</header>

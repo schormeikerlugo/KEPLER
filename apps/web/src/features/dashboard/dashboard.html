@@ -1,106 +1,7 @@
 <div class="dashboard-container">
 
-  <!-- Header -->
-  <header class="dash-header">
-    <div class="dash-header-left">
-      <div class="header-title-group">
-        <div class="holo-logo-wrapper">
-          <img src="/assets/logotipo.svg" alt="KEPLER" class="dash-logo holo-logo-img">
-        </div>
-        <!-- System status for mobile -->
-        <div id="system-status-mobile" class="mobile-status-container"></div>
-      </div>
-
-      <!-- Mobile hamburger button -->
-      <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Abrir menú">
-        <span class="hamburger-line"></span>
-        <span class="hamburger-line"></span>
-        <span class="hamburger-line"></span>
-      </button>
-    </div>
-
-    <!-- Desktop navigation (hidden on mobile) -->
-    <div class="dash-header-right desktop-nav">
-
-      <!-- Main Command Menu -->
-      <div class="main-menu-container" style="margin-right: 15px; position: relative;">
-        <button id="btn-main-menu" class="btn-main-menu">
-          <span class="menu-icon-grid">
-            <span></span><span></span>
-            <span></span><span></span>
-          </span>
-          <span class="menu-label">COMANDOS</span>
-        </button>
-
-        <!-- Commands Dropdown -->
-        <div class="main-menu-dropdown" id="main-menu-dropdown">
-          <button id="btn-start-mission" class="menu-item-btn primary">
-            <span class="menu-item-icon">🚀</span>
-            <span class="menu-item-text">Iniciar Misión</span>
-          </button>
-          <div class="menu-divider"></div>
-          <button id="nav-btn-map" class="menu-item-btn" data-view="map">
-            <span class="menu-item-icon">🗺️</span>
-            <span class="menu-item-text">Mapa Táctico</span>
-          </button>
-          <a href="/ia" style="text-decoration:none;">
-            <button class="menu-item-btn">
-              <span class="menu-item-icon">🧠</span>
-              <span class="menu-item-text">Inteligencia IA</span>
-            </button>
-          </a>
-          <button id="btn-archives" class="menu-item-btn">
-            <span class="menu-item-icon">📦</span>
-            <span class="menu-item-text">Archivos</span>
-          </button>
-          <button id="btn-taxonomia" class="menu-item-btn">
-            <span class="menu-item-icon">🏷️</span>
-            <span class="menu-item-text">Taxonomía</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- System Status Slot (Injected by JS) -->
-      <div id="system-status-container"></div>
-
-      <div class="header-divider"></div>
-
-      <!-- Notifications -->
-      <button class="btn-notifications" id="btn-notifications-header">
-        <img src="/icons/dashboard/notifications.svg" alt="Notifications" class="icon-btn" />
-        <span class="notification-badge" id="notification-badge" style="display:none">0</span>
-      </button>
-
-      <!-- User Profile -->
-      <div class="user-profile-dropdown" id="user-profile-container" style="position:relative;">
-        <button class="btn-user-profile" id="btn-user-profile">
-          <span class="user-name" id="user-name">Schormaker .L</span>
-          <div class="user-avatar-container">
-            <div class="user-avatar-bg"></div>
-            <span class="user-avatar" id="user-avatar">S</span>
-          </div>
-        </button>
-        <div class="profile-dropdown-menu" id="profile-dropdown"
-          style="display:none; position:absolute; top:calc(100% + 12px); right:0; background:rgba(10,15,25,0.95); border:1px solid rgba(63,168,255,0.3); border-radius:12px; min-width:200px; z-index:1000; backdrop-filter:blur(20px); box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
-          <div style="padding:15px; border-bottom:1px solid rgba(63,168,255,0.2);">
-            <div style="font-size:0.85rem; color:#888;">Conectado como</div>
-            <div style="font-weight:bold; color:#3fa8ff;" id="dropdown-email">user@email.com</div>
-          </div>
-          <button id="btn-profile"
-            style="width:100%; padding:12px 15px; background:transparent; border:none; color:#3fa8ff; font-family:'Jura',sans-serif; font-size:0.95rem; cursor:pointer; text-align:left; transition:background 0.2s; border-bottom:1px solid rgba(63,168,255,0.1);">
-            👤 Mi Perfil
-          </button>
-          <button id="btn-logout"
-            style="width:100%; padding:12px 15px; background:transparent; border:none; color:#ff6b6b; font-family:'Jura',sans-serif; font-size:0.95rem; cursor:pointer; text-align:left; transition:background 0.2s;">
-            🚪 Cerrar Sesión
-          </button>
-        </div>
-      </div>
-
-
-
-    </div>
-  </header>
+  <!-- Global Header Container injected via Component -->
+  <div id="global-header-container"></div>
 
   <!-- Mobile navigation overlay -->
   <div class="mobile-nav-overlay" id="mobile-nav-overlay"></div>
@@ -214,7 +115,54 @@
 
     <!-- Center: Interactive Central Panel -->
     <section class="dash-central-tactical">
-      <!-- Módulos Predictivos Placeholder (Añadiremos el mapa aquí luego) -->
+
+      <!-- Top: HoloMap 3D -->
+      <div class="tactical-map-container scanline-effect">
+        <div class="tactical-header">
+          <span>🛰️ HOLOMAP 3D SECTOR</span>
+        </div>
+        <div id="tactical-map-view"></div>
+      </div>
+
+      <!-- Bottom Split: Weather & Sonar -->
+      <div class="tactical-bottom-grid">
+
+        <!-- Bottom Left: Weather API -->
+        <div class="tactical-weather-container scanline-effect">
+          <div class="tactical-header">
+            <span>🌪️ ATMOSPHERIC CONDITIONS</span>
+          </div>
+          <div class="weather-content" id="weather-widget">
+            <div class="weather-main">
+              <span class="weather-temp" id="weather-temp">--°C</span>
+              <span class="weather-desc" id="weather-desc">AWAITING TELEMETRY</span>
+            </div>
+            <div class="weather-details">
+              <div class="w-detail"><span class="w-label">WIND</span><span class="w-val" id="weather-wind">--
+                  km/h</span></div>
+              <div class="w-detail"><span class="w-label">HUMIDITY</span><span class="w-val" id="weather-hum">--%</span>
+              </div>
+              <div class="w-detail"><span class="w-label">PRESSURE</span><span class="w-val" id="weather-pres">--
+                  hPa</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Right: Radial Sonar -->
+        <div class="tactical-sonar-container scanline-effect">
+          <div class="tactical-header">
+            <span>📡 PROXIMITY SONAR</span>
+          </div>
+          <div class="sonar-wrapper">
+            <div class="sonar-grid"></div>
+            <div class="sonar-sweep"></div>
+            <div class="sonar-blips" id="sonar-blips-container">
+              <!-- Ping blips injected via JS -->
+            </div>
+          </div>
+        </div>
+
+      </div>
     </section>
 
     <!-- Right: Data Grid -->

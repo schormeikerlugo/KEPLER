@@ -12,20 +12,50 @@ export class MapLocation {
     }
 
     /**
-     * Request and fly to user's current GPS position
+     * Request and fly to user's current GPS position, with IP fallback
      */
     goToMyLocation() {
-        if (!navigator.geolocation) {
-            console.warn('Geolocation not supported');
-            this.controller.controls?.showToast?.('GPS no soportado en este navegador', 'error');
-            return;
-        }
-
         // Show loading state
         const btn = document.getElementById('map-btn-location');
         if (btn) btn.classList.add('loading');
 
         this.controller.controls?.showToast?.('Obteniendo ubicación...');
+
+        const fallbackToIP = async (reason) => {
+            console.warn(`GPS failed (${reason}), attempting IP fallback...`);
+            try {
+                const response = await fetch('https://ipapi.co/json/');
+                const data = await response.json();
+
+                if (data.error || !data.latitude || !data.longitude) {
+                    throw new Error('IP API return missing or error data');
+                }
+
+                console.log(`📡 IP Location: ${data.latitude}, ${data.longitude} (${data.city})`);
+
+                // Fly to position
+                this.controller.map.flyTo({
+                    center: [data.longitude, data.latitude],
+                    zoom: 14, // Slightly wider zoom for IP accuracy
+                    duration: 1500
+                });
+
+                // Set marker with a generic accuracy for IP
+                this.setUserMarker(data.latitude, data.longitude, 5000);
+
+                if (btn) btn.classList.remove('loading');
+                this.controller.controls?.showToast?.(`Ubicación aproximada (IP: ${data.city})`, 'success');
+            } catch (err) {
+                console.error('IP Fallback Error:', err);
+                if (btn) btn.classList.remove('loading');
+                this.controller.controls?.showToast?.('Error obteniendo ubicación (GPS e IP fallaron)', 'error');
+            }
+        };
+
+        if (!navigator.geolocation) {
+            fallbackToIP('API No Soportada');
+            return;
+        }
 
         navigator.geolocation.getCurrentPosition(
             (position) => {
@@ -46,17 +76,17 @@ export class MapLocation {
                 this.controller.controls?.showToast?.(`Ubicación encontrada (±${Math.round(accuracy)}m)`, 'success');
             },
             (error) => {
-                console.error('GPS Error:', error);
-                if (btn) btn.classList.remove('loading');
+                console.warn('GPS Error:', error);
 
-                let msg = 'Error obteniendo ubicación';
-                if (error.code === 1) msg = 'Permiso de ubicación denegado';
+                let msg = 'Error desconocido';
+                if (error.code === 1) msg = 'Permiso denegado';
                 if (error.code === 2) msg = 'Ubicación no disponible';
-                if (error.code === 3) msg = 'Timeout obteniendo ubicación';
+                if (error.code === 3) msg = 'Timeout';
 
-                this.controller.controls?.showToast?.(msg, 'error');
+                // Trigger IP fallback instead of outright failing
+                fallbackToIP(msg);
             },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+            { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
         );
     }
 

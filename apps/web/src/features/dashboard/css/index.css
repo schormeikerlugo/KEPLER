@@ -11,13 +11,14 @@
 @import './map-overlay.css';
 
 /* Layout Modules */
-@import '../modules/layout/header.css';
+@import '../../../components/Header/Header.css';
 @import '../modules/layout/mobile-menu.css';
 
 /* Feature Modules */
 @import '../modules/telemetry/telemetry.css';
 @import '../modules/data/grid.css';
 @import './central.css';
+@import './tactical.css';
 @import './tabs.css';
 
 /* Responsive MUST be last to override feature module base styles */

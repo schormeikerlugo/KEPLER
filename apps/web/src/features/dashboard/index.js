@@ -10,8 +10,9 @@ import { loadDashboardData } from './modules/data/index.js';
 import { MapController } from '../../features/map/MapController.js';
 import { showLoadingOverlay } from './modules/loading-overlay.js';
 import { initSystemStatus } from './modules/system-status.js';
-import { initMainMenu } from './modules/main-menu.js';
+import { initHeader } from '../../components/Header/Header.js';
 import { profileService } from '../../js/services/ProfileService.js';
+import { initTacticalGrid } from './modules/tactical.js';
 
 /**
  * Main render function - initializes the dashboard
@@ -31,11 +32,31 @@ export async function render(container) {
     }
 
     // Initialize UI Components
-    initMainMenu();     // Command Menu (Left)
+    await initHeader('global-header-container', { context: 'dashboard' });
     initSystemStatus(); // System Status (Right)
+    initTacticalGrid(); // Center Grid Elements (Weather & Sonar)
 
-    // Initialize Map Controller (Singleton for this view)
+    // Initialize Map Controller (Fullscreen Toggle)
     const mapController = new MapController('map-view-container');
+
+    // Initialize HoloMap 3D (Central Tactical Grid)
+    const tacticalMap = new MapController('tactical-map-view', true);
+    tacticalMap.init().then(() => {
+        document.getElementById('tactical-map-view').classList.add('holomap-active');
+
+        // 1. Hide all other objects/markers (only show user)
+        tacticalMap.objects = [];
+        tacticalMap.applyFilters();
+
+        // 2. Track and center on User Geolocation
+        if (tacticalMap.location) {
+            tacticalMap.location.goToMyLocation();
+            // Optionally, continuously track: tacticalMap.location.startTracking();
+        }
+
+        // Force a resize since it's inside a flex/grid container
+        setTimeout(() => tacticalMap.invalidateSize(), 500);
+    });
 
     // Setup Navigation (Map Toggle)
     setupNavigation(mapController);

@@ -1,15 +1,104 @@
 /* Base Features for Dedicated IA View */
+@import '../dashboard/css/base.css';
+@import '../../components/Header/Header.css';
+@import '../dashboard/css/modal.css';
+
 @import './chat/css/chat.css';
 @import './chat/css/stream.css';
 
-/* Override Chat Container to be Full Screen */
-.dash-ai-chat {
+/* Override Main Container to be centered */
+.dash-main.ia-dash-main {
+    max-width: 180vh;
+    margin: 0 auto;
     width: 100%;
-    height: 100%;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 120px);
+    min-height: 0;
+    padding: 20px;
+}
+
+/* Override Chat Container to be Full Screen within the constraint */
+.dash-ai-chat {
+
     border-radius: 12px;
     background: var(--bg-dash-primary);
     border: 1px solid rgba(63, 168, 255, 0.2);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     display: flex;
     flex-direction: column;
+}
+
+/* Responsive Desktop Sidebar Layout (Like Open WebUI) */
+@media (min-width: 900px) {
+    .dashboard-container {
+        height: 100vh;
+        overflow: hidden;
+        /* Prevents whole-page scrolling */
+        padding: 25px 40px;
+        box-sizing: border-box;
+    }
+
+    .dash-main.ia-dash-main {
+        display: grid;
+        grid-template-columns: 280px minmax(0, 1fr);
+        gap: 25px;
+        align-items: stretch;
+        /* Forces both Chat and History to be the exact same height */
+        flex: 1;
+        height: auto;
+        min-height: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+
+    /* Turn the Mobile Modal into a static layout block */
+    .history-modal {
+        display: flex !important;
+        /* Overrides JS display:none */
+        flex-direction: column;
+        min-height: 0;
+        /* Crucial: allows grid item to shrink */
+        position: static;
+        width: 100%;
+        height: 100%;
+        background: transparent;
+        backdrop-filter: none;
+        z-index: 1;
+    }
+
+    /* Let the inner box fill the grid column flexibly */
+    .history-content {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+        /* Forces scroll inside flex child */
+        width: 100%;
+        height: 100%;
+        max-width: none;
+        max-height: none;
+        margin: 0;
+        background: rgba(10, 15, 25, 0.5);
+        border: 1px solid rgba(63, 168, 255, 0.2);
+        box-shadow: none;
+        animation: none;
+        overflow: hidden;
+        /* Keeps the list scroll inside the box */
+    }
+
+    .btn-close-history {
+        display: none;
+    }
+
+    /* Chat area flexbox fills the right grid column */
+    .dash-ai-chat {
+        height: auto;
+        max-height: 100%;
+        min-height: 0;
+        /* Ensures the chat container never breaks out of the grid row limit */
+        margin: 0;
+        overflow: hidden;
+        /* Ensures inner flex behaves */
+    }
 }
