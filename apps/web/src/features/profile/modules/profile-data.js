@@ -4,6 +4,7 @@
  */
 
 import { auth, supabase } from '../../../js/auth.js';
+import { profileService } from '../../../js/services/ProfileService.js';
 
 /**
  * Load profile from database or create if not exists
@@ -66,7 +67,7 @@ export function populateProfileUI(user, profile) {
     setText('profile-member-since', formatDate(user.created_at));
 
     // Update avatar
-    updateAvatarDisplay(avatarUrl, userName);
+    updateAvatarDisplay();
 
     // Update role badge
     updateRoleBadge(profile?.role);
@@ -92,26 +93,28 @@ function formatDate(dateStr) {
 }
 
 /**
- * Update avatar display (image, emoji, or letter)
+ * Update avatar display (image, emoji, or letter) using ProfileService
  */
-function updateAvatarDisplay(avatarUrl, userName) {
+async function updateAvatarDisplay() {
     const avatarLetterEl = document.getElementById('profile-avatar-letter');
     const avatarContainerEl = document.querySelector('.profile-avatar-large');
 
     if (!avatarLetterEl || !avatarContainerEl) return;
 
-    if (avatarUrl && avatarUrl.startsWith('emoji:')) {
-        // Emoji avatar
-        avatarLetterEl.textContent = avatarUrl.replace('emoji:', '');
+    const avatarDisplay = await profileService.getAvatarDisplay();
+
+    if (avatarDisplay.type === 'emoji') {
+        avatarLetterEl.textContent = avatarDisplay.value;
         avatarContainerEl.style.backgroundImage = 'none';
-    } else if (avatarUrl && (avatarUrl.startsWith('http') || avatarUrl.startsWith('/'))) {
-        // Image URL - apply to parent container
+        avatarContainerEl.innerHTML = '<span id="profile-avatar-letter">' + avatarDisplay.value + '</span>';
+    } else if (avatarDisplay.type === 'image') {
         avatarLetterEl.textContent = '';
-        avatarContainerEl.style.backgroundImage = `url(${avatarUrl})`;
+        avatarContainerEl.style.backgroundImage = `url(${avatarDisplay.value})`;
+        avatarContainerEl.innerHTML = '';
     } else {
-        // Fallback to initial letter
-        avatarLetterEl.textContent = userName[0].toUpperCase();
+        avatarLetterEl.textContent = avatarDisplay.value;
         avatarContainerEl.style.backgroundImage = 'none';
+        avatarContainerEl.innerHTML = '<span id="profile-avatar-letter">' + avatarDisplay.value + '</span>';
     }
 }
 

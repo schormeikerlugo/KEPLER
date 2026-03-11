@@ -8,7 +8,14 @@ if (!supabaseUrl || !supabaseKey) {
     console.warn("Supabase credentials missing in .env");
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+    auth: {
+        // Use sessionStorage so the session expires when the tab/window closes
+        // (survives page navigation within the same tab, but NOT tab close)
+        persistSession: true,
+        storage: sessionStorage,
+    }
+});
 
 export const auth = {
     async login(email, password) {

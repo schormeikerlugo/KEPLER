@@ -153,8 +153,16 @@ async function setupProfile() {
         const logoutBtn = document.getElementById('btn-logout');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', async () => {
-                await auth.signOut();
+                await auth.logout();
                 window.location.href = '/login';
+            });
+        }
+
+        // View Profile
+        const myProfileBtn = document.getElementById('btn-profile');
+        if (myProfileBtn) {
+            myProfileBtn.addEventListener('click', () => {
+                window.location.href = '/profile';
             });
         }
     } catch (error) {

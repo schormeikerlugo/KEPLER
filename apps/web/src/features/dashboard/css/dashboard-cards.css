@@ -1,0 +1,452 @@
+/**
+ * Dashboard Cards & Tables
+ * Styles for Misiones, POIs, Objetos, Personas, Rutas
+ */
+
+/* ── Shared Card Style ── */
+.dash-card {
+    background: #111;
+    border-radius: 14px;
+    padding: 20px 24px;
+    position: relative;
+    overflow: hidden;
+}
+
+.card-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.card-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: 0.5px;
+}
+
+/* ── Cards Row (2 columns, but Misiones is wider) ── */
+.cards-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
+}
+
+#row-misiones {
+    grid-template-columns: 1.5fr 1fr;
+}
+
+/* ── Shared Table ── */
+.card-table-wrapper {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 245px;
+    /* ~5 rows + header */
+    scrollbar-width: none;
+    /* Firefox */
+}
+
+.card-table-wrapper::-webkit-scrollbar {
+    display: none;
+    /* Chrome/Safari/Edge */
+}
+
+.dash-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.dash-table thead th {
+    position: sticky;
+    top: 0;
+    background: #111;
+    z-index: 10;
+    text-align: left;
+    color: #666;
+    font-weight: 500;
+    padding: 8px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    white-space: nowrap;
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+}
+
+.dash-table tbody td {
+    padding: 10px;
+    color: #ccc;
+    vertical-align: middle;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.dash-table tbody tr {
+    transition: background 0.2s ease;
+    cursor: pointer;
+}
+
+.dash-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+/* View All Arrow */
+.view-all-arrow {
+    color: #555;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.view-all-arrow:hover {
+    color: #fff;
+}
+
+/* ── Status Badges ── */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.badge-activo {
+    background: rgba(0, 200, 120, 0.15);
+    color: #00c878;
+}
+
+.badge-completada {
+    background: rgba(63, 168, 255, 0.15);
+    color: #3FA8FF;
+}
+
+.badge-fallido {
+    background: rgba(255, 60, 60, 0.15);
+    color: #ff3c3c;
+}
+
+.badge-planificada {
+    background: rgba(255, 180, 0, 0.15);
+    color: #ffb400;
+}
+
+/* Security badges for rutas */
+.badge-seguro {
+    background: rgba(0, 200, 120, 0.15);
+    color: #00c878;
+}
+
+.badge-riesgo-medio {
+    background: rgba(255, 180, 0, 0.15);
+    color: #ffb400;
+}
+
+.badge-riesgo-alto {
+    background: rgba(255, 60, 60, 0.15);
+    color: #ff3c3c;
+}
+
+.badge-desconocido {
+    background: rgba(150, 150, 150, 0.15);
+    color: #999;
+}
+
+/* ── POIs Card (list style) ── */
+.pois-list {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.poi-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.poi-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.poi-item-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.poi-count-badge {
+    background: rgba(63, 168, 255, 0.15);
+    color: #3FA8FF;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    min-width: 24px;
+    text-align: center;
+}
+
+.poi-item-name {
+    color: #ccc;
+    font-size: 0.9rem;
+}
+
+.poi-color-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* Back navigation row */
+.poi-back-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    margin-bottom: 4px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+
+.poi-back-row:hover {
+    background: rgba(63, 168, 255, 0.08);
+}
+
+.poi-back-arrow {
+    color: #3FA8FF;
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.poi-back-label {
+    color: #3FA8FF;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+/* Zona label in item list */
+.poi-zona-label {
+    color: #555;
+    font-size: 0.75rem;
+    margin-right: 8px;
+}
+
+/* Detail card */
+.poi-detail-card {
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 10px;
+    border-left: 3px solid #3FA8FF;
+}
+
+.poi-detail-title {
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+}
+
+.poi-detail-desc {
+    color: #999;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    margin: 0 0 14px 0;
+}
+
+.poi-detail-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.poi-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.poi-meta-label {
+    color: #555;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.poi-meta-value {
+    color: #ccc;
+    font-size: 0.82rem;
+    font-weight: 500;
+}
+
+/* ── Objects Section (table + radar) ── */
+.objetos-layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 30px;
+    align-items: start;
+}
+
+.objetos-table-wrapper {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 245px;
+    /* ~5 rows + header */
+    scrollbar-width: none;
+    /* Firefox */
+}
+
+.objetos-table-wrapper::-webkit-scrollbar {
+    display: none;
+    /* Chrome/Safari/Edge */
+}
+
+.objetos-chart-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+}
+
+/* Color dot for object categories */
+.obj-color-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+/* ── Persona Avatar ── */
+.persona-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #222;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+/* ── Telemetry Bar ── */
+.telemetry-section {
+    margin-bottom: 0;
+}
+
+.telemetry-bar {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.telem-indicator {
+    background: #111;
+    border-radius: 14px;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 80px;
+    flex: 1;
+}
+
+.telem-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+}
+
+.telem-label {
+    font-size: 0.65rem;
+    color: #666;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+/* ── Alerts Section ── */
+.alerts-section {
+    background: #111;
+    border-radius: 14px;
+    padding: 20px 24px;
+}
+
+.alerts-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.alerts-icon {
+    font-size: 1.2rem;
+}
+
+.alerts-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 0;
+}
+
+.alerts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.alert-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.02);
+    border-left: none;
+    transition: background 0.2s;
+    cursor: pointer;
+}
+
+.alert-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.alert-item-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.alert-item-icon {
+    font-size: 1rem;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+
+.alert-svg-icon {
+    width: 35px;
+    height: 35px;
+    opacity: 0.9;
+    filter: brightness(1.1);
+}
+
+.alert-item-text {
+    color: #ccc;
+    font-size: 0.88rem;
+}
+
+.alert-item-text strong {
+    color: #3FA8FF;
+}
+
+.alert-item-arrow {
+    color: #444;
+    font-size: 1rem;
+}

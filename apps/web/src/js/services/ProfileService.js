@@ -106,6 +106,16 @@ class ProfileService {
     _resolveAvatarUrl(avatarUrl, userId) {
         if (!avatarUrl) return null;
 
+        // Fix Mixed Content (Electron HTTPS block):
+        // If the DB saved an insecure local IP (http:), rewrite it to the active Supabase URL origin
+        const storagePathMatch = avatarUrl.match(/\/storage\/v1\/object\/public\/.*/);
+        if (avatarUrl.startsWith('http:') && storagePathMatch) {
+            let supaEnv = import.meta.env.VITE_SUPABASE_URL || window.location.origin;
+            const supaOrigin = supaEnv.startsWith('/') ? window.location.origin + supaEnv : supaEnv;
+            const cleanOrigin = supaOrigin.endsWith('/') ? supaOrigin.slice(0, -1) : supaOrigin;
+            avatarUrl = `${cleanOrigin}${storagePathMatch[0]}`;
+        }
+
         // Check if we're accessing remotely (not localhost)
         const isRemote = !window.location.hostname.includes('localhost') &&
             !window.location.hostname.includes('127.0.0.1');

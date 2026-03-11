@@ -123,6 +123,49 @@ Historial de alertas del sistema (Event Feed).
 | `type` | VARCHAR(20) | Severidad: 'critical', 'warning', 'success', 'info'. |
 | `read` | BOOLEAN | Si ha sido vista u ocultada del HUD en vivo. |
 
+### 🗺️ Rutas y Navegación
+
+#### Tabla: `rutas_planificadas`
+Rutas pre-calculadas con distancia y nivel de riesgo.
+| Columna | Tipo | Descripción |
+| :--- | :--- | :--- |
+| `id` | UUID (PK) | ID de la ruta. |
+| `user_id` | UUID (FK) | Explorador propietario. |
+| `nombre` | TEXT | Nombre de la ruta (ej. "Ruta Ávila Norte"). |
+| `punto_control_destino` | TEXT | Destino final. |
+| `distancia_total` | NUMERIC(10,2) | Distancia en kilómetros. |
+| `estado_seguridad` | VARCHAR(50) | 'Seguro', 'Riesgo medio', 'Riesgo Alto', 'Desconocido'. |
+| `tipo_terreno` | TEXT | Tipo de terreno: `llano`, `asfalto`, `tierra`, `barro`, `rocoso`, `montaña`. Default: `tierra`. |
+| `waypoints` | JSONB | Array de coordenadas `[lat, lng]` opcionales. |
+
+### 🦾 Estado del Equipamiento
+
+#### Tabla: `estado_equipamiento`
+Registro vivo del desgaste de ítems clave del explorador.
+| Columna | Tipo | Descripción |
+| :--- | :--- | :--- |
+| `id` | UUID (PK) | ID del registro. |
+| `user_id` | UUID (FK) | Explorador propietario. |
+| `item_nombre` | TEXT | Nombre del ítem (ej. "Resistencia", "Desgaste del calzado"). |
+| `porcentaje_condicion` | NUMERIC(5,2) | Porcentaje de condición (0–100). |
+| `categoria` | VARCHAR(50) | 'vital', 'hardware', 'ropa', 'general'. |
+
+### 👤 Entidades Biométricas
+
+#### Tabla: `entidades_biometricas`
+Personas/entidades encontradas durante expediciones.
+| Columna | Tipo | Descripción |
+| :--- | :--- | :--- |
+| `id` | UUID (PK) | ID de la entidad. |
+| `user_id` | UUID (FK) | Explorador que la descubrió. |
+| `mission_id` | UUID (FK) | Misión durante la cual se encontró (opcional). |
+| `nombre` | TEXT | Nombre o alias. Default: 'Desconocido'. |
+| `categoria` | TEXT | Tipo de entidad. Default: 'Individuos'. |
+| `zona_localizado` | TEXT | Zona geográfica del hallazgo. |
+| `lat` / `lng` | DOUBLE PRECISION | Coordenadas. |
+| `image_url` | TEXT | Referencia al bucket de Storage. |
+| `hostilidad` | VARCHAR(50) | 'Aliado', 'Neutral', 'Hostil', 'Desconocido'. |
+
 ---
 
 ## 🗂️ Storage (Buckets)

@@ -1,0 +1,358 @@
+/**
+ * Dashboard Right Sidebar
+ * Tips, Profile Stats, Weekly Chart, News
+ */
+
+.dash-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0;
+}
+
+/* ── Shared Sidebar Card ── */
+.sidebar-card {
+    background: #111;
+    border-radius: 14px;
+    padding: 20px;
+}
+
+.sidebar-card-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 0 0 12px 0;
+}
+
+/* ── Tips Card ── */
+.sidebar-tip-text {
+    color: #aaa;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* ── Profile Card ── */
+.sidebar-profile-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 24px;
+    padding-top: 10px;
+}
+
+/* Oval avatar matching header style, but larger */
+.sidebar-avatar-container {
+    position: relative;
+    width: 72px;
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sidebar-avatar-bg {
+    position: absolute;
+    inset: 0;
+    background: rgba(50, 50, 60, 0.65);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 152px;
+}
+
+.sidebar-avatar {
+    position: relative;
+    z-index: 1;
+    width: 58px;
+    height: 86px;
+    border-radius: 152px;
+    background: linear-gradient(135deg, #3FA8FF, #0088ff);
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: #000;
+    font-size: 1.3rem;
+    overflow: hidden;
+}
+
+.sidebar-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 152px;
+}
+
+.sidebar-profile-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.sidebar-profile-name {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.sidebar-profile-role {
+    font-size: 0.8rem;
+    color: #888;
+}
+
+/* ── Equipment Progress Bars ── */
+.sidebar-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.stat-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.stat-icon {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+/* ── News Header (with expand button) ── */
+.sidebar-news-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.sidebar-news-header .sidebar-card-title {
+    margin: 0;
+}
+
+.sidebar-news-expand-btn {
+    background: rgba(63, 168, 255, 0.1);
+    border: 1px solid rgba(63, 168, 255, 0.3);
+    color: #3FA8FF;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.sidebar-news-expand-btn:hover {
+    background: rgba(63, 168, 255, 0.25);
+}
+
+/* ── IA Analysis Modal ── */
+.ia-analysis-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+}
+
+.ia-analysis-content {
+    background: #111;
+    border-radius: 16px;
+    border: 1px solid rgba(63, 168, 255, 0.2);
+    max-width: 600px;
+    width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+.ia-analysis-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ia-analysis-header h3 {
+    color: #fff;
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.ia-analysis-close {
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.ia-analysis-close:hover {
+    color: #fff;
+}
+
+.ia-analysis-body {
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.ia-section {
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 10px;
+    border-left: 3px solid #3FA8FF;
+}
+
+.ia-section-title {
+    color: #fff;
+    font-size: 0.95rem;
+    margin: 0 0 8px 0;
+}
+
+.ia-section-text {
+    color: #aaa;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.stat-name {
+    font-size: 0.82rem;
+    color: #aaa;
+    font-weight: 500;
+}
+
+.stat-bar-wrapper {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.stat-bar-fill {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.8s cubic-bezier(0.25, 0.8, 0.25, 1), background 0.3s ease;
+}
+
+/* Percentage label next to stat name */
+.stat-value-label {
+    margin-left: auto;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #ccc;
+    font-family: var(--font-jura, monospace);
+}
+
+/* Climate indicator row */
+.stat-clima {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    margin-top: 4px;
+}
+
+.stat-clima span:first-child {
+    font-size: 1.1rem;
+}
+
+.stat-clima-text {
+    font-size: 0.8rem;
+    color: #888;
+    text-transform: capitalize;
+}
+
+.stat-clima-separator {
+    color: #444;
+    font-size: 0.9rem;
+}
+
+/* ── Weekly Chart Section ── */
+.sidebar-chart-section {
+    margin-bottom: 0;
+}
+
+.sidebar-chart-header {
+    margin-bottom: 10px;
+}
+
+.sidebar-chart-title {
+    display: block;
+    font-size: 0.82rem;
+    color: #888;
+    margin-bottom: 4px;
+}
+
+.sidebar-chart-value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #3FA8FF;
+}
+
+.sidebar-chart-label {
+    font-size: 0.75rem;
+    color: #666;
+    margin-left: 6px;
+}
+
+/* ── News List ── */
+.sidebar-news-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sidebar-news-item {
+    color: #aaa;
+    font-size: 0.85rem;
+    padding-left: 14px;
+    position: relative;
+    line-height: 1.4;
+}
+
+.sidebar-news-item::before {
+    content: '•';
+    position: absolute;
+    left: 0;
+    color: #3FA8FF;
+    font-weight: bold;
+}

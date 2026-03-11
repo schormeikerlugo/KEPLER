@@ -47,172 +47,253 @@
     </div>
   </nav>
 
-  <!-- Main Content Grid -->
-  <div class="dash-main">
+  <!-- ========================================= -->
+  <!-- MAIN DASHBOARD BODY (2-column layout)     -->
+  <!-- ========================================= -->
+  <div class="dash-body">
 
-    <!-- Left: Telemetry Panel -->
-    <aside class="dash-telemetry scanline-effect">
-      <h3 class="telem-title">Telemetría</h3>
+    <!-- LEFT/MAIN CONTENT COLUMN -->
+    <main class="dash-content">
 
-      <div class="telem-tactical-grid">
-        <!-- Card 1: O2 -->
-        <div class="telem-card">
-          <div class="card-header">BIOMETRICS - O2 TANK</div>
-          <div class="card-value" id="telem-o2">96%</div>
-          <div class="card-chart" id="chart-o2"></div>
-        </div>
-
-        <!-- Card 2: BPM -->
-        <div class="telem-card">
-          <div class="card-header">BIOMETRICS - BPM <span style="color:#3FA8FF">♥</span></div>
-          <div class="card-value" id="telem-bpm">75</div>
-          <div class="card-chart" id="chart-bpm"></div>
-        </div>
-
-        <!-- Card 3: RAD -->
-        <div class="telem-card">
-          <div class="card-header">EQUIPMENT STATUS - RAD</div>
-          <div class="card-value warning" id="telem-rad">0.011 <span class="unit">mSv/h</span></div>
-          <div class="card-chart" id="chart-rad"></div>
-        </div>
-
-        <!-- Card 4: PWR -->
-        <div class="telem-card">
-          <div class="card-header">SUIT POWER - BATTERY</div>
-          <div class="card-value" id="telem-pwr">100%</div>
-          <div class="card-chart" id="chart-pwr"></div>
-        </div>
-
-        <!-- Card 5: DIST -->
-        <div class="telem-card">
-          <div class="card-header">TACTICAL ROUTE - DIST</div>
-          <div class="card-value" id="telem-dist">0.0 <span class="unit">km</span></div>
-          <div class="card-chart" id="chart-dist"></div>
-        </div>
-
-        <!-- Card 6: CREW -->
-        <div class="telem-card">
-          <div class="card-header">TEAM STATUS - CREW</div>
-          <div class="card-value" id="telem-crew">1 <span class="unit">Active</span></div>
-          <div class="card-chart" id="chart-crew"></div>
-        </div>
-
-        <!-- Card 7: TEMP -->
-        <div class="telem-card">
-          <div class="card-header">ENVIRONMENT - TEMP</div>
-          <div class="card-value" id="telem-temp">20 <span class="unit">°C</span></div>
-          <div class="card-chart" id="chart-temp"></div>
-        </div>
-
-        <!-- Card 8: OBJ -->
-        <div class="telem-card">
-          <div class="card-header">SONAR - OBJECTS</div>
-          <div class="card-value" id="telem-nearby-obj">0 <span class="unit">Ping</span></div>
-          <div class="card-chart" id="chart-obj"></div>
-        </div>
-      </div>
-    </aside>
-
-    <!-- Center: Interactive Central Panel -->
-    <section class="dash-central-tactical">
-
-      <!-- Top: HoloMap 3D -->
-      <div class="tactical-map-container scanline-effect">
-        <div class="tactical-header">
-          <span>🛰️ HOLOMAP 3D SECTOR</span>
-        </div>
-        <div id="tactical-map-view"></div>
-      </div>
-
-      <!-- Bottom Split: Weather & Sonar -->
-      <div class="tactical-bottom-grid">
-
-        <!-- Bottom Left: Weather API -->
-        <div class="tactical-weather-container scanline-effect">
-          <div class="tactical-header">
-            <span>🌪️ ATMOSPHERIC CONDITIONS</span>
+      <!-- ── Telemetry Bar (Horizontal, 8 indicators) ── -->
+      <section class="telemetry-section">
+        <h2 class="section-title">Telemetría</h2>
+        <div class="telemetry-bar" id="telemetry-bar">
+          <div class="telem-indicator" id="telem-temp">
+            <span class="telem-value">20°C</span>
+            <span class="telem-label">TEMP</span>
           </div>
-          <div class="weather-content" id="weather-widget">
-            <div class="weather-main">
-              <span class="weather-temp" id="weather-temp">--°C</span>
-              <span class="weather-desc" id="weather-desc">AWAITING TELEMETRY</span>
+          <div class="telem-indicator" id="telem-o2">
+            <span class="telem-value">96%</span>
+            <span class="telem-label">O2</span>
+          </div>
+          <div class="telem-indicator" id="telem-bpm">
+            <span class="telem-value">75</span>
+            <span class="telem-label">BPM</span>
+          </div>
+          <div class="telem-indicator" id="telem-rad">
+            <span class="telem-value">0.011</span>
+            <span class="telem-label">RAD</span>
+          </div>
+          <div class="telem-indicator" id="telem-batt">
+            <span class="telem-value">100%</span>
+            <span class="telem-label">BATT</span>
+          </div>
+          <div class="telem-indicator" id="telem-link">
+            <span class="telem-value">98%</span>
+            <span class="telem-label">LINK</span>
+          </div>
+          <div class="telem-indicator" id="telem-temp-s">
+            <span class="telem-value">20°C</span>
+            <span class="telem-label">TEMP S.</span>
+          </div>
+          <div class="telem-indicator" id="telem-humidity">
+            <span class="telem-value">20°C</span>
+            <span class="telem-label">TEMP</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Alerts Section ── -->
+      <section class="alerts-section" id="alerts-section">
+        <div class="alerts-header">
+          <span class="alerts-icon">⚠️</span>
+          <h3 class="alerts-title">Aviso: estas Acciones necesitan de tu atencion</h3>
+        </div>
+        <div class="alerts-list" id="alerts-list">
+          <!-- Populated by alerts.js -->
+        </div>
+      </section>
+
+      <!-- ── Row 1: Misiones + POIs ── -->
+      <div class="cards-row" id="row-misiones">
+
+        <!-- Misiones Card -->
+        <section class="dash-card card-misiones">
+          <div class="card-header-row">
+            <h3 class="card-title">Misiones</h3>
+          </div>
+          <div class="card-table-wrapper">
+            <table class="dash-table" id="misiones-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Titulo</th>
+                  <th>Estado</th>
+                  <th>Fecha</th>
+                  <th>View all</th>
+                </tr>
+              </thead>
+              <tbody id="misiones-tbody">
+                <!-- Populated by missions-card.js -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- POIs Card -->
+        <section class="dash-card card-pois">
+          <div class="card-header-row">
+            <h3 class="card-title">POIs</h3>
+          </div>
+          <div class="pois-list" id="pois-list">
+            <!-- Populated by pois-card.js -->
+          </div>
+        </section>
+
+      </div>
+
+      <!-- ── Objects Section (full width: table + radar chart) ── -->
+      <section class="dash-card card-objetos">
+        <div class="card-header-row">
+          <h3 class="card-title">Objetos encontrados</h3>
+        </div>
+        <div class="objetos-layout">
+          <div class="objetos-table-wrapper">
+            <table class="dash-table" id="objetos-table">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>ID</th>
+                  <th>Nombre</th>
+                  <th>Categoría</th>
+                  <th>Cantidad</th>
+                  <th>View all</th>
+                </tr>
+              </thead>
+              <tbody id="objetos-tbody">
+                <!-- Populated by objects-card.js -->
+              </tbody>
+            </table>
+          </div>
+          <div class="objetos-chart-wrapper">
+            <canvas id="objetos-radar-chart" width="280" height="280"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Row 2: Personas + Rutas ── -->
+      <div class="cards-row">
+
+        <!-- Personas Card -->
+        <section class="dash-card card-personas">
+          <div class="card-header-row">
+            <h3 class="card-title">Personas encontradas</h3>
+          </div>
+          <div class="card-table-wrapper">
+            <table class="dash-table" id="personas-table">
+              <thead>
+                <tr>
+                  <th>Img</th>
+                  <th>Nombre</th>
+                  <th>Categoría</th>
+                  <th>Localizado</th>
+                  <th>View all</th>
+                </tr>
+              </thead>
+              <tbody id="personas-tbody">
+                <!-- Populated by personas-card.js -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Rutas Card -->
+        <section class="dash-card card-rutas">
+          <div class="card-header-row">
+            <h3 class="card-title">Rutas</h3>
+          </div>
+          <div class="card-table-wrapper">
+            <table class="dash-table" id="rutas-table">
+              <thead>
+                <tr>
+                  <th>Punto de control</th>
+                  <th>Distancia total</th>
+                  <th>Estado de seguridad</th>
+                  <th>View all</th>
+                </tr>
+              </thead>
+              <tbody id="rutas-tbody">
+                <!-- Populated by rutas-card.js -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </div>
+
+    </main>
+
+    <!-- RIGHT SIDEBAR -->
+    <aside class="dash-sidebar">
+
+      <!-- Consejos del Día -->
+      <div class="sidebar-card sidebar-tips">
+        <h4 class="sidebar-card-title">Consejos del dia</h4>
+        <p class="sidebar-tip-text" id="sidebar-tip-text">Cargando consejo...</p>
+      </div>
+
+      <!-- Profile Stats -->
+      <div class="sidebar-card sidebar-profile">
+        <div class="sidebar-profile-header">
+          <div class="sidebar-avatar-container">
+            <div class="sidebar-avatar-bg"></div>
+            <div class="sidebar-avatar" id="sidebar-avatar"></div>
+          </div>
+          <div class="sidebar-profile-info">
+            <span class="sidebar-profile-name" id="sidebar-profile-name">Explorer</span>
+            <span class="sidebar-profile-role" id="sidebar-profile-role">⚡ Explorador</span>
+          </div>
+        </div>
+
+        <!-- Equipment Bars -->
+        <div class="sidebar-stats" id="sidebar-stats">
+          <!-- Populated by sidebar.js -->
+        </div>
+
+        <!-- Weekly Distance Chart -->
+        <div class="sidebar-chart-section">
+          <div class="sidebar-chart-header">
+            <span class="sidebar-chart-title">Distancia recorrida semanal (KM)</span>
+            <span class="sidebar-chart-value" id="sidebar-weekly-km">0.0 KM</span>
+            <span class="sidebar-chart-label">Recorridos</span>
+          </div>
+          <canvas id="sidebar-weekly-chart" width="280" height="120"></canvas>
+        </div>
+      </div>
+
+      <!-- Novedades de la IA -->
+      <div class="sidebar-card sidebar-news">
+        <div class="sidebar-news-header">
+          <h4 class="sidebar-card-title">Novedades de la IA</h4>
+          <button class="sidebar-news-expand-btn" id="sidebar-news-expand" title="Expandir">⤢</button>
+        </div>
+        <ul class="sidebar-news-list" id="sidebar-news-list">
+          <!-- Populated by sidebar.js -->
+        </ul>
+      </div>
+
+      <!-- AI Analysis Modal (expanded view) -->
+      <div class="ia-analysis-modal" id="ia-analysis-modal" style="display:none;">
+        <div class="ia-analysis-content">
+          <div class="ia-analysis-header">
+            <h3>🤖 Análisis de la IA</h3>
+            <button class="ia-analysis-close" id="ia-analysis-close">×</button>
+          </div>
+          <div class="ia-analysis-body">
+            <div class="ia-section">
+              <h4 class="ia-section-title">🗺️ Optimización de Rutas</h4>
+              <p class="ia-section-text" id="ia-route-analysis">Analizando rutas guardadas...</p>
             </div>
-            <div class="weather-details">
-              <div class="w-detail"><span class="w-label">WIND</span><span class="w-val" id="weather-wind">--
-                  km/h</span></div>
-              <div class="w-detail"><span class="w-label">HUMIDITY</span><span class="w-val" id="weather-hum">--%</span>
-              </div>
-              <div class="w-detail"><span class="w-label">PRESSURE</span><span class="w-val" id="weather-pres">--
-                  hPa</span></div>
+            <div class="ia-section">
+              <h4 class="ia-section-title">🔬 Hallazgos Recientes</h4>
+              <p class="ia-section-text" id="ia-discovery-analysis">Procesando objetos descubiertos...</p>
+            </div>
+            <div class="ia-section">
+              <h4 class="ia-section-title">📡 Lectura de Zona Actual</h4>
+              <p class="ia-section-text" id="ia-zone-analysis">Esperando datos de telemetría...</p>
             </div>
           </div>
-        </div>
-
-        <!-- Bottom Right: Radial Sonar -->
-        <div class="tactical-sonar-container scanline-effect">
-          <div class="tactical-header">
-            <span>📡 PROXIMITY SONAR</span>
-          </div>
-          <div class="sonar-wrapper">
-            <div class="sonar-grid"></div>
-            <div class="sonar-sweep"></div>
-            <div class="sonar-blips" id="sonar-blips-container">
-              <!-- Ping blips injected via JS -->
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </section>
-
-    <!-- Right: Data Grid -->
-    <aside class="dash-data-grid">
-
-      <!-- POIs Card -->
-      <div class="data-card">
-        <div class="data-card-header">
-          <img src="/icons/dashboard/POIs.svg" alt="POIs" class="card-icon-img" />
-          <span class="card-title">POIs</span>
-          <span class="data-count" id="pois-count">20</span>
-        </div>
-        <div class="data-list" id="pois-list">
-          <!-- Dynamically populated -->
-        </div>
-      </div>
-
-      <!-- Minerals Card -->
-      <div class="data-card">
-        <div class="data-card-header">
-          <img src="/icons/dashboard/Minerals.svg" alt="Minerals" class="card-icon-img" />
-          <span class="card-title">Minerals</span>
-          <span class="data-count" id="minerals-count">85</span>
-        </div>
-        <div class="data-list" id="minerals-list">
-          <!-- Dynamically populated -->
-        </div>
-      </div>
-
-      <!-- Missions Card -->
-      <div class="data-card">
-        <div class="data-card-header">
-          <img src="/icons/dashboard/Missions.png" alt="Missions" class="card-icon-img" />
-          <span class="card-title">Missions</span>
-          <span class="data-count" id="missions-count">24</span>
-        </div>
-        <div class="data-list" id="missions-list">
-          <!-- Dynamically populated -->
-        </div>
-      </div>
-
-      <!-- Objects Card -->
-      <div class="data-card">
-        <div class="data-card-header">
-          <img src="/icons/dashboard/Objects.svg" alt="Objects" class="card-icon-img" />
-          <span class="card-title">Objects</span>
-          <span class="data-count" id="objects-count">85</span>
-        </div>
-        <div class="data-list" id="objects-list">
-          <!-- Dynamically populated -->
         </div>
       </div>
 
@@ -223,12 +304,7 @@
   <!-- Map View Section (Fullscreen Overlay) -->
   <div id="map-view-section" class="map-view-section"
     style="display:none; width:100%; height:100vh; position:fixed; top:0; left:0; background:#050a14; z-index:150;">
-
-    <!-- Floating Back Button -->
-    <!-- Floating Back Button (Hidden, triggered from menu) -->
     <button id="btn-close-map" class="map-back-btn" style="display: none;">← VOLVER</button>
-
-    <!-- Map Container (full screen) -->
     <div id="map-view-container" style="width:100%; height:100vh;"></div>
   </div>
 </div>
@@ -242,8 +318,6 @@
       <button id="btn-close-mission" class="btn-close-history">×</button>
     </div>
     <div style="padding:25px; color:white; display:flex; flex-direction:column; gap:15px;">
-
-      <!-- Loading Progress Bar -->
       <div id="mission-loading-bar" style="display:none;">
         <div style="background:rgba(0,100,200,0.2); border-radius:10px; overflow:hidden; height:6px;">
           <div id="mission-loading-progress"
@@ -253,8 +327,6 @@
         <span id="mission-loading-text" style="font-size:0.75rem; color:#00aaff; display:block; margin-top:5px;">⏳
           Detectando ubicación...</span>
       </div>
-
-      <!-- Auto-generated Mission Name -->
       <div>
         <label style="display:block; margin-bottom:8px; color:#00aaff; font-weight:bold;">NOMBRE DE MISIÓN</label>
         <input type="text" id="inp-dash-mission-title" readonly
@@ -262,8 +334,6 @@
         <span style="font-size:0.7rem; color:#555; display:block; margin-top:3px;">📝 Puedes editar esto después de la
           misión</span>
       </div>
-
-      <!-- Zone (auto-filled by GPS) -->
       <div>
         <label style="display:block; margin-bottom:8px; color:#00aaff; font-weight:bold;">📍 ZONA DETECTADA</label>
         <input type="text" id="inp-dash-mission-zone" readonly
@@ -271,8 +341,6 @@
         <span id="zone-description-helper"
           style="font-size:0.75rem; color:#00ff88; display:none; margin-top:5px; line-height:1.4;"></span>
       </div>
-
-      <!-- AI Model Version Selector -->
       <div style="margin-top:10px;">
         <label style="display:block; margin-bottom:8px; color:#00aaff; font-weight:bold;">MOTOR DE IA</label>
         <select id="select-ai-model-version" disabled
@@ -283,7 +351,6 @@
           💡 Inferencia de alta velocidad procesada vía WebSockets
         </span>
       </div>
-
       <div style="margin-top:10px; display:flex; gap:10px;">
         <button id="btn-confirm-start-mission" disabled
           style="flex:1; padding:14px; background:#555; border:none; color:#999; font-weight:bold; cursor:not-allowed; border-radius:10px; font-family:'Jura',sans-serif; transition:all 0.3s;">
@@ -294,7 +361,6 @@
   </div>
 </div>
 
-
 <!-- History Modal -->
 <div class="history-modal" id="history-modal">
   <div class="history-content">
@@ -302,12 +368,6 @@
       <h3>Historial de Conversaciones</h3>
       <button id="btn-close-history" class="btn-close-history">×</button>
     </div>
-    <div class="history-list" id="history-list">
-      <!-- Dyn items -->
-    </div>
+    <div class="history-list" id="history-list"></div>
   </div>
-</div>
-
-
-
 </div>

@@ -1,0 +1,69 @@
+/**
+ * personas-card.js
+ * Dashboard Personas Card
+ * Displays encountered biometric entities
+ */
+import { supabase } from '../../../js/auth.js';
+import { auth } from '../../../js/auth.js';
+
+/**
+ * Initialize the personas card
+ */
+export async function initPersonasCard() {
+    const tbody = document.getElementById('personas-tbody');
+    if (!tbody) return;
+
+    const user = await auth.getUser();
+    if (!user) return;
+
+    const personas = await fetchPersonas(user.id);
+    renderPersonasTable(tbody, personas);
+}
+
+/**
+ * Fetch entidades_biometricas for the user
+ */
+async function fetchPersonas(userId) {
+    const { data, error } = await supabase
+        .from('entidades_biometricas')
+        .select('id, nombre, categoria, zona_localizado, image_url')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+    if (error) { console.error('[Personas] Fetch error:', error); return []; }
+    return data || [];
+}
+
+/**
+ * Generate a placeholder avatar (colored circle with initial)
+ */
+function getAvatarHTML(persona) {
+    if (persona.image_url) {
+        return `<img src="${persona.image_url}" class="persona-avatar" alt="${persona.nombre}" />`;
+    }
+    const initial = (persona.nombre || '?')[0].toUpperCase();
+    const colors = ['#ff6b6b', '#ffa94d', '#69db7c', '#74c0fc', '#b197fc'];
+    const color = colors[initial.charCodeAt(0) % colors.length];
+    return `<div class="persona-avatar" style="background:${color}; display:flex; align-items:center; justify-content:center; font-size:0.75rem; color:#fff; font-weight:bold;">${initial}</div>`;
+}
+
+/**
+ * Render personas data into the table body
+ */
+function renderPersonasTable(tbody, personas) {
+    if (personas.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="color:#555; text-align:center; padding:20px;">No hay personas registradas</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = personas.map(p => `
+        <tr>
+            <td>${getAvatarHTML(p)}</td>
+            <td>${p.nombre}</td>
+            <td style="color:#888">${p.categoria}</td>
+            <td style="color:#888">${p.zona_localizado || '—'}</td>
+            <td><span class="view-all-arrow">›</span></td>
+        </tr>
+    `).join('');
+}

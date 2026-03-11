@@ -11,6 +11,7 @@
  */
 
 import { auth } from '../../js/auth.js';
+import { NotificationSystem } from '../../js/components/NotificationSystem.js';
 
 // Import modules
 import { loadProfile, populateProfileUI } from './modules/profile-data.js';
@@ -24,6 +25,12 @@ import { setupAiAvatar } from './modules/ai-avatar.js';
  * Main initialization function - initializes the profile page
  */
 export async function init() {
+    // Initialize notifications
+    window.kepler = window.kepler || {};
+    if (!window.kepler.notify) {
+        window.kepler.notify = new NotificationSystem();
+    }
+
     // Get current user
     const user = await auth.getUser();
     if (!user) {

@@ -7,7 +7,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Fase-Entrenamiento_Terrestre-cyan?style=for-the-badge&logo=target&logoColor=black" alt="Fase">
   <img src="https://img.shields.io/badge/Estado-Activo-green?style=for-the-badge&logo=statuspage&logoColor=black" alt="Estado">
-  <img src="https://img.shields.io/badge/Versión-0.5.0_Beta-blue?style=for-the-badge&logo=semver&logoColor=white" alt="Versión">
+  <img src="https://img.shields.io/badge/Versión-0.6.0_Beta-blue?style=for-the-badge&logo=semver&logoColor=white" alt="Versión">
 </p>
 
 ```
@@ -148,32 +148,47 @@ KEPLER no depende de la nube para funcionar. Su arquitectura está diseñada par
 | 🧠 **Cortex AI** | ✅ Activo | Análisis semántico profundo (CLIP + Mistral 7B). |
 | 💬 **AI Chat** | ✅ Activo | Chat streaming con intents inteligentes, tablas comparativas y títulos contextuales. |
 | 🗺️ **HoloMap** | ✅ Activo | Mapa táctico 3D (MapLibre) con filtros Odradek y tracking GPS. |
-| 📊 **Dashboard** | ✅ Activo | Telemetría vital, gestión de misiones y chat integrado. |
+| 📊 **Dashboard** | 🆕 v2 | Cards modulares, stats del explorador, POIs con drill-down, clima real, radar chart. |
 | 📂 **Archives** | ✅ Activo | Base de datos vectorial de hallazgos. |
 | 🔔 **Realtime** | ✅ Activo | Alertas en tiempo real vía WebSocket (Supabase Realtime). |
 | 👤 **Perfil** | ✅ Activo | Gestión de usuario y personalización de avatar del asistente IA. |
-| 📱 **Mobile AI** 
-```| ✅ Nuevo | Optimizaciones automáticas para móvil (256px, 1 hilo, sin precarga). |
-| 📍 **GPS + IA** | ✅ Nuevo | Descripción automática de zona con GPS + Nominatim + Mistral. |
+| 🛡️ **Session Guard** | 🆕 Nuevo | Auto-logout por inactividad (15 min) y cierre de pestaña (sessionStorage). |
+| 🌤️ **Weather** | 🆕 Nuevo | Clima real vía Open-Meteo API con clasificación KEPLER y cache. |
+| 📍 **POIs** | 🆕 Nuevo | Puntos de Interés con 4 categorías, drill-down y detalle con coordenadas. |
+| 📱 **Mobile AI** | ✅ Activo | Optimizaciones automáticas para móvil (256px, 1 hilo, sin precarga). |
+| 📍 **GPS + IA** | ✅ Activo | Descripción automática de zona con GPS + Nominatim + Mistral. |
 
 ---
 
-## 📱 Novedades v0.5.0 (Mobile & GPS)
+## 📊 Novedades v0.6.0 (Dashboard v2 + Explorer Stats)
 
-### Optimizaciones Móviles Automáticas
-El sistema detecta dispositivos móviles y ajusta la IA automáticamente:
-- **Resolución reducida:** 256px (vs 640px en desktop) = ~85% menos RAM
-- **Single-thread:** 1 hilo CPU para evitar errores de SharedArrayBuffer en HTTP
-- **Precarga desactivada:** El modelo YOLO se carga bajo demanda, no en la pantalla de carga
-- **WebGPU desactivado:** Forzado a WASM para máxima compatibilidad
+### Dashboard Modular
+Rediseño completo del dashboard en **módulos independientes** (cada card es un archivo JS separado):
+- **Misiones Recientes** — Tabla con badges de estado y scrolling oculto
+- **Objetos Encontrados** — Tabla + Radar Chart (Canvas API) por categoría
+- **POIs** — Drill-down interactivo: Categorías → Items → Detalle con coords/riesgo/zona
+- **Personas Detectadas** — Tabla con avatares
+- **Rutas Planificadas** — Distancia + seguridad + tipo de terreno
+- **Alertas** — Acciones pendientes con iconos SVG del diseño Figma
 
-### Descripción de Zona con GPS + IA
-Al iniciar una misión, el sistema:
-1. 📍 Obtiene tu ubicación GPS
-2. 🗺️ Convierte coordenadas a nombre de lugar (Nominatim/OpenStreetMap)
-3. 🤖 Genera descripción con Mistral 7B incluyendo clima, terreno y fauna
+### Explorer Stats (Backend Microservice)
+Nuevo endpoint `GET /api/explorer/stats` que calcula:
+- **👟 Desgaste del Calzado** — Acumulativo (km × terreno × clima)
+- **⚡ Resistencia Física** — Dinámica (baja con misiones, sube con descanso)
+- Clima real vía **Open-Meteo API** con geolocalización GPS → IP fallback
+- Barras de progreso con color dinámico (verde/amarillo/rojo)
 
-La descripción se guarda con la misión para uso en reportes y chat.
+### POIs (Puntos de Interés)
+Nueva tabla `puntos_interes` con 4 categorías (`poi_categorias`):
+- 🏥 Centros de salud · ⛺ Puntos de descanso · 🔬 Sitios de muestra · ⚠️ Sitios Peligroso
+- Drill-down: click categoría → lista de items → detalle con descripción, nivel de riesgo, coordenadas y estado
+- Preparado para integración con AR (lat/lng, metadata JSONB, imagen)
+
+### Session Guard
+Gestión automática de sesión:
+- `sessionStorage` en Supabase: sesión expira al cerrar pestaña/ventana
+- Timer de inactividad: logout automático tras 15 minutos sin interacción
+- Navegación entre secciones preserva la sesión correctamente
 
 ---
 
@@ -224,16 +239,22 @@ KEPLER incluye un sistema de notificaciones en tiempo real para mantener a los u
 
 ## 📚 Documentación Técnica
 
-La documentación ha sido reorganizada para facilitar el desarrollo:
+La documentación está organizada en `docs/backend/` y `docs/frontend/` con un [índice central](docs/README.md):
 
-*   **[🎨 Frontend Architecture](docs/frontend.md)**: UI Design, Animaciones Holográficas, Vite.
-*   **[🗺️ Map System](docs/map.md)**: MapLibre, Odradek Theme, Tile Proxy & Layers.
-*   **[⚙️ Backend & AI Services](docs/backend.md)**: FastAPI, Python, Mistral 7B, CLIP.
-*   **[⚡ Database & Cloud](docs/supabase.md)**: Esquema PostgreSQL, Auth, Vector Search.
-*   **[🧠 Hybrid AI System](docs/ia.md)**: Detalles sobre la integración Edge-Cloud AI.
-*   **[🔔 Realtime, Notificaciones y Sync Offline](docs/realtime.md)**: WebSocket, Alertas, Bitácora, Sincronización.
-*   **[📊 Dashboard & UI Components](docs/dashboard.md)**: Header Refactor, Command Menu, System Status.
-*   **[⏳ Loading & Caching System](docs/loading-system.md)**: Initialization tasks, Model Preloading.
+**Backend:**
+*   **[⚙️ API Endpoints](docs/backend/api-endpoints.md)**: Stack, endpoints FastAPI, Docker, despliegue.
+*   **[📊 Explorer Stats](docs/backend/explorer-stats.md)**: Algoritmo de Resistencia y Desgaste.
+*   **[🌤️ Weather Service](docs/backend/weather-service.md)**: Open-Meteo API, categorías, cache.
+
+**Frontend:**
+*   **[📊 Dashboard](docs/frontend/dashboard.md)**: Header, módulos, sidebar, stats, responsive.
+*   **[👤 Profile](docs/frontend/profile.md)**: Perfil, avatares, Mixed Content fix.
+*   **[🛡️ Session Guard](docs/frontend/session-guard.md)**: Auto-logout, sessionStorage.
+*   **[🔑 Auth & Servicios](docs/frontend/auth-y-servicios.md)**: Auth, geolocalización GPS/IP.
+
+**General:**
+*   **[🗄️ Database](docs/backend/database.md)**: Esquema PostgreSQL, migraciones.
+*   **[🧠 Hybrid AI](docs/ia.md)** · **[🔔 Realtime](docs/realtime.md)** · **[⏳ Loading](docs/loading-system.md)** · **[🗺️ Maps](docs/web/map.md)**
 
 ---
 

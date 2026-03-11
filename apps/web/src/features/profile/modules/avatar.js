@@ -22,11 +22,21 @@ export const AVATAR_OPTIONS = [
  * Setup avatar modal button
  */
 export function setupAvatarModal(userId, profile) {
+    console.log('[Avatar API] Setting up avatar modal for user', userId);
     const changeAvatarBtn = document.querySelector('.btn-change-avatar');
     if (changeAvatarBtn) {
+        console.log('[Avatar API] Found .btn-change-avatar element');
         changeAvatarBtn.addEventListener('click', () => {
-            showAvatarModal(userId);
+            console.log('[Avatar API] .btn-change-avatar clicked, showing modal... userId=', userId);
+            try {
+                showAvatarModal(userId);
+                console.log('[Avatar API] Modal generated and appended');
+            } catch (err) {
+                console.error('[Avatar API] Error rendering modal:', err);
+            }
         });
+    } else {
+        console.warn('[Avatar API] .btn-change-avatar NOT FOUND in DOM!');
     }
 }
 
@@ -128,15 +138,16 @@ function setupFileUpload(modal, userId) {
                 .getPublicUrl(fileName);
 
             const publicUrl = urlData.publicUrl + '?t=' + Date.now();
+            const secureUrl = profileService._resolveAvatarUrl(publicUrl, userId);
 
             const { error } = await supabase
                 .from('profiles')
-                .update({ avatar_url: publicUrl, updated_at: new Date().toISOString() })
+                .update({ avatar_url: secureUrl, updated_at: new Date().toISOString() })
                 .eq('id', userId);
 
             if (error) throw error;
 
-            updateAvatarUI(publicUrl, 'image');
+            updateAvatarUI(secureUrl, 'image');
             profileService.invalidateCache();
             window.kepler?.notify?.success('✅ Imagen de perfil actualizada');
             modal.remove();

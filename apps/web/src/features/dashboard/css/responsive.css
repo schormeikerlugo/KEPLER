@@ -1,39 +1,44 @@
 /**
  * Dashboard Responsive Styles
- * Breakpoints and mobile adaptations
+ * Breakpoints for the new 2-column layout
  */
 
-/* Large tablets */
+/* Large screens (narrow sidebar) */
 @media (max-width: 1400px) {
-    .dash-main {
-        grid-template-columns: 150px 1fr 350px;
+    .dash-body {
+        grid-template-columns: 1fr 300px;
+        gap: 20px;
     }
 
-    .telem-value {
-        font-size: 1.6rem;
+    .objetos-layout {
+        grid-template-columns: 1fr 240px;
     }
 }
 
-/* Tablets */
-@media (max-width: 1200px) {
-    .dash-main {
+/* Tablets - stack to single column */
+@media (max-width: 1100px) {
+    .dash-body {
         grid-template-columns: 1fr;
-        grid-template-rows: auto 1fr auto;
-        height: auto;
     }
 
-    .dash-telemetry {
+    .dash-sidebar {
         flex-direction: row;
-        justify-content: space-around;
+        flex-wrap: wrap;
+        gap: 15px;
     }
 
-    .telem-metric {
+    .sidebar-card {
         flex: 1;
+        min-width: 250px;
     }
 
-    .dash-data-grid {
-        grid-template-rows: auto;
-        grid-template-columns: repeat(2, 1fr);
+    .objetos-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .objetos-chart-wrapper {
+        max-width: 300px;
+        margin: 0 auto;
     }
 }
 
@@ -45,59 +50,34 @@
         min-height: 100vh;
     }
 
-    .dash-header {
-        flex-direction: column;
-        gap: 15px;
-        padding: 15px;
-        height: auto;
-    }
-
-    .dash-header-left,
-    .dash-header-right {
-        width: 100%;
-        justify-content: space-between;
-    }
-
-    .header-divider {
-        display: none;
-    }
-
-    .dash-main {
-        gap: 15px;
+    .cards-row {
         grid-template-columns: 1fr;
-        height: auto;
     }
 
-    /* Hide telemetry title on mobile */
-    .telem-title {
-        display: none;
-    }
-
-    .dash-telemetry {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
+    .telemetry-bar {
         gap: 8px;
-        height: auto;
-        padding: 15px;
     }
 
-    .telem-metric {
-        flex: none;
-        min-width: 0;
-        padding: 20px 5px;
+    .telem-indicator {
+        min-width: 60px;
+        padding: 12px 10px;
     }
 
     .telem-value {
-        font-size: 1.2rem;
+        font-size: 1.1rem;
     }
 
-    .dash-data-grid {
-        grid-template-columns: 1fr;
-        height: auto;
+    .telem-label {
+        font-size: 0.6rem;
     }
 
-    .data-card {
-        height: auto;
+    .dash-table {
+        font-size: 0.78rem;
+    }
+
+    .dash-table thead th,
+    .dash-table tbody td {
+        padding: 8px 6px;
     }
 
     /* Mobile header layout */
@@ -107,55 +87,6 @@
 
     .desktop-nav {
         display: none !important;
-    }
-
-    .dash-header {
-        padding: 12px 15px;
-        height: auto;
-    }
-
-    .dash-header-left {
-        flex-direction: row;
-        align-items: center;
-        gap: 12px;
-        flex: 1;
-        justify-content: space-between;
-    }
-
-    .header-title-group {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        width: 100%;
-        gap: 2px;
-    }
-
-    .dash-title {
-        font-size: 1rem;
-    }
-
-    .dash-logo {
-        height: 16px;
-    }
-
-    .server-status {
-        display: flex;
-        font-size: 0.7rem;
-        margin-left: auto;
-        margin-top: 0;
-    }
-
-    .server-status span:last-child {
-        font-size: 0.7rem;
-    }
-
-    .status-dot {
-        width: 6px;
-        height: 6px;
-    }
-
-    .dashboard-container {
-        padding: 15px;
     }
 
     /* Hide chat panel, show FAB */

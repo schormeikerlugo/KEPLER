@@ -14,6 +14,7 @@ console.log("KEPLER System: Initialized");
 
 import { auth } from './js/auth.js';
 import { RealtimeService } from './js/services/RealtimeService.js';
+import { initSessionGuard } from './js/session-guard.js';
 
 async function route() {
     const user = await auth.getUser();
@@ -36,6 +37,9 @@ async function route() {
     if (user && !window.kepler.realtime) {
         window.kepler.realtime = new RealtimeService();
         console.log("KEPLER: Realtime service started globally");
+
+        // Activate session guard (auto-logout on close + inactivity)
+        initSessionGuard();
     }
 
     // Routing
