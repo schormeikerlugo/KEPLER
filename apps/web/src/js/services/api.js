@@ -148,6 +148,7 @@ export const api = {
     async startMission(data) {
         // data: { titulo, zona, clima }
         try {
+            sessionStorage.removeItem('kepler_ai_report_cache');
             const token = await auth.getToken();
             const res = await fetch(`${API_BASE}/missions/start`, {
                 method: 'POST',
@@ -163,6 +164,7 @@ export const api = {
 
     async endMission(missionId) {
         try {
+            sessionStorage.removeItem('kepler_ai_report_cache');
             const token = await auth.getToken();
             await fetch(`${API_BASE}/missions/end`, {
                 method: 'POST',

@@ -12,7 +12,7 @@ print(f"KEPLER Backend: SUPABASE_URL set: {bool(os.getenv('SUPABASE_URL'))}")
 
 from app.api.deps import get_current_user
 # Import Routers AFTER env load
-from app.api.endpoints import dashboard, chat, telemetry, missions, objects, ai, taxonomia, chat_stream, inference, explorer_stats
+from app.api.endpoints import dashboard, chat, telemetry, missions, objects, ai, taxonomia, chat_stream, inference, explorer_stats, ai_report
 
 app = FastAPI(
     title="Mars-Sight AR API",
@@ -40,6 +40,7 @@ app.include_router(taxonomia.router, prefix="/api/taxonomia", tags=["taxonomia"]
 app.include_router(chat_stream.router, prefix="/api/chat", tags=["chat-stream"])
 app.include_router(inference.router, prefix="/api", tags=["inference"])
 app.include_router(explorer_stats.router, prefix="/api/explorer", tags=["explorer"])
+app.include_router(ai_report.router, prefix="/api/ai", tags=["ai-report"])
 
 # Utility/Proxy routes (no auth required for tiles)
 from app.api.endpoints import utils

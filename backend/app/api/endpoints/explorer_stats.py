@@ -98,6 +98,21 @@ async def get_explorer_stats(
     supabase = get_supabase_client()
     user_id = user.id
 
+    # ── 0. Get calzado_reset_at from profile ──
+    calzado_reset_at = None
+    try:
+        profile_res = supabase.table("profiles") \
+            .select("calzado_reset_at") \
+            .eq("id", user_id) \
+            .single() \
+            .execute()
+        if profile_res.data:
+            reset_str = profile_res.data.get("calzado_reset_at")
+            if reset_str:
+                calzado_reset_at = datetime.fromisoformat(reset_str.replace("Z", "+00:00"))
+    except Exception as e:
+        print(f"[ExplorerStats] Error fetching profile: {e}")
+
     # ── 1. Fetch completed missions with route data ──
     try:
         # Get all completed missions for shoe wear (cumulative)
@@ -115,11 +130,15 @@ async def get_explorer_stats(
 
     # ── 2. Fetch routes with distance and terrain ──
     try:
-        routes_res = supabase.table("rutas_planificadas") \
-            .select("id, distancia_total, tipo_terreno, estado_seguridad") \
-            .eq("user_id", user_id) \
-            .execute()
+        routes_query = supabase.table("rutas_planificadas") \
+            .select("id, distancia_total, tipo_terreno, estado_seguridad, created_at") \
+            .eq("user_id", user_id)
 
+        # Only count routes created AFTER the last shoe reset
+        if calzado_reset_at:
+            routes_query = routes_query.gte("created_at", calzado_reset_at.isoformat())
+
+        routes_res = routes_query.execute()
         routes = routes_res.data or []
     except Exception as e:
         print(f"[ExplorerStats] Error fetching routes: {e}")
@@ -199,3 +218,24 @@ async def get_explorer_stats(
         "misiones_completadas": len(all_missions),
         "rutas_registradas": len(routes),
     }
+
+
+@router.post("/reset-calzado")
+async def reset_calzado(user=Depends(get_current_user)):
+    """
+    Reset shoe wear by updating calzado_reset_at to now.
+    This causes future /stats calls to only count routes after this date.
+    """
+    supabase = get_supabase_client()
+    now = datetime.now(timezone.utc).isoformat()
+
+    try:
+        supabase.table("profiles") \
+            .update({"calzado_reset_at": now}) \
+            .eq("id", user.id) \
+            .execute()
+    except Exception as e:
+        print(f"[ExplorerStats] Error resetting calzado: {e}")
+        raise HTTPException(status_code=500, detail="Error al resetear calzado")
+
+    return {"message": "Calzado reseteado", "calzado_reset_at": now}

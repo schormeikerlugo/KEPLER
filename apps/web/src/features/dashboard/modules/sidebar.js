@@ -27,39 +27,137 @@ export async function initSidebar() {
 }
 
 // ─────────────────────────────────────────────
-// TIPS (Consejo del día)
+// TIPS (Consejo del día — context-aware + standard pool)
 // ─────────────────────────────────────────────
 
+// Standard explorer tips pool
+const STANDARD_TIPS = [
+    '🧭 Siempre verifica tu brújula antes de adentrarte en zona desconocida.',
+    '💧 Hidratación: lleva al menos 1L de agua por cada 5 km de exploración.',
+    '📷 Documenta todo hallazgo con foto antes de manipularlo.',
+    '🔋 Carga completa todos tus dispositivos antes de salir a campo.',
+    '🗺️ Marca tu punto de partida como POI antes de explorar.',
+    '🌡️ Monitorea la temperatura cada hora, los cambios bruscos indican tormentas.',
+    '👥 Nunca explores zonas de riesgo alto sin un compañero de apoyo.',
+    '🎒 Revisa tu equipo 24h antes de cada misión, no el mismo día.',
+    '📡 Verifica la cobertura GPS de tu zona antes de iniciar una ruta.',
+    '🔦 Lleva siempre una fuente de luz extra, incluso en misiones diurnas.',
+    '🧤 Usa guantes al manipular muestras minerales o biológicas.',
+    '⏰ Planifica tu regreso con margen: calcula 30% más de tiempo del estimado.',
+    '📝 El mejor reporte de misión se escribe las primeras 2h después de finalizar.',
+    '🌿 Aprende a identificar 5 plantas comunes de tu zona. Puede salvarte.',
+    '🧊 En terreno rocoso, cada paso debe ser deliberado. La prisa causa lesiones.',
+    '📻 Establece un horario de comunicación fijo con tu base de operaciones.',
+    '🏕️ Un buen campamento tiene: agua cerca, terreno elevado y protección del viento.',
+    '🔬 Las muestras se degradan: etiqueta con fecha, hora y coordenadas al recolectar.',
+    '⚡ Si ves relámpagos, busca refugio bajo. Evita crestas y árboles aislados.',
+    '🐍 En terreno desconocido, golpea el suelo con un bastón antes de pisar.'
+];
+
 /**
- * Fetch and display a tip from the AI chat logs
+ * Generate and display a contextual or random tip
  */
 async function initTips(userId) {
     const tipEl = document.getElementById('sidebar-tip-text');
     if (!tipEl) return;
 
-    const tip = await fetchLatestTip(userId);
-    tipEl.textContent = tip || 'Cuando la IA no ayuda a tocar las estrellas. 🌟';
+    // Check sessionStorage cache (one tip per session)
+    const cached = sessionStorage.getItem('kepler-tip');
+    if (cached) {
+        tipEl.textContent = cached;
+        return;
+    }
+
+    // Try to generate a context-aware tip
+    const contextTip = await generateContextTip(userId);
+    const tip = contextTip || pickRandomTip();
+
+    tipEl.textContent = tip;
+    sessionStorage.setItem('kepler-tip', tip);
 }
 
 /**
- * Fetch the latest tip from the most recent chat log's messages (jsonb array)
- * chat_logs schema: { id, user_id, title, messages: [{role, content}], created_at }
+ * Generate a tip based on the explorer's current data
  */
-async function fetchLatestTip(userId) {
-    const { data, error } = await supabase
-        .from('chat_logs')
-        .select('messages')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+async function generateContextTip(userId) {
+    const tips = [];
 
-    if (error || !data || !data.messages) return null;
+    try {
+        // Fetch explorer stats (shoe condition, resistance)
+        const token = await auth.getToken();
+        const baseUrl = import.meta.env.VITE_SUPABASE_URL.startsWith('/')
+            ? '' : import.meta.env.VITE_SUPABASE_URL.replace(/\/+$/, '').replace(':8443', ':8000');
+        const apiBase = baseUrl || '/api';
 
-    // Find the last system or assistant message in the jsonb array
-    const msgs = Array.isArray(data.messages) ? data.messages : [];
-    const tip = msgs.reverse().find(m => m.role === 'system' || m.role === 'assistant');
-    return tip ? truncateText(tip.content, 120) : null;
+        const statsRes = await fetch(`${apiBase}/api/explorer/stats`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (statsRes.ok) {
+            const stats = await statsRes.json();
+            const condicion = Math.max(0, 100 - (stats.desgaste_calzado || 0));
+            const resistencia = stats.resistencia || 100;
+            const clima = stats.clima_actual || 'fresco';
+
+            // Shoe condition warnings
+            if (condicion < 20) {
+                tips.push('⚠️ Tu calzado está al límite. Reemplázalo antes de la próxima misión o arriesgas una lesión en campo.');
+            } else if (condicion < 40) {
+                tips.push('👟 Tu calzado muestra desgaste considerable. Planifica un cambio pronto, especialmente para terreno rocoso.');
+            }
+
+            // Resistance warnings
+            if (resistencia < 30) {
+                tips.push('🛌 Tu resistencia está baja. Descansa al menos 8h antes de iniciar una nueva misión.');
+            } else if (resistencia < 50) {
+                tips.push('⚡ Resistencia moderada. Evita misiones de larga distancia hoy, prioriza recorridos cortos.');
+            }
+
+            // Weather-based tips
+            if (clima === 'tormenta') {
+                tips.push('⛈️ Tormenta detectada. No inicies misiones de campo. Usa este tiempo para documentar hallazgos.');
+            } else if (clima === 'lluvia') {
+                tips.push('🌧️ Lluvia en tu zona. Protege el equipo electrónico y evita rutas con pendiente.');
+            } else if (clima === 'caluroso') {
+                tips.push('🌡️ Clima caluroso. Duplica tu hidratación y evita explorar entre 12:00 y 15:00.');
+            } else if (clima === 'viento_fuerte') {
+                tips.push('💨 Viento fuerte detectado. Asegura todo equipo suelto y evita crestas expuestas.');
+            }
+
+            // Mission count tips
+            if (stats.misiones_completadas === 0) {
+                tips.push('🚀 ¡Tu primera misión te espera! Empieza con una ruta corta en terreno conocido.');
+            } else if (stats.misiones_completadas >= 10) {
+                tips.push(`🏆 ${stats.misiones_completadas} misiones completadas. ¡Explorador veterano! Considera documentar tus mejores hallazgos.`);
+            }
+        }
+    } catch (e) {
+        // Silent fail — will use standard tips
+    }
+
+    try {
+        // Check for dangerous POIs
+        const { data: dangerPois } = await supabase
+            .from('puntos_interes')
+            .select('nombre, nivel_riesgo')
+            .eq('user_id', userId)
+            .in('nivel_riesgo', ['alto', 'critico'])
+            .limit(3);
+
+        if (dangerPois && dangerPois.length > 0) {
+            tips.push(`🚨 Tienes ${dangerPois.length} zona(s) de riesgo alto registrada(s). Revisa las alertas de "${dangerPois[0].nombre}" antes de salir.`);
+        }
+    } catch (e) { /* silent */ }
+
+    // Return a random context tip or null
+    return tips.length > 0 ? tips[Math.floor(Math.random() * tips.length)] : null;
+}
+
+/**
+ * Pick a random tip from the standard pool
+ */
+function pickRandomTip() {
+    return STANDARD_TIPS[Math.floor(Math.random() * STANDARD_TIPS.length)];
 }
 
 /**
@@ -162,7 +260,8 @@ function getBarColor(value, isInverted = false) {
  * Render exactly 2 explorer stat bars: Desgaste + Resistencia
  */
 function renderExplorerBars(container, stats) {
-    const desgaste = stats.desgaste_calzado ?? 0;
+    const desgasteRaw = stats.desgaste_calzado ?? 0;
+    const condicionCalzado = Math.max(0, 100 - desgasteRaw); // 100% = nuevo, 0% = destruido
     const resistencia = stats.resistencia ?? 100;
     const clima = stats.clima_actual || 'fresco';
 
@@ -173,14 +272,14 @@ function renderExplorerBars(container, stats) {
     const climaEmoji = climaEmojis[clima] || '🌤️';
 
     container.innerHTML = `
-        <div class="stat-item">
+        <div class="stat-item stat-item-clickable" id="stat-desgaste-calzado" title="Click para cambiar calzado">
             <div class="stat-header">
                 <span class="stat-icon">👟</span>
-                <span class="stat-name">Desgaste del Calzado</span>
-                <span class="stat-value-label">${desgaste.toFixed(0)}%</span>
+                <span class="stat-name">Estado del Calzado</span>
+                <span class="stat-value-label">${condicionCalzado.toFixed(0)}%</span>
             </div>
             <div class="stat-bar-wrapper">
-                <div class="stat-bar-fill" style="width: ${desgaste}%; background: ${getBarColor(desgaste, true)}"></div>
+                <div class="stat-bar-fill" style="width: ${condicionCalzado}%; background: ${getBarColor(condicionCalzado)}"></div>
             </div>
         </div>
         <div class="stat-item">
@@ -201,6 +300,101 @@ function renderExplorerBars(container, stats) {
             <span class="stat-clima-text">${new Date().getHours() >= 6 && new Date().getHours() < 19 ? 'Día' : 'Noche'}</span>
         </div>
     `;
+
+    // Attach shoe reset click handler
+    const shoeEl = document.getElementById('stat-desgaste-calzado');
+    if (shoeEl) {
+        shoeEl.addEventListener('click', () => showShoeResetModal());
+    }
+}
+
+// ─────────────────────────────────────────────
+// SHOE RESET MODAL
+// ─────────────────────────────────────────────
+function showShoeResetModal() {
+    // Remove existing modal if any
+    const existing = document.getElementById('shoe-reset-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'shoe-reset-modal';
+    modal.className = 'kepler-modal-overlay';
+    modal.innerHTML = `
+        <div class="kepler-modal">
+            <div class="kepler-modal-header">
+                <span class="kepler-modal-icon">👟</span>
+                <h3 class="kepler-modal-title">Cambio de Calzado</h3>
+            </div>
+            <p class="kepler-modal-text">¿Has cambiado tu calzado? Esto reseteará el estado a <strong>100%</strong> y el sistema comenzará a calcular desde cero.</p>
+            <div class="kepler-modal-actions">
+                <button class="kepler-modal-btn kepler-modal-btn-cancel" id="shoe-reset-cancel">Cancelar</button>
+                <button class="kepler-modal-btn kepler-modal-btn-confirm" id="shoe-reset-confirm">Sí, cambié el calzado</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Animate in
+    requestAnimationFrame(() => modal.classList.add('active'));
+
+    // Cancel
+    document.getElementById('shoe-reset-cancel').addEventListener('click', () => {
+        modal.classList.remove('active');
+        setTimeout(() => modal.remove(), 200);
+    });
+
+    // Confirm
+    document.getElementById('shoe-reset-confirm').addEventListener('click', async () => {
+        const btn = document.getElementById('shoe-reset-confirm');
+        btn.textContent = 'Reseteando...';
+        btn.disabled = true;
+
+        try {
+            const token = await auth.getToken();
+            const baseUrl = import.meta.env.VITE_SUPABASE_URL.startsWith('/')
+                ? '' : import.meta.env.VITE_SUPABASE_URL.replace(/\/+$/, '').replace(':8443', ':8000');
+
+            const apiBase = baseUrl || '/api';
+            const res = await fetch(`${apiBase}/api/explorer/reset-calzado`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (res.ok) {
+                // Close modal
+                modal.classList.remove('active');
+                setTimeout(() => modal.remove(), 200);
+
+                // Refresh stats to show 0%
+                const user = await auth.getUser();
+                if (user) {
+                    const statsContainer = document.getElementById('explorer-stats');
+                    if (statsContainer) {
+                        await fetchExplorerStats(user.id, statsContainer);
+                    }
+                }
+            } else {
+                btn.textContent = 'Error — Reintentar';
+                btn.disabled = false;
+            }
+        } catch (err) {
+            console.error('[ShoeReset] Error:', err);
+            btn.textContent = 'Error — Reintentar';
+            btn.disabled = false;
+        }
+    });
+
+    // Close on overlay click
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 200);
+        }
+    });
 }
 
 // ─────────────────────────────────────────────
@@ -361,76 +555,44 @@ function drawLineChart(canvas, data) {
 }
 
 // ─────────────────────────────────────────────
-// NEWS (Novedades de la IA)
+// ─────────────────────────────────────────────
+// NEWS (Novedades de la IA & Reporte Cortex)
 // ─────────────────────────────────────────────
 
 /**
- * Fetch and render the latest notifications as news items
- * Also bind the expand button to open the AI analysis modal
+ * Render the static AI News items and bind modal clicks
  */
 async function initNews(userId) {
     const list = document.getElementById('sidebar-news-list');
     if (!list) return;
 
-    const news = await fetchLatestNews(userId);
-    renderNewsList(list, news);
+    // Render the 3 requested items
+    list.innerHTML = `
+        <li class="sidebar-news-item sidebar-news-clickable" style="cursor:pointer; transition:color 0.2s;"><span class="news-dot" style="color:#3FA8FF; margin-right:5px;">•</span> Lecturas del tiempo en tu zona</li>
+        <li class="sidebar-news-item sidebar-news-clickable" style="cursor:pointer; transition:color 0.2s;"><span class="news-dot" style="color:#3FA8FF; margin-right:5px;">•</span> Noticias sobre nuevos hallazgos</li>
+        <li class="sidebar-news-item sidebar-news-clickable" style="cursor:pointer; transition:color 0.2s;"><span class="news-dot" style="color:#3FA8FF; margin-right:5px;">•</span> Sugerencia de exploración</li>
+    `;
 
-    // Bind expand/close for AI analysis modal
-    bindAnalysisModal(userId);
-}
+    // Bind click events to open the AI Report modal
+    const items = list.querySelectorAll('.sidebar-news-clickable');
+    items.forEach(item => {
+        item.addEventListener('mouseenter', () => item.style.color = '#3FA8FF');
+        item.addEventListener('mouseleave', () => item.style.color = '');
+        item.addEventListener('click', () => openAiReportModal());
+    });
 
-/**
- * Fetch top 3 info/suggestion notifications
- */
-async function fetchLatestNews(userId) {
-    const { data, error } = await supabase
-        .from('user_notifications')
-        .select('message')
-        .eq('user_id', userId)
-        .in('type', ['info', 'success'])
-        .order('created_at', { ascending: false })
-        .limit(3);
-
-    if (error) { console.error('[Sidebar] News fetch error:', error); return []; }
-    return data || [];
-}
-
-/**
- * Render news items as a list
- */
-function renderNewsList(list, news) {
-    if (news.length === 0) {
-        list.innerHTML = '<li class="sidebar-news-item">No hay novedades recientes</li>';
-        return;
-    }
-
-    list.innerHTML = news.map(item => `
-        <li class="sidebar-news-item">${truncateText(item.message, 80)}</li>
-    `).join('');
-}
-
-/**
- * Bind expand/close buttons for the AI analysis modal
- */
-function bindAnalysisModal(userId) {
     const expandBtn = document.getElementById('sidebar-news-expand');
-    const closeBtn = document.getElementById('ia-analysis-close');
-    const modal = document.getElementById('ia-analysis-modal');
-
-    if (expandBtn && modal) {
-        expandBtn.addEventListener('click', () => {
-            modal.style.display = 'flex';
-            populateAnalysis(userId);
-        });
+    if (expandBtn) {
+        expandBtn.addEventListener('click', () => openAiReportModal());
     }
+
+    // Bind modal close buttons
+    const modal = document.getElementById('ia-analysis-modal');
+    const closeBtn = document.getElementById('ia-analysis-close');
 
     if (closeBtn && modal) {
-        closeBtn.addEventListener('click', () => {
-            modal.style.display = 'none';
-        });
+        closeBtn.addEventListener('click', () => modal.style.display = 'none');
     }
-
-    // Close on backdrop click
     if (modal) {
         modal.addEventListener('click', (e) => {
             if (e.target === modal) modal.style.display = 'none';
@@ -439,85 +601,75 @@ function bindAnalysisModal(userId) {
 }
 
 /**
- * Populate the AI analysis modal sections with real data insights
+ * Open the AI Analysis Modal and fetch the Mistral report
  */
-async function populateAnalysis(userId) {
-    await Promise.allSettled([
-        populateRouteAnalysis(userId),
-        populateDiscoveryAnalysis(userId),
-        populateZoneAnalysis(userId)
-    ]);
-}
+async function openAiReportModal() {
+    const modal = document.getElementById('ia-analysis-modal');
+    if (!modal) return;
 
-/**
- * Analyze rutas_planificadas and suggest optimizations
- */
-async function populateRouteAnalysis(userId) {
-    const el = document.getElementById('ia-route-analysis');
-    if (!el) return;
+    modal.style.display = 'flex';
 
-    const { data } = await supabase
-        .from('rutas_planificadas')
-        .select('nombre, distancia_total, estado_seguridad')
-        .eq('user_id', userId);
+    // We replace the entire modal body with the report content
+    const body = document.querySelector('.ia-analysis-body');
+    if (!body) return;
 
-    if (!data || data.length === 0) {
-        el.textContent = 'No hay rutas registradas para analizar.';
+    // Check if we already have it in cache
+    const cachedReport = sessionStorage.getItem('kepler_ai_report_cache');
+    if (cachedReport) {
+        if (window.marked) {
+            body.innerHTML = `<div class="ai-report-markdown">${window.marked.parse(cachedReport)}</div>`;
+        } else {
+            body.innerHTML = `<div class="ai-report-markdown" style="white-space:pre-wrap; font-family:var(--font-mono); color:#ddd; font-size:0.9rem;">${cachedReport}</div>`;
+        }
         return;
     }
 
-    const safest = data.filter(r => r.estado_seguridad === 'Seguro');
-    const risky = data.filter(r => r.estado_seguridad === 'Riesgo Alto');
-    const totalKm = data.reduce((sum, r) => sum + Number(r.distancia_total || 0), 0);
+    // Loading state
+    body.innerHTML = `
+        <div style="text-align:center; padding: 40px 20px;">
+            <div style="margin:0 auto 15px auto; width:30px; height:30px; border:3px solid rgba(63,168,255,0.2); border-top-color:#3FA8FF; border-radius:50%; animation:spin 1s linear infinite;"></div>
+            <p style="color:#3FA8FF; font-weight:600; font-size:1.1rem; margin-bottom:5px;">Cortex procesando datos...</p>
+            <p style="color:#999; font-size:0.9rem;">Analizando clima, equipo, hallazgos y zonas de exploración...</p>
+        </div>
+        <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
+    `;
 
-    el.textContent = `Tienes ${data.length} rutas planificadas (${totalKm.toFixed(1)} km total). ` +
-        `${safest.length} son seguras. ` +
-        (risky.length > 0 ? `⚠️ ${risky.length} ruta(s) de riesgo alto detectadas — se recomienda explorar alternativas.` : '✅ No hay rutas de alto riesgo.');
-}
+    try {
+        const token = await auth.getToken();
+        const baseUrl = import.meta.env.VITE_SUPABASE_URL.startsWith('/')
+            ? '' : import.meta.env.VITE_SUPABASE_URL.replace(/\/+$/, '').replace(':8443', ':8000');
 
-/**
- * Summarize recent object discoveries
- */
-async function populateDiscoveryAnalysis(userId) {
-    const el = document.getElementById('ia-discovery-analysis');
-    if (!el) return;
+        const apiBase = baseUrl || '';
+        const res = await fetch(`${apiBase}/api/ai/report`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
 
-    const { count: totalObjects } = await supabase
-        .from('objetos_exploracion')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId);
+        if (res.ok) {
+            const data = await res.json();
+            const markdownStr = data.report || "No se pudo generar el reporte.";
 
-    const { count: lowConf } = await supabase
-        .from('objetos_exploracion')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .lt('confianza', 0.5);
+            // Save to cache
+            sessionStorage.setItem('kepler_ai_report_cache', markdownStr);
 
-    el.textContent = `Has registrado ${totalObjects || 0} objetos en total. ` +
-        (lowConf > 0 ? `🔍 ${lowConf} objeto(s) requieren re-escaneo (confianza < 50%).` : '✅ Todos los objetos tienen buena confianza de identificación.');
-}
+            // Format via marked.js (if available in window)
+            if (window.marked) {
+                body.innerHTML = `<div class="ai-report-markdown">${window.marked.parse(markdownStr)}</div>`;
+            } else {
+                body.innerHTML = `<div class="ai-report-markdown" style="white-space:pre-wrap; font-family:var(--font-mono); color:#ddd; font-size:0.9rem;">${markdownStr}</div>`;
+            }
 
-/**
- * Show current telemetry zone info
- */
-async function populateZoneAnalysis(userId) {
-    const el = document.getElementById('ia-zone-analysis');
-    if (!el) return;
-
-    const { data } = await supabase
-        .from('mission_telemetry')
-        .select('temperature, radiation_level, oxygen_level')
-        .order('timestamp', { ascending: false })
-        .limit(1)
-        .single();
-
-    if (!data) {
-        el.textContent = 'Sin lecturas de telemetría activas. Inicia una misión para obtener datos en tiempo real.';
-        return;
+        } else {
+            throw new Error(`HTTP ${res.status}`);
+        }
+    } catch (err) {
+        console.error('[AI Report] Error:', err);
+        body.innerHTML = `
+            <div style="text-align:center; padding: 30px;">
+                <p style="color:#FF4A4A; margin-bottom:15px;">Error de conexión con Cortex (Mistral AI).</p>
+                <button class="kepler-modal-btn kepler-modal-btn-confirm" onclick="document.getElementById('ia-analysis-modal').style.display='none'">Cerrar</button>
+            </div>
+        `;
     }
-
-    el.textContent = `Última lectura — Temp: ${data.temperature}°C | Radiación: ${data.radiation_level} mSv/h | O2: ${data.oxygen_level}%. ` +
-        (data.radiation_level > 0.05 ? '⚠️ Niveles de radiación elevados en la zona.' : '✅ Zona dentro de parámetros seguros.');
 }
 
 // ─────────────────────────────────────────────
