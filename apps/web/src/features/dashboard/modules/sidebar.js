@@ -221,6 +221,8 @@ async function fetchExplorerStats() {
         let url = '/api/explorer/stats';
         const params = new URLSearchParams();
         if (lat != null && lng != null) {
+            sessionStorage.setItem('kepler_lat', lat);
+            sessionStorage.setItem('kepler_lng', lng);
             params.set('lat', lat);
             params.set('lng', lng);
         }
@@ -235,7 +237,9 @@ async function fetchExplorerStats() {
         });
 
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return await response.json();
+        const data = await response.json();
+
+        return data;
     } catch (e) {
         console.error('[Sidebar] Explorer stats fetch error:', e);
         return { desgaste_calzado: 0, resistencia: 100, clima_actual: 'fresco' };
@@ -271,6 +275,8 @@ function renderExplorerBars(container, stats) {
     };
     const climaEmoji = climaEmojis[clima] || '🌤️';
 
+    const locationName = stats.weather?.location_name || 'Ubicación Desconocida';
+
     container.innerHTML = `
         <div class="stat-item stat-item-clickable" id="stat-desgaste-calzado" title="Click para cambiar calzado">
             <div class="stat-header">
@@ -298,6 +304,11 @@ function renderExplorerBars(container, stats) {
             <span class="stat-clima-separator">·</span>
             <span>${new Date().getHours() >= 6 && new Date().getHours() < 19 ? '☀️' : '🌙'}</span>
             <span class="stat-clima-text">${new Date().getHours() >= 6 && new Date().getHours() < 19 ? 'Día' : 'Noche'}</span>
+        </div>
+        <div class="stat-clima" style="margin-top: 8px;">
+            <span>📍</span>
+            <span class="stat-clima-text" style="font-weight: 500;">Ubicación: </span>
+            <span class="stat-clima-text">${locationName}</span>
         </div>
     `;
 
@@ -640,7 +651,18 @@ async function openAiReportModal() {
             ? '' : import.meta.env.VITE_SUPABASE_URL.replace(/\/+$/, '').replace(':8443', ':8000');
 
         const apiBase = baseUrl || '';
-        const res = await fetch(`${apiBase}/api/ai/report`, {
+        let url = `${apiBase}/api/ai/report`;
+
+        const cachedLat = sessionStorage.getItem('kepler_lat');
+        const cachedLng = sessionStorage.getItem('kepler_lng');
+        const queryParams = new URLSearchParams();
+        if (cachedLat && cachedLng) {
+            queryParams.set('lat', cachedLat);
+            queryParams.set('lng', cachedLng);
+        }
+        if (queryParams.toString()) url += `?${queryParams.toString()}`;
+
+        const res = await fetch(url, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 

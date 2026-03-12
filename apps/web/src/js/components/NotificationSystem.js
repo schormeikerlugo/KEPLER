@@ -26,28 +26,28 @@ export class NotificationSystem {
         this.logPanel.id = 'notification-log-panel';
         this.logPanel.innerHTML = `
             <div class="log-header">
-                <span class="log-title">📜 BITÁCORA DEL SISTEMA</span>
+                <span class="log-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    Bitácora de Sistema
+                </span>
                 <div class="log-actions">
-                    <button class="log-clear-all" title="Borrar todo">🗑️</button>
-                    <button class="log-close">×</button>
+                    <button class="log-clear-all" title="Borrar todo">Limpiar</button>
+                    <button class="log-close">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
                 </div>
             </div>
-            <div class="log-filters" id="log-filters">
-                <button class="filter-tab active" data-filter="all">
-                    📋 Todos <span class="filter-count" id="count-all">0</span>
-                </button>
-                <button class="filter-tab critical" data-filter="critical">
-                    ⚠️ Crítico <span class="filter-count" id="count-critical">0</span>
-                </button>
-                <button class="filter-tab warning" data-filter="warning">
-                    ⚡ Alerta <span class="filter-count" id="count-warning">0</span>
-                </button>
-                <button class="filter-tab success" data-filter="success">
-                    ✅ Éxito <span class="filter-count" id="count-success">0</span>
-                </button>
-                <button class="filter-tab info" data-filter="info">
-                    ℹ️ Info <span class="filter-count" id="count-info">0</span>
-                </button>
+            <div class="log-filters">
+                <div class="select-wrapper">
+                    <select id="log-filter-select" class="log-filter-select">
+                        <option value="all">📋 Todas las Notificaciones (0)</option>
+                        <option value="critical">🚨 Alertas Críticas (0)</option>
+                        <option value="warning">⚠️ Advertencias (0)</option>
+                        <option value="success">✅ Éxitos (0)</option>
+                        <option value="info">ℹ️ Información (0)</option>
+                    </select>
+                    <svg class="select-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                </div>
             </div>
             <div class="log-content" id="log-content"></div>
         `;
@@ -69,10 +69,11 @@ export class NotificationSystem {
             }
         };
 
-        // Bind Filter Tabs
-        this.logPanel.querySelectorAll('.filter-tab').forEach(tab => {
-            tab.onclick = () => this.setFilter(tab.dataset.filter);
-        });
+        // Bind Select Filter
+        const filterSelect = this.logPanel.querySelector('#log-filter-select');
+        if (filterSelect) {
+            filterSelect.addEventListener('change', (e) => this.setFilter(e.target.value));
+        }
 
         // 3. Preload Sounds
         const audioPath = '/assets/song/notifications/';
@@ -122,14 +123,6 @@ export class NotificationSystem {
         this.container.appendChild(notification);
         this.playSound(type);
 
-        // GLITCH EFFECT (Critical)
-        if (type === 'critical') {
-            document.body.classList.add('system-failure-glitch');
-            setTimeout(() => {
-                document.body.classList.remove('system-failure-glitch');
-            }, 600);
-        }
-
         // Update log UI
         this.updateLogUI();
         this.updateBadge();
@@ -147,13 +140,10 @@ export class NotificationSystem {
     setFilter(filter) {
         this.currentFilter = filter;
 
-        // Update active tab styling
-        this.logPanel.querySelectorAll('.filter-tab').forEach(tab => {
-            tab.classList.remove('active');
-            if (tab.dataset.filter === filter) {
-                tab.classList.add('active');
-            }
-        });
+        const select = this.logPanel.querySelector('#log-filter-select');
+        if (select && select.value !== filter) {
+            select.value = filter;
+        }
 
         this.updateLogUI();
     }
@@ -185,10 +175,23 @@ export class NotificationSystem {
             if (counts[n.type] !== undefined) counts[n.type]++;
         });
 
-        Object.keys(counts).forEach(type => {
-            const countEl = this.logPanel.querySelector(`#count-${type}`);
-            if (countEl) countEl.textContent = counts[type];
-        });
+        const labels = {
+            all: '📋 Todas las Notificaciones',
+            critical: '🚨 Alertas Críticas',
+            warning: '⚠️ Advertencias',
+            success: '✅ Éxitos',
+            info: 'ℹ️ Información'
+        };
+
+        const select = this.logPanel.querySelector('#log-filter-select');
+        if (select) {
+            Array.from(select.options).forEach(opt => {
+                const type = opt.value;
+                if (labels[type]) {
+                    opt.text = `${labels[type]} (${counts[type] || 0})`;
+                }
+            });
+        }
 
         // Check if empty after filters
         let hasVisibleItems = false;

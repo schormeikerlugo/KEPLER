@@ -16,8 +16,8 @@ Microservicio que consulta la API gratuita de [Open-Meteo](https://open-meteo.co
 
 | Datos de Open-Meteo | Categoría KEPLER | Multiplicador Fatiga |
 |---|---|---|
-| temp > 35°C | `caluroso` | x1.3 |
-| temp 15–35°C | `fresco` | x1.0 |
+| temp > 32°C | `caluroso` | x1.3 |
+| temp 15–32°C | `fresco` | x1.0 |
 | temp < 15°C | `frio` | x1.2 |
 | viento > 40 km/h | `viento_fuerte` | x1.8 |
 | lluvia > 5 mm/h | `lluvia` | x1.5 |

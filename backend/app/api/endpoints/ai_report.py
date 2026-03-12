@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
-from typing import Dict, Any
+from fastapi import APIRouter, Depends, Query, HTTPException
+from typing import Dict, Any, Optional
 from app.api.deps import get_current_user, get_supabase_client
 from app.api.endpoints.explorer_stats import get_explorer_stats
 from langchain_ollama import ChatOllama
@@ -9,7 +9,11 @@ router = APIRouter()
 llm = ChatOllama(model="mistral:7b", temperature=0.3)
 
 @router.get("/report")
-async def generate_ai_report(user=Depends(get_current_user)) -> Dict[str, Any]:
+async def generate_ai_report(
+    lat: Optional[float] = Query(None, description="Explorer latitude"),
+    lng: Optional[float] = Query(None, description="Explorer longitude"),
+    user=Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Generates a personalized AI report (weather, recent findings, exploration suggestions)
     using Mistral 7B, based on the user's recent data from Supabase.
@@ -18,10 +22,11 @@ async def generate_ai_report(user=Depends(get_current_user)) -> Dict[str, Any]:
     user_id = user.id
 
     try:
-        # 1. Get Explorer Stats (includes weather)
-        stats = await get_explorer_stats(None, None, user)
+        # 1. Get Explorer Stats (includes weather and location)
+        stats = await get_explorer_stats(lat, lng, user)
         weather = stats.get("weather") or {}
-        clima_str = f"{weather.get('temperature', 'N/A')}°C, {weather.get('weather_desc', stats.get('clima_actual'))}"
+        location_name = weather.get("location_name", "Zona Desconocida")
+        clima_str = f"{weather.get('temperatura_c', 'N/A')}°C, {weather.get('categoria', stats.get('clima_actual'))}"
 
         # 2. Get recent objects
         objects_res = supabase.table("objetos_exploracion") \
@@ -63,6 +68,7 @@ Actúa como 'Cortex', la Inteligencia Artificial auxiliar del ecosistema de expl
 Genera un 'Reporte de Novedades' conciso, estructurado e inmersivo (tono táctico/científico) para el explorador.
 
 DATOS DEL EXPLORADOR:
+- Ubicación explorada: {location_name}
 - Clima actual en su zona: {clima_str}
 - Resistencia física: {stats.get('resistencia')}%
 - Estado del equipo/calzado: {100 - stats.get('desgaste_calzado', 0)}%
