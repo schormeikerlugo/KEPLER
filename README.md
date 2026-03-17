@@ -7,7 +7,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Fase-Entrenamiento_Terrestre-cyan?style=for-the-badge&logo=target&logoColor=black" alt="Fase">
   <img src="https://img.shields.io/badge/Estado-Activo-green?style=for-the-badge&logo=statuspage&logoColor=black" alt="Estado">
-  <img src="https://img.shields.io/badge/Versión-0.6.0_Beta-blue?style=for-the-badge&logo=semver&logoColor=white" alt="Versión">
+  <img src="https://img.shields.io/badge/Versión-0.7.0_Beta-blue?style=for-the-badge&logo=semver&logoColor=white" alt="Versión">
 </p>
 
 ```
@@ -146,17 +146,42 @@ KEPLER no depende de la nube para funcionar. Su arquitectura está diseñada par
 |--------|--------|-------------|
 | 🔭 **Visual Core** | ✅ Activo | Detección de objetos en tiempo real (YOLOv11 Nano en browser). |
 | 🧠 **Cortex AI** | ✅ Activo | Análisis semántico profundo (CLIP + Mistral 7B). |
+| 🆔 **AI Re-ID** | 🆕 v0.7 | Re-identificación visual de personas y POIs usando CLIP + pgvector. |
 | 💬 **AI Chat** | ✅ Activo | Chat streaming con intents inteligentes, tablas comparativas y títulos contextuales. |
 | 🗺️ **HoloMap** | ✅ Activo | Mapa táctico 3D (MapLibre) con filtros Odradek y tracking GPS. |
 | 📊 **Dashboard** | 🆕 v2 | Cards modulares, stats del explorador, POIs con drill-down, clima real, radar chart. |
 | 📂 **Archives** | ✅ Activo | Base de datos vectorial de hallazgos. |
+| 🤖 **Sentinel** | 🆕 v0.7 | Pipeline de auto-captura con ruteo inteligente de entidades detectadas. |
 | 🔔 **Realtime** | ✅ Activo | Alertas en tiempo real vía WebSocket (Supabase Realtime). |
 | 👤 **Perfil** | ✅ Activo | Gestión de usuario y personalización de avatar del asistente IA. |
 | 🛡️ **Session Guard** | 🆕 Nuevo | Auto-logout por inactividad (15 min) y cierre de pestaña (sessionStorage). |
 | 🌤️ **Weather** | 🆕 Nuevo | Clima real vía Open-Meteo API con clasificación KEPLER y cache. |
 | 📍 **POIs** | 🆕 Nuevo | Puntos de Interés con 4 categorías, drill-down y detalle con coordenadas. |
+| 👣 **Geotracking** | 🆕 v0.7 | Registro automático de rastro GPS (trail) por cada misión. |
 | 📱 **Mobile AI** | ✅ Activo | Optimizaciones automáticas para móvil (256px, 1 hilo, sin precarga). |
 | 📍 **GPS + IA** | ✅ Activo | Descripción automática de zona con GPS + Nominatim + Mistral. |
+
+---
+
+## 📊 Novedades v0.7.0 (Auto-Capture & AI Re-ID)
+
+### Pipeline de Auto-Captura (Smart Sentinel)
+Evolución del sistema Sentinel para una exploración fluida:
+- **Ruteo Inteligente** — Las detecciones se clasifican y guardan automáticamente en la tabla correcta:
+  - `person` → **Personas Encontradas** (con metadatos biográficos)
+  - `building/bench/tent/hydrant...` → **Puntos de Interés** (POI)
+  - Otros objetos → **Objetos de Exploración**
+- **Eliminación de Duplicados** — Integrado con el sistema de Re-ID para evitar registros repetidos del mismo objeto/persona en una misma zona.
+
+### AI Re-Identification (Re-ID)
+Sistema de "memoria visual" persistente basado en Deep Learning:
+- **Embeddings CLIP** — Generación de vectores de 512 dimensiones para cada captura importante.
+- **Búsqueda Vectorial** — Uso de `pgvector` en Supabase para búsqueda por similitud de coseno en milisegundos.
+- **Identificación en Tiempo Real** — El sistema reconoce si una persona o POI ya ha sido registrado previamente, mostrando su identidad histórica en lugar de crear un rastro nuevo.
+
+### Geotracking & Mission Summary
+- **Trail GPS** — Registro automático de coordenadas cada 10 segundos durante la misión.
+- **Resumen Visual** — Nuevo modal de cierre de misión con estadísticas detalladas (objetos, POIs, personas, rutas y puntos de rastro registrados).
 
 ---
 

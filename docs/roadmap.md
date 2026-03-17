@@ -34,10 +34,14 @@ La topología ideal requiere dos roles:
 *Basado en tu solicitud, he estructurado varias ideas que añaden valor inmenso al software para presentarlo como producto.*
 
 ### 1. Sistema "Offline-First" (Supervivencia sin Red)
-*   **Problema Real:** En zonas remotas (como Marte, cuevas, o túneles de minería) se pierde el WiFi/LTE.
-*   **Propuesta:** Integrar bases de datos SQLite y *WatermelonDB* en el celular. Mientras el usuario no tenga red, sus escaneos y kilómetros se guardan localmente.
-*   **Sincronización:** Cuando el celular detecte conexión al Centro de Comando, sube de golpe todas las coordenadas y cajas a Supabase en lote.
-*   **Viabilidad:** **Media**. Es un estándar en la industria pero requiere reescribir la capa de `api.js` para revisar primero si `navigator.onLine` es `true`.
+*   **Estado:** **Parcialmente Completado (v0.7.0)**.
+*   **Logros:** Integración de sincronización offline en `api.js` y registro rastro GPS persistente.
+*   **Pendiente:** Sincronización masiva de assets (imágenes) en desconexión total prolija.
+
+### 2. AI Re-ID y Auto-Captura (COMPLETADA v0.7.0)
+*   **Descripción:** Sistema Sentinel con ruteo inteligente a tablas de Personas y POIs.
+*   **Logros:** Integración de pgvector para persistencia de identidad visual. Ya no se requieren capturas manuales para entidades críticas.
+*   **Viabilidad:** **Alta**. Implementado exitosamente en v0.7.0 usando CLIP + Supabase RPC.
 
 ### 2. Biometría Real Extrapolada (Relojes Inteligentes)
 *   **Propuesta:** En este momento, los latidos del corazón (BPM) y la temperatura que programamos son variables matemáticas aleatorias (`Math.random()`). Sería fascinante conectar Apple HealthKit (iOS) o Google Fit (Android) dentro de la Fase 2 móvil.

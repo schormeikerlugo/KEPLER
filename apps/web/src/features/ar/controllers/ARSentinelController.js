@@ -1,4 +1,4 @@
-import { api } from '../../../js/services/api.js';
+// Save logic delegated to ARDataController.autoRouteDetection()
 
 export class ARSentinelController {
     constructor(context) {
@@ -18,9 +18,9 @@ export class ARSentinelController {
         console.log(`Sentinel Mode: ${enabled ? 'ENGAGED' : 'STANDBY'}`);
 
         if (enabled) {
-            this.context.arUI.showToast("🛡️ CENTINELA ACTIVO", 3000);
+            this.context.ui.showToast("🛡️ CENTINELA ACTIVO", 3000);
         } else {
-            this.context.arUI.showToast("CENTINELA EN ESPERA", 2000);
+            this.context.ui.showToast("CENTINELA EN ESPERA", 2000);
         }
     }
 
@@ -46,62 +46,22 @@ export class ARSentinelController {
 
     async captureAndLog(prediction) {
         // Visual Feedback
-        this.context.arUI.showToast(`📸 CAPTURA: ${prediction.class.toUpperCase()}`, 1000);
+        this.context.ui.showToast(`📸 CAPTURA: ${prediction.class.toUpperCase()}`, 1000);
 
         // 1. Capture Snapshot
         const snapshot = this.captureSnapshot();
 
-        // 2. Gather Context Data
-        // Fix: Use correct state path for location
-        const location = this.context.state.lastLocation;
-
-        if (!location) {
-            // On Desktop/Indoors, GPS might be missing.
-            // We notify the user but still allow saving (at 0,0 or map center) to not break the feature.
-            this.context.arUI.showToast("⚠️ Guardando sin GPS (0,0)", 2000);
-        }
-
-        const safeLocation = location || { lat: 0, lng: 0 };
-
-        // Fix: Use robust heading extraction from engines like in DataController
-        let heading = 0;
+        // 2. Delegate to DataController's Smart Entity Router
+        // This handles routing person→personas_encontradas, settlements→puntos_interes, etc.
         try {
-            heading = (this.context.gpsEngine?.filteredHeading || this.context.gpsEngine?.heading || 0);
-        } catch (e) { }
-
-        // 3. Payload
-        const payload = {
-            source: 'sentinel',
-            object_class: prediction.class,
-            name: 'Unknown',
-            confidence: prediction.score,
-            timestamp: new Date().toISOString(),
-            location: safeLocation,
-            heading: heading,
-            image_base64: snapshot,
-            metadata: {
-                bbox: prediction.bbox,
-                mode: 'SENTINEL_AUTO'
-            },
-            mission_id: this.context.state.currentMissionId || null
-        };
-
-        // 4. Send to API
-        console.log("[Sentinel] Uploading:", payload.object_class);
-        api.createObject(payload).then(res => {
-            if (res.success === false) {
-                this.context.arUI.showToast(`⚠️ ERROR: ${res.error}`, 3000);
-                return;
+            const result = await this.context.dataController.autoRouteDetection(prediction, snapshot);
+            if (result) {
+                this.context.ui.showToast(`💾 ${result.type}: ${result.name}`, 3000);
             }
-
-            if (res.status === 'identified') {
-                const name = res.match.nombre || 'Desconocido';
-                this.context.arUI.showToast(`👁️ IDENTIFICADO: ${name}`, 3000);
-            } else {
-                const name = res.data?.nombre || 'Nuevo Objeto';
-                this.context.arUI.showToast(`💾 REGISTRADO: ${name}`, 3000);
-            }
-        });
+        } catch (e) {
+            console.error('[Sentinel] autoRouteDetection error:', e);
+            this.context.ui.showToast(`⚠️ ERROR: ${e.message}`, 3000);
+        }
     }
 
     captureSnapshot() {

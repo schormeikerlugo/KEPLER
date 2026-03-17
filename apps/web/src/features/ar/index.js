@@ -208,8 +208,31 @@ export class ARController {
             };
         }
         
-        // 4. Mission Modals (if added)
-        // ...
+        // 4. New modal close handlers (POI, Persona, Ruta)
+        ['poi', 'persona', 'ruta'].forEach(type => {
+            const closeBtn = document.getElementById(`btn-${type}-cancel`);
+            const modal = document.getElementById(`${type}-modal`);
+            if (closeBtn && modal) {
+                closeBtn.onclick = (e) => { e.stopPropagation(); modal.style.display = 'none'; };
+            }
+        });
+    }
+
+    /**
+     * Dynamically load POI categories into the select dropdown
+     */
+    async _loadPOICategoriesUI() {
+        const select = document.getElementById('select-poi-categoria');
+        if (!select) return;
+        select.innerHTML = '<option value="">Cargando...</option>';
+        const categories = await this.dataController.loadPOICategories();
+        if (categories.length === 0) {
+            select.innerHTML = '<option value="">Sin categorías</option>';
+            return;
+        }
+        select.innerHTML = categories.map(c =>
+            `<option value="${c.id}">${c.icono || '📍'} ${c.nombre}</option>`
+        ).join('');
     }
 
     bindModalEvents() {
@@ -239,28 +262,103 @@ export class ARController {
             };
         }
 
-        // TICK Logic
+        // TICK → Quick Action Hub
         const btnTick = document.getElementById('btn-tick');
+        const actionHub = document.getElementById('action-hub');
         const markModal = document.getElementById('mark-modal');
-        if(btnTick) {
+        const poiModal = document.getElementById('poi-modal');
+        const personaModal = document.getElementById('persona-modal');
+        const rutaModal = document.getElementById('ruta-modal');
+
+        if (btnTick && actionHub) {
+            // Toggle hub on TICK click
             btnTick.addEventListener('click', () => {
-                // Capture Snapshot immediately when user decides to mark
-                this.pendingSnapshot = this.arEngine.captureFrame();
-                
-                markModal.style.display = 'flex';
-                document.getElementById('inp-mark-title').value = '';
+                const isOpen = actionHub.style.display === 'flex';
+                actionHub.style.display = isOpen ? 'none' : 'flex';
             });
-            document.getElementById('btn-mark-cancel')?.addEventListener('click', () => markModal.style.display = 'none');
-            document.getElementById('btn-mark-confirm')?.addEventListener('click', async () => {
-                const title = document.getElementById('inp-mark-title').value || 'Marcador Manual';
-                const desc = document.getElementById('inp-mark-desc').value;
-                markModal.style.display = 'none';
-                
-                // Pass snapshot to Data Controller
-                await this.dataController.createManualMarker(title, desc, this.pendingSnapshot);
-                this.pendingSnapshot = null;
+
+            // Close hub when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.action-hub-wrapper')) {
+                    actionHub.style.display = 'none';
+                }
+            });
+
+            // Hub option handlers
+            actionHub.querySelectorAll('.hub-option').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    actionHub.style.display = 'none';
+                    const action = btn.dataset.action;
+                    if (action === 'marker') {
+                        this.pendingSnapshot = this.arEngine.captureFrame();
+                        markModal.style.display = 'flex';
+                        document.getElementById('inp-mark-title').value = '';
+                    } else if (action === 'poi') {
+                        poiModal.style.display = 'flex';
+                        this._loadPOICategoriesUI();
+                    } else if (action === 'persona') {
+                        personaModal.style.display = 'flex';
+                    } else if (action === 'ruta') {
+                        rutaModal.style.display = 'flex';
+                    }
+                });
             });
         }
+
+        // Mark Modal confirm (existing logic)
+        document.getElementById('btn-mark-cancel')?.addEventListener('click', () => markModal.style.display = 'none');
+        document.getElementById('btn-mark-confirm')?.addEventListener('click', async () => {
+            const title = document.getElementById('inp-mark-title').value || 'Marcador Manual';
+            const desc = document.getElementById('inp-mark-desc').value;
+            markModal.style.display = 'none';
+            await this.dataController.createManualMarker(title, desc, this.pendingSnapshot);
+            this.pendingSnapshot = null;
+        });
+
+        // POI Modal
+        document.getElementById('btn-poi-cancel')?.addEventListener('click', () => poiModal.style.display = 'none');
+        document.getElementById('btn-poi-confirm')?.addEventListener('click', async () => {
+            const nombre = document.getElementById('inp-poi-nombre').value;
+            if (!nombre) return this.ui.showToast("Escribe un nombre para el POI");
+            poiModal.style.display = 'none';
+            await this.dataController.createPOI({
+                categoria_id: document.getElementById('select-poi-categoria').value || null,
+                nombre,
+                zona: document.getElementById('inp-poi-zona').value || null,
+                nivel_riesgo: document.getElementById('select-poi-riesgo').value,
+                estado: document.getElementById('select-poi-estado').value,
+                descripcion: document.getElementById('inp-poi-descripcion').value || null
+            });
+        });
+
+        // Persona Modal
+        document.getElementById('btn-persona-cancel')?.addEventListener('click', () => personaModal.style.display = 'none');
+        document.getElementById('btn-persona-confirm')?.addEventListener('click', async () => {
+            const nombre = document.getElementById('inp-persona-nombre').value;
+            if (!nombre) return this.ui.showToast("Escribe un nombre o identificador");
+            personaModal.style.display = 'none';
+            await this.dataController.createPersona({
+                nombre,
+                alias: document.getElementById('inp-persona-alias').value || null,
+                contexto: document.getElementById('select-persona-contexto').value,
+                notas: document.getElementById('inp-persona-notas').value || null
+            });
+        });
+
+        // Ruta Modal
+        document.getElementById('btn-ruta-cancel')?.addEventListener('click', () => rutaModal.style.display = 'none');
+        document.getElementById('btn-ruta-confirm')?.addEventListener('click', async () => {
+            const nombre = document.getElementById('inp-ruta-nombre').value;
+            if (!nombre) return this.ui.showToast("Escribe un nombre para la ruta");
+            rutaModal.style.display = 'none';
+            await this.dataController.createRuta({
+                nombre,
+                dificultad: document.getElementById('select-ruta-dificultad').value,
+                seguridad: document.getElementById('select-ruta-seguridad').value,
+                notas: document.getElementById('inp-ruta-notas').value || null
+            });
+        });
     }
 
     async performIntelligentScan() {

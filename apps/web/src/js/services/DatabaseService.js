@@ -8,14 +8,18 @@ export class DatabaseService {
 
     // --- MISSION MANAGEMENT ---
 
-    async startMission(title = "Nueva Misión", location = "Desconocido", descripcionIA = null) {
+    async startMission(title = "Nueva Misión", location = "Desconocido", descripcionIA = null, opts = {}) {
         try {
             // Use API to Start Mission on Backend
             const res = await api.startMission({
                 titulo: title,
                 zona: location,
                 clima: {},
-                descripcion_ia: descripcionIA
+                descripcion_ia: descripcionIA,
+                tipo_terreno: opts.tipo_terreno || null,
+                objetivo: opts.objetivo || null,
+                dificultad: opts.dificultad || null,
+                coords_inicio: opts.coords_inicio || null
             });
 
             if (res.success && res.mission_id) {

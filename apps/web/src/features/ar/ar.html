@@ -144,9 +144,16 @@
       <div class="ar-bottom-right">
         <button id="btn-scan" class="btn-action glass-panel">SCAN</button>
         <button id="btn-teach" class="btn-action glass-panel">TEACH</button>
-        <button id="btn-tick" class="btn-action glass-panel active">
-          TICK
-        </button>
+        <!-- Quick Action Hub (replaces TICK) -->
+        <div class="action-hub-wrapper" style="position:relative;">
+          <button id="btn-tick" class="btn-action glass-panel active">TICK</button>
+          <div id="action-hub" class="action-hub" style="display:none;">
+            <button class="hub-option" data-action="marker" title="Marcador">📍</button>
+            <button class="hub-option" data-action="poi" title="Punto de Interés">🏔️</button>
+            <button class="hub-option" data-action="persona" title="Persona">👤</button>
+            <button class="hub-option" data-action="ruta" title="Ruta">🛤️</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -220,6 +227,188 @@
 
           <button id="btn-mark-confirm" class="btn-action glass-panel active" style="width: 100%">
             GUARDAR PUNTO
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- POI Capture Modal -->
+    <div id="poi-modal" class="modal-overlay" style="display: none">
+      <div class="modal-content glass-panel" style="background:rgba(8,10,16,0.92); backdrop-filter:blur(25px); border:1px solid rgba(63,168,255,0.15); max-height:85vh; overflow-y:auto;">
+        <div class="chat-header">
+          <span>🏔️ REGISTRAR POI</span>
+          <button id="btn-poi-cancel" class="close-modal">✕</button>
+        </div>
+        <div class="mission-form">
+          <div class="mission-field">
+            <label class="mission-field-label">Categoría</label>
+            <select id="select-poi-categoria" class="mission-select">
+              <option value="">Cargando categorías...</option>
+            </select>
+          </div>
+          <div class="mission-field">
+            <label class="mission-field-label">Nombre del POI</label>
+            <input type="text" id="inp-poi-nombre" class="mission-input" placeholder="Ej: Fuente de agua, Cueva oculta...">
+          </div>
+          <div class="mission-field">
+            <label class="mission-field-label">📍 Zona</label>
+            <input type="text" id="inp-poi-zona" class="mission-input" placeholder="Se detecta automáticamente...">
+          </div>
+          <div class="mission-divider"></div>
+          <div class="mission-field">
+            <label class="mission-field-label">⚠️ Nivel de Riesgo</label>
+            <select id="select-poi-riesgo" class="mission-select">
+              <option value="bajo">🟢 Bajo</option>
+              <option value="medio" selected>🟡 Medio</option>
+              <option value="alto">🔴 Alto</option>
+              <option value="critico">⛔ Crítico</option>
+            </select>
+          </div>
+          <div class="mission-field">
+            <label class="mission-field-label">Estado</label>
+            <select id="select-poi-estado" class="mission-select">
+              <option value="activo">🟢 Activo</option>
+              <option value="inactivo">🟡 Inactivo</option>
+              <option value="destruido">🔴 Destruido</option>
+            </select>
+          </div>
+          <div class="mission-field">
+            <label class="mission-field-label">Descripción</label>
+            <textarea id="inp-poi-descripcion" class="mission-input" placeholder="Detalles del punto de interés..." style="height:60px; resize:vertical;"></textarea>
+          </div>
+          <div class="mission-divider"></div>
+          <button id="btn-poi-confirm" class="mission-btn-launch ready">
+            REGISTRAR POI 🏔️
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Persona Registration Modal -->
+    <div id="persona-modal" class="modal-overlay" style="display: none">
+      <div class="modal-content glass-panel" style="background:rgba(8,10,16,0.92); backdrop-filter:blur(25px); border:1px solid rgba(63,168,255,0.15); max-height:85vh; overflow-y:auto;">
+        <div class="chat-header">
+          <span>👤 REGISTRAR PERSONA</span>
+          <button id="btn-persona-cancel" class="close-modal">✕</button>
+        </div>
+        <div class="mission-form">
+          <div class="mission-field">
+            <label class="mission-field-label">Nombre / Identificador</label>
+            <input type="text" id="inp-persona-nombre" class="mission-input" placeholder="Nombre o alias de la persona...">
+          </div>
+          <div class="mission-field">
+            <label class="mission-field-label">Alias</label>
+            <input type="text" id="inp-persona-alias" class="mission-input" placeholder="Alias o apodo...">
+          </div>
+          <div class="mission-field">
+            <label class="mission-field-label">Contexto</label>
+            <select id="select-persona-contexto" class="mission-select">
+              <option value="civil">🧑 Civil</option>
+              <option value="autoridad">👮 Autoridad</option>
+              <option value="contacto">🤝 Contacto</option>
+              <option value="amenaza">⚠️ Amenaza</option>
+              <option value="desconocido" selected>❓ Desconocido</option>
+            </select>
+          </div>
+          <div class="mission-divider"></div>
+          <div class="mission-field">
+            <label class="mission-field-label">Notas</label>
+            <textarea id="inp-persona-notas" class="mission-input" placeholder="Observaciones adicionales..." style="height:60px; resize:vertical;"></textarea>
+          </div>
+          <div class="mission-divider"></div>
+          <button id="btn-persona-confirm" class="mission-btn-launch ready">
+            REGISTRAR PERSONA 👤
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Route Capture Modal -->
+    <div id="ruta-modal" class="modal-overlay" style="display: none">
+      <div class="modal-content glass-panel" style="background:rgba(8,10,16,0.92); backdrop-filter:blur(25px); border:1px solid rgba(63,168,255,0.15); max-height:85vh; overflow-y:auto;">
+        <div class="chat-header">
+          <span>🛤️ REGISTRAR RUTA</span>
+          <button id="btn-ruta-cancel" class="close-modal">✕</button>
+        </div>
+        <div class="mission-form">
+          <div class="mission-field">
+            <label class="mission-field-label">Nombre de la Ruta</label>
+            <input type="text" id="inp-ruta-nombre" class="mission-input" placeholder="Ej: Sendero norte, Ruta costera...">
+          </div>
+          <div class="mission-field">
+            <label class="mission-field-label">⚡ Dificultad</label>
+            <select id="select-ruta-dificultad" class="mission-select">
+              <option value="facil">🟢 Fácil</option>
+              <option value="moderada" selected>🟡 Moderada</option>
+              <option value="dificil">🔴 Difícil</option>
+              <option value="extrema">⛔ Extrema</option>
+            </select>
+          </div>
+          <div class="mission-field">
+            <label class="mission-field-label">🔒 Estado de Seguridad</label>
+            <select id="select-ruta-seguridad" class="mission-select">
+              <option value="seguro">🟢 Seguro</option>
+              <option value="precaucion" selected>🟡 Precaución</option>
+              <option value="peligroso">🔴 Peligroso</option>
+            </select>
+          </div>
+          <div class="mission-field">
+            <label class="mission-field-label">Notas</label>
+            <textarea id="inp-ruta-notas" class="mission-input" placeholder="Condiciones, obstáculos, observaciones..." style="height:60px; resize:vertical;"></textarea>
+          </div>
+          <div class="mission-divider"></div>
+          <button id="btn-ruta-confirm" class="mission-btn-launch ready">
+            REGISTRAR RUTA 🛤️
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mission Summary Modal -->
+    <div id="summary-modal" class="modal-overlay" style="display: none">
+      <div class="modal-content glass-panel" style="background:rgba(8,10,16,0.95); backdrop-filter:blur(25px); border:1px solid rgba(63,168,255,0.2); max-width:400px;">
+        <div class="chat-header" style="justify-content:center; border-bottom-color:rgba(63,168,255,0.3);">
+          <span style="letter-spacing:3px; font-size:1.1rem;">═══ RESUMEN DE MISIÓN ═══</span>
+        </div>
+        <div class="mission-form" style="gap:12px;">
+          <div style="display:flex; align-items:center; gap:12px; padding:8px 12px; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+            <span style="font-size:1.5rem;">📦</span>
+            <div style="flex:1;">
+              <div style="font-size:0.7rem; color:#888; text-transform:uppercase; letter-spacing:1px;">Objetos Detectados</div>
+              <div id="summary-objetos" style="font-size:1.3rem; font-weight:bold; color:#fff;">0</div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px; padding:8px 12px; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+            <span style="font-size:1.5rem;">🏔️</span>
+            <div style="flex:1;">
+              <div style="font-size:0.7rem; color:#888; text-transform:uppercase; letter-spacing:1px;">Puntos de Interés</div>
+              <div id="summary-pois" style="font-size:1.3rem; font-weight:bold; color:#fff;">0</div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px; padding:8px 12px; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+            <span style="font-size:1.5rem;">👤</span>
+            <div style="flex:1;">
+              <div style="font-size:0.7rem; color:#888; text-transform:uppercase; letter-spacing:1px;">Personas Registradas</div>
+              <div id="summary-personas" style="font-size:1.3rem; font-weight:bold; color:#fff;">0</div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px; padding:8px 12px; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+            <span style="font-size:1.5rem;">🛤️</span>
+            <div style="flex:1;">
+              <div style="font-size:0.7rem; color:#888; text-transform:uppercase; letter-spacing:1px;">Rutas Trazadas</div>
+              <div id="summary-rutas" style="font-size:1.3rem; font-weight:bold; color:#fff;">0</div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px; padding:8px 12px; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+            <span style="font-size:1.5rem;">📍</span>
+            <div style="flex:1;">
+              <div style="font-size:0.7rem; color:#888; text-transform:uppercase; letter-spacing:1px;">Puntos GPS Trail</div>
+              <div id="summary-geotrack" style="font-size:1.3rem; font-weight:bold; color:#fff;">0</div>
+            </div>
+          </div>
+          <div class="mission-divider"></div>
+          <button id="btn-summary-continue" class="mission-btn-launch ready" style="width:100%;">
+            MISIÓN COMPLETADA — CONTINUAR ✓
           </button>
         </div>
       </div>

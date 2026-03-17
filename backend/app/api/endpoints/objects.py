@@ -315,6 +315,64 @@ async def create_object(req: ObjectCreateRequest, user = Depends(get_current_use
         print(f"Create object error: {e}")
         return {"success": False, "error": str(e)}
 
+
+class MatchVisualRequest(BaseModel):
+    image_base64: str
+    entity_type: str  # 'persona' or 'poi'
+    threshold: Optional[float] = 0.80
+
+
+@router.post("/match-visual")
+async def match_visual(req: MatchVisualRequest, user = Depends(get_current_user)):
+    """
+    AI Re-Identification: Check if a captured image matches an existing entity.
+    Uses CLIP embeddings + pgvector cosine similarity via match_entity_by_embedding().
+    """
+    try:
+        # 1. Generate embedding from captured image
+        if not req.image_base64 or len(req.image_base64) < 100:
+            return {"matched": False, "reason": "No image provided"}
+        
+        embedding = None
+        try:
+            embedding = ai_service.generate_embedding(req.image_base64)
+        except Exception as e:
+            print(f"[match-visual] Embedding error: {e}")
+            return {"matched": False, "reason": "Embedding generation failed"}
+        
+        if not embedding:
+            return {"matched": False, "reason": "Empty embedding"}
+        
+        # 2. Query similarity via SQL function
+        supabase = get_supabase()
+        if not supabase:
+            return {"matched": False, "reason": "DB connection error"}
+        
+        res = supabase.rpc('match_entity_by_embedding', {
+            'query_embedding': embedding,
+            'entity_type': req.entity_type,
+            'match_threshold': req.threshold or 0.80,
+            'match_count': 3
+        }).execute()
+        
+        if res.data and len(res.data) > 0:
+            best = res.data[0]
+            return {
+                "matched": True,
+                "entity": {
+                    "id": best["id"],
+                    "nombre": best["nombre"],
+                    "similarity": round(best["similarity"], 4)
+                },
+                "alternatives": res.data[1:] if len(res.data) > 1 else []
+            }
+        
+        return {"matched": False, "reason": "No matching entities found"}
+    
+    except Exception as e:
+        print(f"[match-visual] Error: {e}")
+        return {"matched": False, "reason": str(e)}
+
 @router.put("/{object_id}")
 async def update_object(object_id: str, req: ObjectUpdateRequest, user = Depends(get_current_user)):
     try:

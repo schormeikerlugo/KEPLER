@@ -131,3 +131,197 @@
 .btn-delete-chat:hover {
     color: #ff4444;
 }
+
+/* ════════════════════════════════════════════════════
+   Mission Start Modal
+   ════════════════════════════════════════════════════ */
+
+#mission-modal .history-content {
+    background: rgba(8, 10, 16, 0.85);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border: 1px solid rgba(63, 168, 255, 0.2);
+    border-radius: 14px;
+    width: 460px;
+    max-width: 92%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow:
+        0 0 40px rgba(63, 168, 255, 0.15),
+        0 20px 60px rgba(0, 0, 0, 0.6);
+    scrollbar-width: none;
+}
+
+#mission-modal .history-content::-webkit-scrollbar {
+    display: none;
+}
+
+#mission-modal .history-header {
+    padding: 18px 24px;
+    border-bottom: 1px solid rgba(63, 168, 255, 0.12);
+}
+
+#mission-modal .history-header h3 {
+    font-family: var(--font-jura);
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: #3FA8FF;
+}
+
+/* ── Form Body ── */
+.mission-form {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    color: #fff;
+}
+
+/* ── Field Groups ── */
+.mission-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.mission-field-label {
+    font-family: var(--font-jura);
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #666;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+}
+
+.mission-field-hint {
+    font-size: 0.7rem;
+    color: #555;
+    line-height: 1.4;
+}
+
+.mission-field-hint.ai-hint {
+    color: #00ff88;
+    display: none;
+}
+
+/* ── Inputs & Selects ── */
+.mission-input,
+.mission-select {
+    width: 100%;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    color: #ccc;
+    font-family: var(--font-jura);
+    font-size: 0.88rem;
+    font-weight: 500;
+    outline: none;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+.mission-input::placeholder {
+    color: #444;
+}
+
+.mission-input:focus,
+.mission-select:focus {
+    border-color: rgba(63, 168, 255, 0.4);
+    background: rgba(63, 168, 255, 0.05);
+    box-shadow: 0 0 0 3px rgba(63, 168, 255, 0.08);
+    color: #fff;
+}
+
+.mission-input:hover,
+.mission-select:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.mission-input.locked {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ── Select Dropdowns with Glass Effect ── */
+.mission-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' viewBox='0 0 12 7'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 40px;
+    cursor: pointer;
+}
+
+.mission-select option {
+    background: #111;
+    color: #ccc;
+    padding: 10px;
+    font-family: var(--font-jura);
+}
+
+/* ── Loading Bar ── */
+.mission-loading {
+    display: none;
+}
+
+.mission-loading-track {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 10px;
+    overflow: hidden;
+    height: 4px;
+}
+
+.mission-loading-fill {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #3FA8FF, #00ff88);
+    border-radius: 10px;
+    transition: width 0.4s ease;
+}
+
+.mission-loading-text {
+    font-size: 0.72rem;
+    color: #3FA8FF;
+    margin-top: 6px;
+    letter-spacing: 0.5px;
+}
+
+/* ── DESPEGAR Button ── */
+.mission-btn-launch {
+    width: 100%;
+    padding: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    color: #555;
+    font-family: var(--font-jura);
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    cursor: not-allowed;
+    transition: all 0.3s ease;
+}
+
+.mission-btn-launch.ready {
+    background: rgba(63, 168, 255, 0.12);
+    border-color: rgba(63, 168, 255, 0.4);
+    color: #3FA8FF;
+    cursor: pointer;
+    box-shadow: 0 0 20px rgba(63, 168, 255, 0.15);
+}
+
+.mission-btn-launch.ready:hover {
+    background: rgba(63, 168, 255, 0.2);
+    box-shadow: 0 0 30px rgba(63, 168, 255, 0.25);
+    transform: translateY(-1px);
+}
+
+/* ── Divider ── */
+.mission-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.04);
+    margin: 4px 0;
+}

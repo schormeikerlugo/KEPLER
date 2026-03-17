@@ -311,52 +311,75 @@
 
 <!-- Mission Modal -->
 <div class="history-modal" id="mission-modal" style="display:none; align-items:center; justify-content:center;">
-  <div class="history-content"
-    style="height:auto; min-height:300px; max-width:500px; max-height:90vh; overflow-y:auto;">
+  <div class="history-content">
     <div class="history-header">
       <h3>🚀 INICIAR MISIÓN</h3>
       <button id="btn-close-mission" class="btn-close-history">×</button>
     </div>
-    <div style="padding:25px; color:white; display:flex; flex-direction:column; gap:15px;">
-      <div id="mission-loading-bar" style="display:none;">
-        <div style="background:rgba(0,100,200,0.2); border-radius:10px; overflow:hidden; height:6px;">
-          <div id="mission-loading-progress"
-            style="width:0%; height:100%; background:linear-gradient(90deg, #00aaff, #00ff88); transition:width 0.3s;">
-          </div>
+    <div class="mission-form">
+      <!-- Loading Bar -->
+      <div id="mission-loading-bar" class="mission-loading">
+        <div class="mission-loading-track">
+          <div id="mission-loading-progress" class="mission-loading-fill"></div>
         </div>
-        <span id="mission-loading-text" style="font-size:0.75rem; color:#00aaff; display:block; margin-top:5px;">⏳
-          Detectando ubicación...</span>
+        <span id="mission-loading-text" class="mission-loading-text">⏳ Detectando ubicación...</span>
       </div>
-      <div>
-        <label style="display:block; margin-bottom:8px; color:#00aaff; font-weight:bold;">NOMBRE DE MISIÓN</label>
-        <input type="text" id="inp-dash-mission-title" readonly
-          style="width:100%; padding:12px 15px; background:rgba(0,50,100,0.3); border:1px solid #0055aa; color:#88ccff; border-radius:8px; box-sizing:border-box; font-family:'Jura',sans-serif; cursor:not-allowed;">
-        <span style="font-size:0.7rem; color:#555; display:block; margin-top:3px;">📝 Puedes editar esto después de la
-          misión</span>
+      <!-- Mission Name -->
+      <div class="mission-field">
+        <label class="mission-field-label">Nombre de Misión</label>
+        <input type="text" id="inp-dash-mission-title" class="mission-input" placeholder="Se genera automáticamente...">
+        <span class="mission-field-hint">📝 Editable — personaliza el nombre de tu exploración</span>
       </div>
-      <div>
-        <label style="display:block; margin-bottom:8px; color:#00aaff; font-weight:bold;">📍 ZONA DETECTADA</label>
-        <input type="text" id="inp-dash-mission-zone" readonly
-          style="width:100%; padding:12px 15px; background:rgba(0,50,100,0.3); border:1px solid #0055aa; color:#88ccff; border-radius:8px; box-sizing:border-box; font-family:'Jura',sans-serif; cursor:not-allowed;">
-        <span id="zone-description-helper"
-          style="font-size:0.75rem; color:#00ff88; display:none; margin-top:5px; line-height:1.4;"></span>
+      <!-- Zone -->
+      <div class="mission-field">
+        <label class="mission-field-label">📍 Zona</label>
+        <input type="text" id="inp-dash-mission-zone" class="mission-input" placeholder="Se detecta por GPS o escríbela manualmente...">
+        <span id="zone-description-helper" class="mission-field-hint ai-hint"></span>
       </div>
-      <div style="margin-top:10px;">
-        <label style="display:block; margin-bottom:8px; color:#00aaff; font-weight:bold;">MOTOR DE IA</label>
-        <select id="select-ai-model-version" disabled
-          style="width:100%; padding:12px 15px; background:rgba(0,0,0,0.3); border:1px solid #0055aa; color:#00ff88; border-radius:8px; box-sizing:border-box; font-family:'Jura',sans-serif; cursor:not-allowed;">
-          <option value="v26_backend">🔥 Local Python Core (YOLOv26) - 📡 Online</option>
+      <div class="mission-divider"></div>
+      <!-- AI Engine (locked) -->
+      <div class="mission-field">
+        <label class="mission-field-label">Motor de IA</label>
+        <select id="select-ai-model-version" class="mission-select locked" disabled>
+          <option value="v26_backend">🔥 YOLOv26 — Local Python Core</option>
         </select>
-        <span style="font-size:0.75rem; color:#666; display:block; margin-top:5px;">
-          💡 Inferencia de alta velocidad procesada vía WebSockets
-        </span>
+        <span class="mission-field-hint">🔒 Motor fijo — más opciones próximamente</span>
       </div>
-      <div style="margin-top:10px; display:flex; gap:10px;">
-        <button id="btn-confirm-start-mission" disabled
-          style="flex:1; padding:14px; background:#555; border:none; color:#999; font-weight:bold; cursor:not-allowed; border-radius:10px; font-family:'Jura',sans-serif; transition:all 0.3s;">
-          ⏳ PREPARANDO...
-        </button>
+      <div class="mission-divider"></div>
+      <!-- Terrain Type -->
+      <div class="mission-field">
+        <label class="mission-field-label">🏔️ Tipo de Terreno</label>
+        <select id="select-mission-terreno" class="mission-select">
+          <option value="urbano">🏙️ Urbano</option>
+          <option value="montaña">⛰️ Montaña</option>
+          <option value="bosque">🌲 Bosque / Selva</option>
+          <option value="costero">🏖️ Costero / Playa</option>
+          <option value="desierto">🏜️ Desierto / Árido</option>
+          <option value="subterraneo">🕳️ Subterráneo / Cueva</option>
+          <option value="rural">🌾 Rural / Campo</option>
+          <option value="fluvial">🌊 Fluvial / Lacustre</option>
+        </select>
       </div>
+      <!-- Objective -->
+      <div class="mission-field">
+        <label class="mission-field-label">🎯 Objetivo</label>
+        <input type="text" id="inp-mission-objetivo" class="mission-input" placeholder="Ej: Reconocimiento zona norte, Mapeo de recursos...">
+      </div>
+      <!-- Difficulty -->
+      <div class="mission-field">
+        <label class="mission-field-label">⚡ Dificultad Estimada</label>
+        <select id="select-mission-dificultad" class="mission-select">
+          <option value="facil">🟢 Fácil</option>
+          <option value="moderada" selected>🟡 Moderada</option>
+          <option value="dificil">🔴 Difícil</option>
+          <option value="extrema">⛔ Extrema</option>
+        </select>
+      </div>
+      <div class="mission-divider"></div>
+      <!-- Launch Button -->
+      <button id="btn-confirm-start-mission" class="mission-btn-launch" disabled>
+        ⏳ PREPARANDO...
+      </button>
     </div>
   </div>
 </div>

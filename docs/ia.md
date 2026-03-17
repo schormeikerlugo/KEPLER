@@ -14,11 +14,11 @@ KEPLER implementa una arquitectura de IA híbrida, dividiendo el procesamiento e
 *   **Propósito:** Detectar e identificar objetos enviando frames a la terminal de Python para recibir Bounding Boxes en milisegundos.
 *   **Nota:** Se ejecuta del lado del servidor/local sin cargar la RAM del navegador (Browser).
 
-### 2. Estabilización (Filtro de Kalman)
+### 4. Estabilización (Filtro de Kalman)
 *   **Algoritmo:** Implementación personalizada en JS (`KalmanFilter.js`).
 *   **Uso:** Suaviza las coordenadas (Bounding Boxes) de las detecciones de YOLO. Reduce el "jitter" (temblor) de las cajas delimitadoras, proporcionando una experiencia de UI fluida y profesional.
 
-### 3. Object Tracking
+### 5. Object Tracking
 *   **Lógica:** Sistema de rastreo (`ObjectTracker.js`) que asigna IDs únicos a los objetos detectados para mantener su identidad a través de los frames, evitando parpadeos de etiquetas.
 
 ### 4. Optimizaciones Móviles (v0.5.0)
@@ -43,10 +43,20 @@ El sistema detecta automáticamente dispositivos móviles y aplica configuracion
 
 ### 1. Visión Semántica (CLIP)
 *   **Modelo:** OpenAI CLIP (ViT-B-32).
-*   **Función:** Transforma imágenes en vectores numéricos (embeddings).
+*   **Función:** Transforma imágenes en vectores numéricos (embeddings) de 512 dimensiones.
 *   **Aplicación:** Permite al sistema "recordar" qué ha visto y buscar objetos visualmente similares en el archivo histórico sin depender de etiquetas de texto.
 
-### 2. Inteligencia Generativa (Mistral 7B)
+### 2. AI Re-Identification (Re-ID) - v0.7.0
+*   **Tecnología:** CLIP Embeddings + `pgvector` (ivfflat index).
+*   **Algoritmo:** Similitud de Coseno via RPC de Supabase.
+*   **Función:** Identifica si una persona o POI detectado ya existe en la base de datos visual. 
+*   **Flujo:** 
+    1. Captura de frame.
+    2. Generación de embedding en Backend.
+    3. Búsqueda de match en tablas `personas_encontradas` y `puntos_interes` (threshold ≥ 0.80).
+    4. Si hay match, se vincula al registro existente; si no, se crea uno nuevo.
+
+### 3. Inteligencia Generativa (Mistral 7B)
 *   **Modelo:** Mistral 7B (mistral:7b).
 *   **Ejecución:** Local vía [Ollama](https://ollama.ai).
 *   **Función:** Actúa como el "Científico a Bordo". Recibe datos simples (ej: "Roca") y genera descripciones detalladas, hipótesis geológicas y análisis contextuales ricos para el usuario.

@@ -43,123 +43,177 @@ export class ARDataController {
         this.sentinelCooldowns.set(objClass, now);
         
         try {
-            this.ctx.ui.showToast(`Guardando ${objClass}...`, 0);
+            // Capture frame
+            let snapshot = '';
+            try { snapshot = this.ctx.arEngine.captureFrame() || ''; } catch (e) { }
 
-            // 1. Capture full frame (cropDetection fails on mobile, use captureFrame instead)
-            let capturedImage = '';
-            try {
-                capturedImage = this.ctx.arEngine.captureFrame() || '';
-            } catch(e) {
-                console.warn("Frame capture failed:", e);
+            // Delegate to Smart Entity Router
+            const result = await this.autoRouteDetection(prediction, snapshot);
+            if (result) {
+                this.ctx.ui.showToast(`✓ ${result.type}: ${result.name}`, 2000);
+            } else {
+                this.sentinelCooldowns.delete(objClass);
             }
-            
-            // 2. Get AI description (best effort, non-blocking)
-            let description = `${objClass} detectado automáticamente.`;
-            let category = this.mapClassToCategory(objClass);
-            
+        } catch (e) {
+            console.error("handleAutoSave error:", e);
+            this.sentinelCooldowns.delete(objClass);
+            this.ctx.ui.showToast(`ERR: ${e.message?.substring(0, 30) || 'Unknown'}`, 4000);
+        }
+    }
+
+    /**
+     * Enhanced category mapping with route targets
+     * Returns { category, routeTarget } where routeTarget is 'persona' | 'poi' | 'generic'
+     */
+    classifyDetection(className) {
+        const lc = className.toLowerCase();
+
+        // Person → Personas table
+        if (lc === 'person') {
+            return { category: 'person', routeTarget: 'persona' };
+        }
+
+        // Settlement/Infrastructure → POI table
+        const poiClasses = new Set([
+            'bench', 'fire_hydrant', 'stop_sign', 'traffic_light', 'parking_meter',
+            'building', 'house', 'bridge', 'tent', 'fountain'
+        ]);
+        if (poiClasses.has(lc)) {
+            return { category: lc, routeTarget: 'poi' };
+        }
+
+        // Everything else → Generic objects table
+        const categories = {
+            dog: 'animal', cat: 'animal', bird: 'animal', horse: 'animal', sheep: 'animal',
+            cow: 'animal', elephant: 'animal', bear: 'animal', zebra: 'animal', giraffe: 'animal',
+            car: 'vehicle', motorcycle: 'vehicle', airplane: 'vehicle', bus: 'vehicle',
+            train: 'vehicle', truck: 'vehicle', boat: 'vehicle', bicycle: 'vehicle',
+            chair: 'furniture', couch: 'furniture', bed: 'furniture', 'dining table': 'furniture',
+            bottle: 'object', cup: 'object', bowl: 'object',
+            laptop: 'tech', cell_phone: 'tech', tv: 'tech', keyboard: 'tech', mouse: 'tech',
+            'potted plant': 'plant'
+        };
+        return { category: categories[lc] || 'object', routeTarget: 'generic' };
+    }
+
+    // Legacy alias for backward compat
+    mapClassToCategory(className) {
+        return this.classifyDetection(className).category;
+    }
+
+    /**
+     * Smart Entity Router — Auto-routes detected objects to correct table
+     * Includes AI Re-Identification: checks for existing matches before creating duplicates
+     * Called by Sentinel and Auto-Save
+     */
+    async autoRouteDetection(prediction, snapshot) {
+        const { category, routeTarget } = this.classifyDetection(prediction.class);
+        const coords = await this._getGPSCoords();
+        const timestamp = new Date().toISOString();
+
+        // Get AI description (best effort)
+        let description = `${prediction.class} detectado automáticamente.`;
+        try {
+            const docRes = await fetch('/api/enrich-data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ label: prediction.class })
+            }).then(r => r.json());
+            if (docRes?.description) description = docRes.description;
+        } catch (e) { /* enrichment failed, use default */ }
+
+        // ── AI Re-Identification Pre-Check ──
+        // For persona/poi, try to match against existing entities before creating duplicates
+        if (snapshot && (routeTarget === 'persona' || routeTarget === 'poi')) {
             try {
-                const docRes = await fetch('/api/enrich-data', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ label: objClass })
-                }).then(r => r.json());
-                
-                if (docRes && docRes.description) {
-                    description = docRes.description;
+                const matchRes = await api.matchVisual(snapshot, routeTarget === 'persona' ? 'persona' : 'poi');
+                if (matchRes.matched && matchRes.entity) {
+                    const sim = (matchRes.entity.similarity * 100).toFixed(0);
+                    return {
+                        type: routeTarget === 'persona' ? '👁️ RE-ID PERSONA' : '👁️ RE-ID POI',
+                        name: `${matchRes.entity.nombre} (${sim}% match)`
+                    };
                 }
-                if (docRes && docRes.category) {
-                    category = docRes.category;
-                }
-            } catch(e) { 
-                console.warn("Enrichment failed, using default description"); 
+            } catch (e) {
+                console.warn('[autoRoute] matchVisual failed, proceeding to create:', e.message);
             }
+        }
 
-            // 3. Calculate GPS position
-            const distance = prediction.distance || 3; // meters
-            const R = 6378137;
-            
-            // Safe heading extraction with fallback
-            let heading = 0;
-            try {
-                heading = (this.ctx.gpsEngine?.filteredHeading || this.ctx.gpsEngine?.heading || 0) + (this.ctx.arEngine?.headingOffset || 0);
-            } catch(e) {
-                console.warn("Heading extraction failed, using 0");
-            }
-            const bearingRad = (heading * Math.PI) / 180;
-            
-            const { lat, lng } = this.ctx.state.lastLocation;
-            const newLat = lat + (distance / R) * (180 / Math.PI) * Math.cos(bearingRad);
-            const newLng = lng + (distance / R) * (180 / Math.PI) * Math.sin(bearingRad) / Math.cos(lat * Math.PI / 180);
+        // ── Route to correct table (no match found) ──
+        if (routeTarget === 'persona') {
+            const data = await this.createPersona({
+                nombre: `Persona ${timestamp.slice(11, 19)}`,
+                alias: null,
+                contexto: 'desconocido',
+                notas: `Auto-captura Sentinel. Confianza: ${(prediction.score * 100).toFixed(0)}%. ${description}`
+            });
+            return data ? { type: '👤 PERSONA', name: data.nombre } : null;
 
-            // 4. Save to database (with bbox for server-side cropping)
+        } else if (routeTarget === 'poi') {
+            const poiCategoryMap = {
+                bench: 'Mobiliario Urbano', fire_hydrant: 'Infraestructura',
+                stop_sign: 'Señalización', traffic_light: 'Señalización',
+                parking_meter: 'Infraestructura', building: 'Edificación',
+                house: 'Edificación', bridge: 'Infraestructura',
+                tent: 'Campamento', fountain: 'Recurso Hídrico'
+            };
+            const data = await this.createPOI({
+                categoria_id: null,
+                nombre: `${poiCategoryMap[prediction.class.toLowerCase()] || prediction.class} — ${timestamp.slice(11, 19)}`,
+                zona: null,
+                nivel_riesgo: 'bajo',
+                estado: 'activo',
+                descripcion: `Auto-captura Sentinel. ${description}`
+            });
+            return data ? { type: '🏔️ POI', name: data.nombre } : null;
+
+        } else {
+            // Generic object → objetos_exploracion (existing flow)
+            const heading = this._getHeading();
+            const location = coords || { lat: 0, lng: 0 };
+
             const res = await api.createObject({
                 source: 'sentinel',
                 object_class: category,
-                name: objClass.toUpperCase(),
+                name: prediction.class.toUpperCase(),
                 confidence: prediction.score,
-                timestamp: new Date().toISOString(),
-                location: { lat: newLat, lng: newLng },
-                heading: heading,
-                image_base64: capturedImage || '',
-                bbox: prediction.bbox || null,  // Send bbox for server-side crop
+                timestamp,
+                location,
+                heading,
+                image_base64: snapshot || '',
+                bbox: prediction.bbox || null,
                 metadata: {
-                    description: description,
+                    description,
                     created_by: 'SENTINEL_AUTO',
-                    ai_class: objClass,
+                    ai_class: prediction.class,
                     ai_confidence: prediction.score.toFixed(2)
                 },
                 mission_id: this.ctx.state.currentMissionId || null
             });
 
-            console.log("Auto-save API response:", res); // DEBUG
-
             if (res.success) {
-                this.ctx.ui.showToast(`✓ ${objClass} guardado`, 2000);
-                
-                // Add to local state for immediate display
                 this.ctx.state.missions.push({
                     id: res.data?.id || `auto-${Date.now()}`,
-                    title: objClass.toUpperCase(),
+                    title: prediction.class.toUpperCase(),
                     type: category,
-                    lat: newLat,
-                    lng: newLng,
-                    altitude: 0,
-                    metadata: { description }
+                    lat: location.lat, lng: location.lng,
+                    altitude: 0, metadata: { description }
                 });
                 this.ctx.renderMarkers();
-            } else {
-                console.error("Auto-save failed:", res.error);
-                this.sentinelCooldowns.delete(objClass); // Allow retry
-                // Show error code for mobile debugging
-                this.ctx.ui.showToast(`ERR-API: ${res.error || 'Unknown'}`, 4000);
+                return { type: '📦 OBJETO', name: prediction.class.toUpperCase() };
             }
-
-        } catch (e) {
-            console.error("handleAutoSave error:", e);
-            this.sentinelCooldowns.delete(objClass); // Allow retry
-            
-            // Determine error code based on error type
-            let errorCode = 'ERR-UNK';
-            if (e.message?.includes('fetch')) errorCode = 'ERR-NET';
-            else if (e.message?.includes('GPS') || e.message?.includes('location')) errorCode = 'ERR-GPS';
-            else if (e.message?.includes('heading')) errorCode = 'ERR-HEAD';
-            else if (e.message?.includes('crop')) errorCode = 'ERR-CROP';
-            else errorCode = `ERR-JS: ${e.message?.substring(0, 30) || 'Unknown'}`;
-            
-            this.ctx.ui.showToast(errorCode, 4000);
+            return null;
         }
     }
 
-    mapClassToCategory(className) {
-        const categories = {
-            person: 'person',
-            dog: 'animal', cat: 'animal', bird: 'animal', horse: 'animal', sheep: 'animal', cow: 'animal', elephant: 'animal', bear: 'animal', zebra: 'animal', giraffe: 'animal',
-            car: 'vehicle', motorcycle: 'vehicle', airplane: 'vehicle', bus: 'vehicle', train: 'vehicle', truck: 'vehicle', boat: 'vehicle', bicycle: 'vehicle',
-            chair: 'furniture', couch: 'furniture', bed: 'furniture', 'dining table': 'furniture',
-            bottle: 'object', cup: 'object', bowl: 'object', laptop: 'tech', cell_phone: 'tech', tv: 'tech', keyboard: 'tech', mouse: 'tech',
-            'potted plant': 'plant'
-        };
-        return categories[className.toLowerCase()] || 'object';
+    /**
+     * Get current heading (helper)
+     */
+    _getHeading() {
+        try {
+            return (this.ctx.gpsEngine?.filteredHeading || this.ctx.gpsEngine?.heading || 0)
+                + (this.ctx.arEngine?.headingOffset || 0);
+        } catch (e) { return 0; }
     }
 
     async loadWorldData() {
@@ -411,5 +465,233 @@ export class ARDataController {
          
          const data = await response.json();
          return data.matches || [];
+    }
+
+    // ════════════════════════════════════════════════
+    //  Phase 2-4: New Entity Creation Methods
+    // ════════════════════════════════════════════════
+
+    /**
+     * Get current GPS coordinates (helper)
+     */
+    async _getGPSCoords() {
+        // Try AR engine location first
+        if (this.ctx.state.lastLocation) {
+            return { lat: this.ctx.state.lastLocation.lat, lng: this.ctx.state.lastLocation.lng };
+        }
+        // Fallback to browser geolocation
+        try {
+            const pos = await new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject, { maximumAge: 60000, timeout: 5000 });
+            });
+            return { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /**
+     * Create a Point of Interest (POI)
+     */
+    async createPOI({ categoria_id, nombre, zona, nivel_riesgo, estado, descripcion }) {
+        this.ctx.ui.showToast("Registrando POI...", 0);
+        try {
+            const coords = await this._getGPSCoords();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("Sin autenticación");
+
+            const { data, error } = await supabase
+                .from('puntos_interes')
+                .insert({
+                    user_id: user.id,
+                    mission_id: this.ctx.state.currentMissionId || null,
+                    categoria_id: categoria_id || null,
+                    nombre: nombre,
+                    zona: zona || null,
+                    nivel_riesgo: nivel_riesgo || 'medio',
+                    estado: estado || 'activo',
+                    descripcion: descripcion || null,
+                    lat: coords?.lat || null,
+                    lng: coords?.lng || null
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+            this.ctx.ui.showToast(`✅ POI "${nombre}" registrado`, 3000);
+            return data;
+        } catch (e) {
+            console.error('[POI] Error:', e);
+            this.ctx.ui.showToast(`❌ Error POI: ${e.message}`, 4000);
+            return null;
+        }
+    }
+
+    /**
+     * Create a Person record
+     */
+    async createPersona({ nombre, alias, contexto, notas }) {
+        this.ctx.ui.showToast("Registrando persona...", 0);
+        try {
+            const coords = await this._getGPSCoords();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("Sin autenticación");
+
+            const { data, error } = await supabase
+                .from('personas_encontradas')
+                .insert({
+                    user_id: user.id,
+                    mission_id: this.ctx.state.currentMissionId || null,
+                    nombre: nombre,
+                    alias: alias || null,
+                    contexto: contexto || 'desconocido',
+                    notas: notas || null,
+                    lat: coords?.lat || null,
+                    lng: coords?.lng || null
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+            this.ctx.ui.showToast(`✅ Persona "${nombre}" registrada`, 3000);
+            return data;
+        } catch (e) {
+            console.error('[Persona] Error:', e);
+            this.ctx.ui.showToast(`❌ Error Persona: ${e.message}`, 4000);
+            return null;
+        }
+    }
+
+    /**
+     * Create a Route record
+     */
+    async createRuta({ nombre, dificultad, seguridad, notas }) {
+        this.ctx.ui.showToast("Registrando ruta...", 0);
+        try {
+            const coords = await this._getGPSCoords();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("Sin autenticación");
+
+            const { data, error } = await supabase
+                .from('rutas_exploracion')
+                .insert({
+                    user_id: user.id,
+                    mission_id: this.ctx.state.currentMissionId || null,
+                    nombre: nombre,
+                    dificultad: dificultad || 'moderada',
+                    seguridad: seguridad || 'precaucion',
+                    notas: notas || null,
+                    lat_inicio: coords?.lat || null,
+                    lng_inicio: coords?.lng || null
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+            this.ctx.ui.showToast(`✅ Ruta "${nombre}" registrada`, 3000);
+            return data;
+        } catch (e) {
+            console.error('[Ruta] Error:', e);
+            this.ctx.ui.showToast(`❌ Error Ruta: ${e.message}`, 4000);
+            return null;
+        }
+    }
+
+    /**
+     * Load POI categories from Supabase
+     */
+    async loadPOICategories() {
+        try {
+            const { data, error } = await supabase
+                .from('poi_categorias')
+                .select('id, nombre, color, icono')
+                .order('nombre');
+            if (error) throw error;
+            return data || [];
+        } catch (e) {
+            console.error('[POI] Categories error:', e);
+            return [];
+        }
+    }
+
+    // ════════════════════════════════════════════════
+    //  Geotracking — GPS Trail Recording
+    // ════════════════════════════════════════════════
+
+    /**
+     * Start recording GPS trail (every 10 seconds)
+     */
+    startGeoTrack() {
+        if (this._geoTrackInterval) return; // Already running
+        this._geoTrail = [];
+        this._geoTrackInterval = setInterval(() => {
+            if (this.ctx.state.lastLocation) {
+                this._geoTrail.push({
+                    lat: this.ctx.state.lastLocation.lat,
+                    lng: this.ctx.state.lastLocation.lng,
+                    t: Date.now()
+                });
+            }
+        }, 10000); // Every 10 seconds
+        console.log('[GeoTrack] Started recording trail');
+    }
+
+    /**
+     * Stop recording GPS trail
+     */
+    stopGeoTrack() {
+        if (this._geoTrackInterval) {
+            clearInterval(this._geoTrackInterval);
+            this._geoTrackInterval = null;
+        }
+        console.log(`[GeoTrack] Stopped. ${this._geoTrail?.length || 0} points recorded.`);
+        return this._geoTrail || [];
+    }
+
+    /**
+     * Save geotrack trail to mission record
+     */
+    async saveMissionGeotrack(missionId) {
+        const trail = this._geoTrail || [];
+        if (trail.length === 0 || !missionId) return;
+        try {
+            await supabase
+                .from('misiones')
+                .update({ geotrack: trail })
+                .eq('id', missionId);
+            console.log(`[GeoTrack] Saved ${trail.length} points to mission ${missionId}`);
+        } catch (e) {
+            console.error('[GeoTrack] Save error:', e);
+        }
+    }
+
+    // ════════════════════════════════════════════════
+    //  Mission Summary — Stats on End
+    // ════════════════════════════════════════════════
+
+    /**
+     * Get mission stats for summary modal
+     */
+    async getMissionSummary(missionId) {
+        if (!missionId) return null;
+        try {
+            const [objetos, pois, personas, rutas] = await Promise.all([
+                supabase.from('objetos_exploracion').select('id', { count: 'exact', head: true }).eq('mission_id', missionId),
+                supabase.from('puntos_interes').select('id', { count: 'exact', head: true }).eq('mission_id', missionId),
+                supabase.from('personas_encontradas').select('id', { count: 'exact', head: true }).eq('mission_id', missionId),
+                supabase.from('rutas_exploracion').select('id', { count: 'exact', head: true }).eq('mission_id', missionId)
+            ]);
+
+            return {
+                objetos: objetos.count || 0,
+                pois: pois.count || 0,
+                personas: personas.count || 0,
+                rutas: rutas.count || 0,
+                geoTrailPoints: this._geoTrail?.length || 0
+            };
+        } catch (e) {
+            console.error('[Summary] Error:', e);
+            return { objetos: 0, pois: 0, personas: 0, rutas: 0, geoTrailPoints: 0 };
+        }
     }
 }

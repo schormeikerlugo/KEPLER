@@ -210,6 +210,29 @@ export const api = {
         return offlineSync.getStatus();
     },
 
+    // --- AI RE-IDENTIFICATION ---
+    async matchVisual(imageBase64, entityType = 'persona', threshold = 0.80) {
+        try {
+            const token = await auth.getToken();
+            const res = await fetch(`${API_BASE}/objects/match-visual`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    image_base64: imageBase64,
+                    entity_type: entityType,
+                    threshold
+                })
+            });
+            return await res.json();
+        } catch (e) {
+            console.warn('[matchVisual] Network error:', e.message);
+            return { matched: false, reason: 'network_error' };
+        }
+    },
+
     // --- ARCHIVES ---
     async getMissions() {
         try {

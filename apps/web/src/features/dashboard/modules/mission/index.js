@@ -120,9 +120,7 @@ export function initMission() {
 
                 if (confirmBtn) {
                     confirmBtn.disabled = false;
-                    confirmBtn.style.background = '#00aaff';
-                    confirmBtn.style.color = 'white';
-                    confirmBtn.style.cursor = 'pointer';
+                    confirmBtn.classList.add('ready');
                     confirmBtn.textContent = 'DESPEGAR 🚀';
                 }
 
@@ -161,6 +159,9 @@ export function initMission() {
             const zoneInput = document.getElementById('inp-dash-mission-zone');
             const modelVerSelect = document.getElementById('select-ai-model-version');
             const helper = document.getElementById('zone-description-helper');
+            const terrenoSelect = document.getElementById('select-mission-terreno');
+            const objetivoInput = document.getElementById('inp-mission-objetivo');
+            const dificultadSelect = document.getElementById('select-mission-dificultad');
             const modelVersion = modelVerSelect?.value || 'auto';
 
             localStorage.setItem('kepler_ai_mode', 'local'); // Force Local
@@ -176,9 +177,25 @@ export function initMission() {
                 descripcionIA = helper.textContent.replace(/^📍\s*/, '').trim();
             }
 
+            // Phase 1: Capture enrichment fields
+            const missionOpts = {
+                tipo_terreno: terrenoSelect?.value || null,
+                objetivo: objetivoInput?.value?.trim() || null,
+                dificultad: dificultadSelect?.value || null,
+                coords_inicio: null
+            };
+
+            // Try to capture GPS coords for mission start point
+            try {
+                const pos = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, { maximumAge: 60000, timeout: 3000 });
+                });
+                missionOpts.coords_inicio = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            } catch (e) { /* GPS optional here, already captured zone */ }
+
             try {
                 confirmMissionBtn.textContent = 'Iniciando...';
-                await dbService.startMission(title, zone, descripcionIA);
+                await dbService.startMission(title, zone, descripcionIA, missionOpts);
                 window.history.pushState({}, '', '/ar');
                 window.location.reload();
             } catch (e) {

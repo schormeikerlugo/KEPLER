@@ -89,6 +89,10 @@ class MissionStartRequest(BaseModel):
     zona: str
     clima: Dict[str, Any]
     descripcion_ia: Optional[str] = None
+    tipo_terreno: Optional[str] = None
+    objetivo: Optional[str] = None
+    dificultad: Optional[str] = None
+    coords_inicio: Optional[Dict[str, float]] = None
 
 class MissionEndRequest(BaseModel):
     mission_id: str
@@ -112,7 +116,11 @@ async def start_mission(req: MissionStartRequest, user = Depends(get_current_use
             "zona_geografica": req.zona,
             "descripcion_ia": req.descripcion_ia,
             "clima_snapshot": req.clima,
-            "estado": "activa"
+            "estado": "activa",
+            "tipo_terreno": req.tipo_terreno,
+            "objetivo": req.objetivo,
+            "dificultad": req.dificultad,
+            "coords_inicio": req.coords_inicio
         }
         res = supabase.table("misiones").insert(mission_data).execute()
         if res.data:
