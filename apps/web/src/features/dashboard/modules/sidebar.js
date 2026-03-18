@@ -179,6 +179,13 @@ async function initProfileStats(userId) {
     const container = document.getElementById('sidebar-stats');
     if (!container) return;
 
+    // Render skeleton
+    container.innerHTML = `
+        <div class="stat-item"><div class="skeleton skeleton-row" style="margin:0; height:35px"></div></div>
+        <div class="stat-item"><div class="skeleton skeleton-row" style="margin:0; height:35px"></div></div>
+        <div class="stat-clima"><div class="skeleton skeleton-text" style="width:70%; margin:0"></div></div>
+    `;
+
     const stats = await fetchExplorerStats();
     renderExplorerBars(container, stats);
 }
@@ -705,6 +712,10 @@ async function initSidebarAvatar() {
     const avatarEl = document.getElementById('sidebar-avatar');
     const nameEl = document.getElementById('sidebar-profile-name');
     if (!avatarEl) return;
+
+    // Render skeleton
+    avatarEl.innerHTML = `<div class="skeleton skeleton-avatar" style="width:100%; height:100%"></div>`;
+    if (nameEl) nameEl.innerHTML = `<div class="skeleton skeleton-text" style="width:120px; margin:0"></div>`;
 
     const profile = await profileService.getProfile();
     const avatarDisplay = await profileService.getAvatarDisplay();

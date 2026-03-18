@@ -33,6 +33,16 @@ export async function initObjectsCard() {
     const canvas = document.getElementById('objetos-radar-chart');
     if (!tbody) return;
 
+    // Render skeleton
+    tbody.innerHTML = Array(4).fill(0).map(() => `
+        <tr>
+            <td><div class="skeleton skeleton-text" style="width: 70%"></div></td>
+            <td><div class="skeleton skeleton-text" style="width: 50%"></div></td>
+            <td><div class="skeleton skeleton-text" style="width: 30%"></div></td>
+            <td><div class="skeleton skeleton-text" style="width: 20px"></div></td>
+        </tr>
+    `).join('');
+
     const user = await auth.getUser();
     if (!user) return;
 

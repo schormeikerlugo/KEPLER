@@ -50,7 +50,16 @@ export async function fetchPOIs() {
 // VIEW 1: Category list with counts
 // ─────────────────────────────────────────────
 async function renderCategoryView(userId) {
-    poisContainer.innerHTML = '<p style="color:#555; font-size:0.85rem; padding:10px;">Cargando POIs...</p>';
+    // Render skeleton
+    poisContainer.innerHTML = Array(4).fill(0).map(() => `
+        <div class="poi-item" style="border:none">
+            <div class="poi-item-left" style="width:100%">
+                <div class="skeleton" style="width:12px; height:12px; border-radius:50%; margin-right:10px"></div>
+                <div class="skeleton skeleton-text" style="width:30px; margin-right:10px; margin-bottom:0"></div>
+                <div class="skeleton skeleton-text" style="width:60%; margin-bottom:0"></div>
+            </div>
+        </div>
+    `).join('');
 
     // Fetch categories + counts
     const { data: categories, error: catErr } = await supabase

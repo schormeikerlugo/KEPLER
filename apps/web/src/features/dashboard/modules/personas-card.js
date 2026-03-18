@@ -14,6 +14,17 @@ export async function initPersonasCard() {
     const tbody = document.getElementById('personas-tbody');
     if (!tbody) return;
 
+    // Render skeleton
+    tbody.innerHTML = Array(3).fill(0).map(() => `
+        <tr>
+            <td><div class="skeleton skeleton-avatar"></div></td>
+            <td><div class="skeleton skeleton-text" style="width: 60%"></div></td>
+            <td><div class="skeleton skeleton-text" style="width: 40%"></div></td>
+            <td><div class="skeleton skeleton-text" style="width: 50%"></div></td>
+            <td><div class="skeleton skeleton-text" style="width: 20px"></div></td>
+        </tr>
+    `).join('');
+
     const user = await auth.getUser();
     if (!user) return;
 

@@ -17,6 +17,16 @@ export async function initAlerts() {
     const container = document.getElementById('alerts-list');
     if (!container) return;
 
+    // Render skeleton
+    container.innerHTML = Array(3).fill(0).map(() => `
+        <div class="alert-item" style="border:none">
+            <div class="alert-item-left" style="width:100%">
+                <div class="skeleton" style="width:35px; height:35px; border-radius:10px; margin-right:10px"></div>
+                <div class="skeleton skeleton-text" style="width:70%; margin-bottom:0"></div>
+            </div>
+        </div>
+    `).join('');
+
     const user = await auth.getUser();
     if (!user) return;
 
