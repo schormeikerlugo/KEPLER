@@ -201,6 +201,115 @@ export class MapController {
             // Load Objects only for main map
             if (!this.isTactical) {
                 await this.loadObjects();
+                this.bindGeotrackListener();
+            }
+        });
+    }
+
+    /**
+     * Binds a global event listener to draw a Mission's Geotrack on the map
+     */
+    bindGeotrackListener() {
+        window.addEventListener('kepler:show_geotrack_on_map', (e) => {
+            if (!this.map || !this.isInitialized) return;
+            let geojson = e.detail?.geotrack;
+            if (!geojson) return;
+
+            // Auto-convert raw arrays [{lat, lng, t}] into GeoJSON FeatureCollection
+            if (Array.isArray(geojson)) {
+                if(geojson.length === 0) return;
+                geojson = {
+                    type: "FeatureCollection",
+                    features: [{
+                        type: "Feature",
+                        properties: { name: "Mission Trail" },
+                        geometry: {
+                            type: "LineString",
+                            coordinates: geojson.map(pt => [pt.lng, pt.lat])
+                        }
+                    }]
+                };
+            } else if (!geojson.features || geojson.features.length === 0) {
+                return;
+            }
+
+            console.log('🗺️ Drawing Geotrack on map...', geojson);
+
+            // 1. Remove previous geotrack if exists
+            if (this.map.getSource('mission-geotrack-source')) {
+                if (this.map.getLayer('mission-geotrack-layer')) {
+                    this.map.removeLayer('mission-geotrack-layer');
+                }
+                if (this.map.getLayer('mission-geotrack-points')) {
+                    this.map.removeLayer('mission-geotrack-points');
+                }
+                this.map.removeSource('mission-geotrack-source');
+            }
+
+            // 2. Add as new source
+            this.map.addSource('mission-geotrack-source', {
+                type: 'geojson',
+                data: geojson
+            });
+
+            // 3. Add glowing line layer
+            this.map.addLayer({
+                id: 'mission-geotrack-layer',
+                type: 'line',
+                source: 'mission-geotrack-source',
+                layout: {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                paint: {
+                    'line-color': '#ff4444',
+                    'line-width': 4,
+                    'line-opacity': 0.8,
+                    'line-dasharray': [2, 2] // Dashed tactical line
+                }
+            });
+
+            // 4. Add points layer for start/end nodes or all GPS ticks
+            this.map.addLayer({
+                id: 'mission-geotrack-points',
+                type: 'circle',
+                source: 'mission-geotrack-source',
+                paint: {
+                    'circle-radius': 5,
+                    'circle-color': '#000000',
+                    'circle-stroke-width': 2,
+                    'circle-stroke-color': '#ff4444'
+                }
+            });
+
+            // 5. Fit bounds to the route
+            try {
+                // Get all coordinates from all features
+                const coords = [];
+                geojson.features.forEach(f => {
+                    if (f.geometry && f.geometry.coordinates) {
+                        if (f.geometry.type === 'LineString') {
+                            coords.push(...f.geometry.coordinates);
+                        } else if (f.geometry.type === 'Point') {
+                            coords.push(f.geometry.coordinates);
+                        }
+                    }
+                });
+
+                if (coords.length > 0) {
+                    // Create a bounds object
+                    const bounds = coords.reduce(function(bounds, coord) {
+                        return bounds.extend(coord);
+                    }, new maplibregl.LngLatBounds(coords[0], coords[0]));
+
+                    this.map.fitBounds(bounds, {
+                        padding: 50,
+                        duration: 1500,
+                        maxZoom: 18
+                    });
+                }
+            } catch (err) {
+                console.warn('Failed to fit bounds to geotrack:', err);
             }
         });
     }

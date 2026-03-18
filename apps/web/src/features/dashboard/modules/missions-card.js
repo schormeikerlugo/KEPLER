@@ -23,6 +23,16 @@ export async function initMissionsCard() {
     renderMissionsTable(tbody, missions);
 }
 
+// Export fetch function for external reactivity
+export async function fetchMissions() {
+    const tbody = document.getElementById('misiones-tbody');
+    const user = await auth.getUser();
+    if (user && tbody) {
+        const missions = await fetchRecentMissions(user.id);
+        renderMissionsTable(tbody, missions);
+    }
+}
+
 /**
  * Fetch the 5 most recent missions ordered by inicio_at
  */
@@ -75,7 +85,7 @@ function renderMissionsTable(tbody, missions) {
         const badge = getEstadoBadge(m.estado);
         const displayId = m.codigo || ('exp_' + m.id.substring(0, 4).toUpperCase());
         return `
-            <tr>
+            <tr class="mission-row dashboard-row" data-id="${m.id}" data-title="${m.titulo}" style="cursor: pointer; transition: background 0.2s;">
                 <td style="color:#666">${displayId}</td>
                 <td>${m.titulo || 'Sin nombre'}</td>
                 <td><span class="badge ${badge.class}">${badge.icon} ${m.estado}</span></td>
@@ -84,4 +94,17 @@ function renderMissionsTable(tbody, missions) {
             </tr>
         `;
     }).join('');
+
+    // Bind click events
+    tbody.querySelectorAll('.mission-row').forEach(row => {
+        row.addEventListener('click', () => {
+            if (window.kepler?.openDetailModal) {
+                window.kepler.openDetailModal(row.dataset.id, 'misiones', 'EDICIÓN TÁCTICA: MISIÓN');
+            }
+        });
+        
+        // Hover effect styling injected natively to avoid touching separate CSS files
+        row.addEventListener('mouseenter', () => row.style.background = 'rgba(255,255,255,0.05)');
+        row.addEventListener('mouseleave', () => row.style.background = 'transparent');
+    });
 }

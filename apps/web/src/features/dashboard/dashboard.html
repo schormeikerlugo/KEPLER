@@ -394,3 +394,51 @@
     <div class="history-list" id="history-list"></div>
   </div>
 </div>
+
+<!-- ========================================= -->
+<!-- ITEM DETAIL MODAL (Deep-Dive)             -->
+<!-- ========================================= -->
+<div class="detail-modal-overlay" id="item-detail-modal">
+  <div class="detail-modal-content" id="item-detail-content">
+    
+    <div class="detail-body split-layout">
+      
+      <!-- Left Column: Visuals -->
+      <div class="detail-col-visual">
+         <!-- El contenedor ahora será alto y ocupará toda la altura, con borde cyan brillante -->
+        <div class="detail-image-wrapper">
+          <div class="detail-image-placeholder">No Image Available</div>
+          <img id="detail-image" src="" alt="Element Image" />
+        </div>
+        
+        <!-- El canvas del Radar quedará oculto o embebido abajo de la imagen si se necesita -->
+        <div class="detail-chart-wrapper" id="detail-chart-wrapper">
+          <canvas id="detailRadarChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Right Column: Data & Edit Form -->
+      <div class="detail-col-data">
+        
+        <!-- Header movido adentro de la columna derecha como en el diseño -->
+        <div class="detail-header-inner">
+          <h3 id="detail-modal-title">EDITAR REGISTRO</h3>
+          <button id="btn-close-detail" class="btn-close-detail">×</button>
+        </div>
+
+        <div class="detail-form-scroll" id="detail-form">
+          <!-- Fields injected by JS (Similar a mission-form) -->
+        </div>
+
+        <!-- Footer movido adentro de la columna derecha abajo -->
+        <div class="detail-footer-inner">
+          <button id="btn-delete-detail" class="btn-detail btn-danger">ELIMINAR</button>
+          <button id="btn-save-detail" class="btn-detail btn-primary">GUARDAR CAMBIOS</button>
+        </div>
+
+      </div>
+
+    </div>
+    
+  </div>
+</div>

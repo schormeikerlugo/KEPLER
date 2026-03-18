@@ -41,6 +41,11 @@ export async function initPOIsCard() {
     await renderCategoryView(user.id);
 }
 
+export async function fetchPOIs() {
+    const user = await auth.getUser();
+    if (user) await renderCategoryView(user.id);
+}
+
 // ─────────────────────────────────────────────
 // VIEW 1: Category list with counts
 // ─────────────────────────────────────────────
@@ -147,7 +152,12 @@ async function renderItemListView(userId, catId, catName, catColor) {
     // Detail click handlers
     poisContainer.querySelectorAll('.poi-detail-trigger').forEach(el => {
         el.addEventListener('click', () => {
-            renderDetailView(el.dataset.poiId, el.dataset.userId, el.dataset.catId, el.dataset.catName, el.dataset.catColor);
+            // Replaced inline renderDetailView with the global Deep-Dive Modal
+            if (window.kepler?.openDetailModal) {
+                window.kepler.openDetailModal(el.dataset.poiId, 'puntos_interes', 'Detalle de POI');
+            } else {
+                renderDetailView(el.dataset.poiId, el.dataset.userId, el.dataset.catId, el.dataset.catName, el.dataset.catColor);
+            }
         });
     });
 }

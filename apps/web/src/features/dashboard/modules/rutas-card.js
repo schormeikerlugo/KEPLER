@@ -2,6 +2,7 @@
  * rutas-card.js
  * Dashboard Rutas Card
  * Displays planned routes with distance and security status
+ * DB Schema: rutas_exploracion
  */
 import { supabase } from '../../../js/auth.js';
 import { auth } from '../../../js/auth.js';
@@ -18,15 +19,24 @@ export async function initRutasCard() {
 
     const rutas = await fetchRutas(user.id);
     renderRutasTable(tbody, rutas);
+
+    // Bind row clicks
+    tbody.addEventListener('click', (e) => {
+        const tr = e.target.closest('.clickable-row');
+        if (!tr) return;
+        if (window.kepler?.openDetailModal) {
+            window.kepler.openDetailModal(tr.dataset.id, 'rutas_exploracion', 'Detalle de Ruta');
+        }
+    });
 }
 
 /**
- * Fetch rutas_planificadas for the user
+ * Fetch rutas_exploracion for the user
  */
-async function fetchRutas(userId) {
+export async function fetchRutas(userId) {
     const { data, error } = await supabase
-        .from('rutas_planificadas')
-        .select('id, nombre, punto_control_destino, distancia_total, estado_seguridad')
+        .from('rutas_exploracion')
+        .select('id, nombre, distancia_km, seguridad, created_at')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(10);
@@ -40,12 +50,11 @@ async function fetchRutas(userId) {
  */
 function getSecurityBadge(status) {
     const map = {
-        'Seguro': { class: 'badge-seguro', icon: '✓' },
-        'Riesgo medio': { class: 'badge-riesgo-medio', icon: '⚠' },
-        'Riesgo Alto': { class: 'badge-riesgo-alto', icon: '▲' },
-        'Desconocido': { class: 'badge-desconocido', icon: '●' }
+        'seguro': { class: 'badge-seguro', icon: '✓', label: 'Seguro' },
+        'precaucion': { class: 'badge-riesgo-medio', icon: '⚠', label: 'Precaución' },
+        'peligro': { class: 'badge-riesgo-alto', icon: '▲', label: 'Peligro' }
     };
-    return map[status] || map['Desconocido'];
+    return map[status?.toLowerCase()] || { class: 'badge-desconocido', icon: '●', label: status || 'Desconocido' };
 }
 
 /**
@@ -66,12 +75,12 @@ function renderRutasTable(tbody, rutas) {
     }
 
     tbody.innerHTML = rutas.map(r => {
-        const badge = getSecurityBadge(r.estado_seguridad);
+        const badge = getSecurityBadge(r.seguridad);
         return `
-            <tr>
-                <td>${r.punto_control_destino || r.nombre}</td>
-                <td>${formatDistance(r.distancia_total)}</td>
-                <td><span class="badge ${badge.class}">${badge.icon} ${r.estado_seguridad}</span></td>
+            <tr data-id="${r.id}" class="clickable-row">
+                <td>${r.nombre || 'Ruta'}</td>
+                <td>${formatDistance(r.distancia_km)}</td>
+                <td><span class="badge ${badge.class}">${badge.icon} ${badge.label}</span></td>
                 <td><span class="view-all-arrow">›</span></td>
             </tr>
         `;

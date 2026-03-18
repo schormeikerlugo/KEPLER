@@ -194,7 +194,7 @@ Rediseño completo del dashboard en **módulos independientes** (cada card es un
 - **POIs** — Drill-down interactivo: Categorías → Items → Detalle con coords/riesgo/zona
 - **Personas Detectadas** — Tabla con avatares
 - **Rutas Planificadas** — Distancia + seguridad + tipo de terreno
-- **Alertas** — Acciones pendientes con iconos SVG del diseño Figma
+- **Alertas** — Módulo de alertas accionables anidadas con listas dinámicas y redirección a modal de detalle interactivo.
 
 ### Explorer Stats (Backend Microservice)
 Nuevo endpoint `GET /api/explorer/stats` que calcula:

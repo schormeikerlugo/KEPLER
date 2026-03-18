@@ -24,11 +24,12 @@ import { profileService } from '../../js/services/ProfileService.js';
 // ── Dashboard Card Modules ──
 import { initAlerts } from './modules/alerts.js';
 import { initMissionsCard } from './modules/missions-card.js';
-import { initPOIsCard } from './modules/pois-card.js';
-import { initObjectsCard } from './modules/objects-card.js';
-import { initPersonasCard } from './modules/personas-card.js';
-import { initRutasCard } from './modules/rutas-card.js';
+import { initPOIsCard, fetchPOIs } from './modules/pois-card.js';
+import { initObjectsCard, fetchObjects } from './modules/objects-card.js';
+import { initPersonasCard, fetchPersonas } from './modules/personas-card.js';
+import { initRutasCard, fetchRutas } from './modules/rutas-card.js';
 import { initSidebar } from './modules/sidebar.js';
+import { initItemDetailModal } from './modules/modal/ItemDetailModal.js';
 
 /**
  * Main render function - initializes the dashboard
@@ -62,11 +63,59 @@ export async function render(container) {
     // 5. Setup Notification Bell
     bindNotificationBell();
 
-    // 6. Initialize mission modal + mobile menu
+    // 6. Initialize modals + mobile menu
     const missionModal = initMission();
+    initItemDetailModal();
     initMobileMenu(user, missionModal);
 
-    // 7. Check system health on first session load
+    // 7. Listen for data updates from Deep-Dive Modal to refresh UI
+    window.addEventListener('kepler:data_updated', async (e) => {
+        const table = e.detail?.table;
+        console.log(`[Dashboard] Auto-refresh triggered for table: ${table}`);
+        
+        // Re-fetch and re-render the affected card
+        if (!table || table === 'objetos_exploracion') initObjectsCard();
+        if (!table || table === 'personas_encontradas') initPersonasCard();
+        if (!table || table === 'rutas_exploracion') initRutasCard();
+        if (!table || table === 'puntos_interes') initPOIsCard();
+        if (!table || table === 'misiones') {
+            import('./modules/missions-card.js').then(m => m.fetchMissions && m.fetchMissions());
+        }
+        
+        // Always refresh alerts in case the update resolved an alert
+        initAlerts();
+    });
+
+    /**
+     * Helper to inject Dummy Routes for the authenticated user.
+     * Can be called from the DevTools console: window.kepler.seedDummyRoutes()
+     */
+    window.kepler = window.kepler || {};
+    window.kepler.seedDummyRoutes = async () => {
+        if (!window.kepler.notify) return console.warn("Notificaciones no inicializadas");
+        
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return window.kepler.notify.error("No hay usuario autenticado.");
+
+        const dummyRoutes = [
+            { user_id: user.id, nombre: 'Ruta Delta-4 (Borde Norte)', dificultad: 'alta', seguridad: 'peligro', notas: 'Presencia anómala detectada.', lat_inicio: 40.7128, lng_inicio: -74.0060, lat_fin: 40.7580, lng_fin: -73.9855, distancia_km: 12.4 },
+            { user_id: user.id, nombre: 'Suministros Perímetro Sur', dificultad: 'baja', seguridad: 'seguro', notas: 'Ruta despejada. Puestos de control activos.', lat_inicio: 34.0522, lng_inicio: -118.2437, lat_fin: 34.0736, lng_fin: -118.4004, distancia_km: 25.1 },
+            { user_id: user.id, nombre: 'Sector Echo (Ruinas)', dificultad: 'moderada', seguridad: 'precaucion', notas: 'Radiación basal alta.', lat_inicio: 51.5074, lng_inicio: -0.1278, lat_fin: 51.5200, lng_fin: -0.1500, distancia_km: 4.8 },
+            { user_id: user.id, nombre: 'Patrulla Alpha', dificultad: 'baja', seguridad: 'seguro', notas: 'Guardia de rutina sin eventos.', lat_inicio: 48.8566, lng_inicio: 2.3522, lat_fin: 48.8600, lng_fin: 2.3600, distancia_km: 2.1 }
+        ];
+
+        try {
+            const { error } = await supabase.from('rutas_exploracion').insert(dummyRoutes);
+            if (error) throw error;
+            window.kepler.notify.success("4 Rutas Ficticias Inyectadas con Éxito");
+            initRutasCard(); // Auto-refresh the card natively and properly bind it to the DOM
+        } catch (err) {
+            console.error(err);
+            window.kepler.notify.error("Error al inyectar rutas: " + err.message);
+        }
+    };
+
+    // 8. Check system health on first session load
     checkSystemHealth();
 }
 

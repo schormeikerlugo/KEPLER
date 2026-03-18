@@ -41,6 +41,16 @@ export async function initObjectsCard() {
 
     renderObjectsTable(tbody, aggregated);
 
+    // Bind row clicks
+    tbody.addEventListener('click', (e) => {
+        const tr = e.target.closest('.clickable-row');
+        if (!tr) return;
+        const rawId = tr.dataset.id;
+        if (window.kepler?.openDetailModal) {
+            window.kepler.openDetailModal(rawId, 'objetos_exploracion', 'Detalle de Objeto');
+        }
+    });
+
     if (canvas) {
         drawRadarChart(canvas, aggregated);
     }
@@ -49,7 +59,7 @@ export async function initObjectsCard() {
 /**
  * Fetch objetos_exploracion — resilient to null categoria_id
  */
-async function fetchObjects(userId) {
+export async function fetchObjects(userId) {
     // Fetch objects without FK join (many objects lack categoria_id)
     const { data: objects, error } = await supabase
         .from('objetos_exploracion')
@@ -93,7 +103,8 @@ function aggregateObjects(objects) {
 
         if (!map[key]) {
             map[key] = {
-                id: 'obj_' + obj.id.substring(0, 4).toUpperCase(),
+                id: obj.id, // Original UUID for editing
+                displayId: 'obj_' + obj.id.substring(0, 4).toUpperCase(),
                 nombre: obj.nombre || 'Desconocido',
                 categoria: catName,
                 count: 0,
@@ -123,9 +134,9 @@ function renderObjectsTable(tbody, items) {
     }
 
     tbody.innerHTML = items.map(item => `
-        <tr>
+        <tr data-id="${item.id}" class="clickable-row">
             <td><span class="obj-color-dot" style="background:${item.color}"></span></td>
-            <td style="color:#666">${item.id}</td>
+            <td style="color:#666">${item.displayId}</td>
             <td>${item.nombre}</td>
             <td style="color:#888">${item.categoria}</td>
             <td>${item.count}</td>

@@ -2,6 +2,7 @@
  * personas-card.js
  * Dashboard Personas Card
  * Displays encountered biometric entities
+ * DB Schema: personas_encontradas
  */
 import { supabase } from '../../../js/auth.js';
 import { auth } from '../../../js/auth.js';
@@ -18,15 +19,24 @@ export async function initPersonasCard() {
 
     const personas = await fetchPersonas(user.id);
     renderPersonasTable(tbody, personas);
+
+    // Bind row clicks
+    tbody.addEventListener('click', (e) => {
+        const tr = e.target.closest('.clickable-row');
+        if (!tr) return;
+        if (window.kepler?.openDetailModal) {
+            window.kepler.openDetailModal(tr.dataset.id, 'personas_encontradas', 'Detalle de Persona');
+        }
+    });
 }
 
 /**
- * Fetch entidades_biometricas for the user
+ * Fetch personas_encontradas for the user
  */
-async function fetchPersonas(userId) {
+export async function fetchPersonas(userId) {
     const { data, error } = await supabase
-        .from('entidades_biometricas')
-        .select('id, nombre, categoria, zona_localizado, image_url')
+        .from('personas_encontradas')
+        .select('id, nombre, contexto, image_url, created_at')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(10);
@@ -58,11 +68,11 @@ function renderPersonasTable(tbody, personas) {
     }
 
     tbody.innerHTML = personas.map(p => `
-        <tr>
+        <tr data-id="${p.id}" class="clickable-row">
             <td>${getAvatarHTML(p)}</td>
-            <td>${p.nombre}</td>
-            <td style="color:#888">${p.categoria}</td>
-            <td style="color:#888">${p.zona_localizado || '—'}</td>
+            <td>${p.nombre || 'Desconocido'}</td>
+            <td style="color:#888">Biométrico</td>
+            <td style="color:#888">${p.contexto || 'Desconocido'}</td>
             <td><span class="view-all-arrow">›</span></td>
         </tr>
     `).join('');
