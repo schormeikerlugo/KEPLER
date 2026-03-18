@@ -100,9 +100,6 @@ async function fetchAlertCounts(userId) {
         console.error('[Alerts] Failed to fetch Personas:', e);
     }
 
-    return alerts;
-}
-
     // 3. Missions completed but lacking documentation
     try {
         const { data: missionData, error: missErr } = await supabase
@@ -111,7 +108,7 @@ async function fetchAlertCounts(userId) {
             .eq('user_id', userId)
             .eq('estado', 'completada')
             .or('descripcion_ia.is.null,descripcion_ia.eq.')
-            .order('created_at', { ascending: false });
+            .order('inicio_at', { ascending: false });
 
         if (missErr) console.warn('[Alerts] Mission fetch error:', missErr.message);
 
@@ -158,6 +155,9 @@ async function fetchAlertCounts(userId) {
         console.error('[Alerts] Failed to fetch Objects:', e);
     }
 
+    return alerts;
+}
+
 /**
  * Render alert items into the DOM
  */
@@ -197,7 +197,7 @@ function renderAlerts(container, alerts) {
  * belonging to a grouping (Phase 9)
  */
 window.kepler = window.kepler || {};
-window.kepler.openAlertsListModal = function(title, items, table) {
+window.kepler.openAlertsListModal = function (title, items, table) {
     let modal = document.getElementById('alerts-list-modal');
     if (!modal) {
         modal = document.createElement('div');

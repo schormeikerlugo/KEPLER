@@ -32,6 +32,14 @@ export async function initMissionsCard() {
 
     const missions = await fetchRecentMissions(user.id);
     renderMissionsTable(tbody, missions);
+
+    // Bind "View All" button
+    const btnViewAll = document.querySelector('.card-misiones .btn-view-all-modal');
+    if (btnViewAll) {
+        btnViewAll.onclick = () => {
+            if (window.kepler?.openFullView) window.kepler.openFullView('misiones');
+        };
+    }
 }
 
 // Export fetch function for external reactivity

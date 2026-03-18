@@ -112,6 +112,7 @@
         <section class="dash-card card-misiones">
           <div class="card-header-row">
             <h3 class="card-title">Misiones</h3>
+            <button class="btn-view-all-modal" data-module="misiones">VER TODO</button>
           </div>
           <div class="card-table-wrapper">
             <table class="dash-table" id="misiones-table">
@@ -135,6 +136,7 @@
         <section class="dash-card card-pois">
           <div class="card-header-row">
             <h3 class="card-title">POIs</h3>
+            <button class="btn-view-all-modal" data-module="puntos_interes">VER TODO</button>
           </div>
           <div class="pois-list" id="pois-list">
             <!-- Populated by pois-card.js -->
@@ -147,6 +149,7 @@
       <section class="dash-card card-objetos">
         <div class="card-header-row">
           <h3 class="card-title">Objetos encontrados</h3>
+          <button class="btn-view-all-modal" data-module="objetos_exploracion">VER TODO</button>
         </div>
         <div class="objetos-layout">
           <div class="objetos-table-wrapper">
@@ -179,6 +182,7 @@
         <section class="dash-card card-personas">
           <div class="card-header-row">
             <h3 class="card-title">Personas encontradas</h3>
+            <button class="btn-view-all-modal" data-module="personas_encontradas">VER TODO</button>
           </div>
           <div class="card-table-wrapper">
             <table class="dash-table" id="personas-table">
@@ -202,6 +206,7 @@
         <section class="dash-card card-rutas">
           <div class="card-header-row">
             <h3 class="card-title">Rutas</h3>
+            <button class="btn-view-all-modal" data-module="rutas_exploracion">VER TODO</button>
           </div>
           <div class="card-table-wrapper">
             <table class="dash-table" id="rutas-table">
@@ -437,6 +442,64 @@
         </div>
 
       </div>
+
+    </div>
+    
+  </div>
+</div>
+<!-- ========================================= -->
+<!-- MODULE FULL VIEW MODAL (Expandable)       -->
+<!-- ========================================= -->
+<div class="full-view-modal-overlay" id="module-full-view-modal">
+  <div class="full-view-modal-content">
+    
+    <header class="full-view-header">
+      <div class="full-view-title-group">
+        <span class="full-view-icon" id="full-view-icon">📦</span>
+        <h2 class="full-view-title" id="full-view-title">Exploración de datos</h2>
+      </div>
+      <button class="full-view-close" id="btn-close-full-view">×</button>
+    </header>
+
+    <div class="full-view-body">
+      
+      <!-- Main Content (Table + Filters) -->
+      <main class="full-view-main">
+        <div class="full-view-filters" id="full-view-filters">
+          <input type="text" class="filter-input" placeholder="Filtrar por nombre..." id="filter-search">
+          <!-- Contextual filters will be injected here -->
+        </div>
+
+        <div class="full-view-table-container">
+          <table class="full-view-table" id="full-view-table">
+            <thead id="full-view-thead">
+              <!-- Injected by JS -->
+            </thead>
+            <tbody id="full-view-tbody">
+              <!-- Injected by JS -->
+            </tbody>
+          </table>
+        </div>
+      </main>
+
+      <!-- Sidebar (Charts + Stats) -->
+      <aside class="full-view-sidebar">
+        
+        <div class="sidebar-section">
+          <h4 class="sidebar-section-title">Resumen Estratégico</h4>
+          <div class="chart-card">
+            <canvas id="fullViewChart" width="300" height="250"></canvas>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <h4 class="sidebar-section-title">Estadísticas Clave</h4>
+          <div class="stat-grid" id="full-view-stats">
+            <!-- Injected by JS -->
+          </div>
+        </div>
+
+      </aside>
 
     </div>
     

@@ -39,6 +39,14 @@ export async function initPersonasCard() {
             window.kepler.openDetailModal(tr.dataset.id, 'personas_encontradas', 'Detalle de Persona');
         }
     });
+
+    // Bind "View All" button
+    const btnViewAll = document.querySelector('.card-personas .btn-view-all-modal');
+    if (btnViewAll) {
+        btnViewAll.onclick = () => {
+            if (window.kepler?.openFullView) window.kepler.openFullView('personas_encontradas');
+        };
+    }
 }
 
 /**

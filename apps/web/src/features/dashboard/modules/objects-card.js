@@ -64,6 +64,14 @@ export async function initObjectsCard() {
     if (canvas) {
         drawRadarChart(canvas, aggregated);
     }
+
+    // Bind "View All" button
+    const btnViewAll = document.querySelector('.card-objetos .btn-view-all-modal');
+    if (btnViewAll) {
+        btnViewAll.onclick = () => {
+            if (window.kepler?.openFullView) window.kepler.openFullView('objetos_exploracion');
+        };
+    }
 }
 
 /**

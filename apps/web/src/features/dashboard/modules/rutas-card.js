@@ -28,6 +28,14 @@ export async function initRutasCard() {
             window.kepler.openDetailModal(tr.dataset.id, 'rutas_exploracion', 'Detalle de Ruta');
         }
     });
+
+    // Bind "View All" button
+    const btnViewAll = document.querySelector('.card-rutas .btn-view-all-modal');
+    if (btnViewAll) {
+        btnViewAll.onclick = () => {
+            if (window.kepler?.openFullView) window.kepler.openFullView('rutas_exploracion');
+        };
+    }
 }
 
 /**

@@ -8,6 +8,7 @@
  */
 import { auth } from '../../js/auth.js';
 import './css/index.css';
+import './css/full-view-modal.css';
 import template from './dashboard.html?raw';
 
 // ── Layout Modules ──
@@ -30,6 +31,7 @@ import { initPersonasCard, fetchPersonas } from './modules/personas-card.js';
 import { initRutasCard, fetchRutas } from './modules/rutas-card.js';
 import { initSidebar } from './modules/sidebar.js';
 import { initItemDetailModal } from './modules/modal/ItemDetailModal.js';
+import { initModuleFullViewModal } from './modules/modal/ModuleFullViewModal.js';
 
 /**
  * Main render function - initializes the dashboard
@@ -66,6 +68,7 @@ export async function render(container) {
     // 6. Initialize modals + mobile menu
     const missionModal = initMission();
     initItemDetailModal();
+    initModuleFullViewModal();
     initMobileMenu(user, missionModal);
 
     // 7. Listen for data updates from Deep-Dive Modal to refresh UI

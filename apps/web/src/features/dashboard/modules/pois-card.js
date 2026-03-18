@@ -39,6 +39,14 @@ export async function initPOIsCard() {
     if (!user) return;
 
     await renderCategoryView(user.id);
+
+    // Bind "View All" button
+    const btnViewAll = document.querySelector('.card-pois .btn-view-all-modal');
+    if (btnViewAll) {
+        btnViewAll.onclick = () => {
+            if (window.kepler?.openFullView) window.kepler.openFullView('puntos_interes');
+        };
+    }
 }
 
 export async function fetchPOIs() {
