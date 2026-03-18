@@ -28,6 +28,31 @@ El dashboard es la vista principal de KEPLER. Muestra telemetría en vivo, misio
 | `modules/personas-card.js` | Card de Personas Encontradas (avatar + tabla) |
 | `modules/rutas-card.js` | Card de Rutas Planificadas (distancia + seguridad) |
 | `modules/sidebar.js` | Sidebar: tips, stats del explorador, gráfico semanal, noticias IA |
+| `modules/modal/ItemDetailModal.js` | Modal Universal Glassmorphism para mostrar detalles ricos, stats de misiones, etiquetas interactuables y botón de renderizado GPS en Mapa |
+
+---
+
+## 🚀 Componentes Avanzados (v0.7.0)
+
+### 1. Universal Detail Modal (`ItemDetailModal.js`)
+Un componente unificado orientado a objetos (Clase JS) que reemplaza las alertas nativas (alert/prompt). Capaz de inyectar dinámicamente:
+- **Vista Dividida (Split-View):** Imagen/Avatar a la izquierda, campos informativos a la derecha.
+- **Gráficos Radar Canvas:** Para estadísticas de misiones u objetos.
+- **Etiquetas Smart (Pills):** Botones interactivos clasificados (IMPORTANTE, PELIGRO, etc.).
+- **Enrutamiento Inteligente:** Capacidad de leer propiedades georeferenciadas y saltar a vistas específicas (Ej: Botón "Ver en Mapa").
+
+### 2. Alertas Accionables Anidadas (`alerts.js`)
+El sistema de notificaciones en el dashboard ya no es estático.
+1. Filtra ítems no verificados o de alto riesgo.
+2. Los **agrupa por categoría** (Ej: "3 POIs no Verificados").
+3. Al hacer clic en el grupo, abre una lista secundaria (Sub-Modal).
+4. Al hacer clic en el ítem individual, dispara el `ItemDetailModal` para tomar acción directa.
+
+### 3. Integración MapLibre Geotrack 🗺️
+Si una misión incluye un array `geotrack` guardado en Supabase, el Dashboard genera un botón dinámico en su modal de detalle. Al presionarlo:
+1. Conmuta el layout del Dashboard y activa el contenedor del mapa 3D (`kepler.map.openMap()`)
+2. Despacha un evento global `kepler:show_geotrack_on_map`.
+3. El `MapController` intercepta el evento, convierte el array crudo en un `GeoJSON LineString` al vuelo, e inyecta la pista láser cyan directamente sobre el modelo topográfico.
 
 ---
 
