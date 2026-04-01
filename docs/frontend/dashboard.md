@@ -28,7 +28,8 @@ El dashboard es la vista principal de KEPLER. Muestra telemetría en vivo, misio
 | `modules/personas-card.js` | Card de Personas Encontradas (avatar + tabla) |
 | `modules/rutas-card.js` | Card de Rutas Planificadas (distancia + seguridad) |
 | `modules/sidebar.js` | Sidebar: tips, stats del explorador, gráfico semanal, noticias IA |
-| `modules/modal/ItemDetailModal.js` | Modal Universal Glassmorphism para mostrar detalles ricos, stats de misiones, etiquetas interactuables y botón de renderizado GPS en Mapa |
+| `modules/modal/ItemDetailModal.js` | Modal Universal Glassmorphism para mostrar detalles ricos, etiquetas interactuables y renderizado GPS. |
+| `modules/modal/ModuleFullViewModal.js` | Modal Full View con tablas, filtros en tiempo real y gráficos de distribución para observar módulo al completo. |
 
 ---
 
@@ -53,6 +54,13 @@ Si una misión incluye un array `geotrack` guardado en Supabase, el Dashboard ge
 1. Conmuta el layout del Dashboard y activa el contenedor del mapa 3D (`kepler.map.openMap()`)
 2. Despacha un evento global `kepler:show_geotrack_on_map`.
 3. El `MapController` intercepta el evento, convierte el array crudo en un `GeoJSON LineString` al vuelo, e inyecta la pista láser cyan directamente sobre el modelo topográfico.
+
+### 4. Universal Full View Modal (`ModuleFullViewModal.js`)
+Un componente diseñado para expandir la información de cualquier módulo del dashboard accionado a través de los botones "VER TODO".
+- **Tabla Extensa Dinámica:** Muestra todos los registros de la base de datos de un módulo de forma tabulada (e.g. misiones, POIs).
+- **Filtros en Tiempo Real:** Caja de búsqueda iterativa para encontrar rápidamente registros en todo el dataset.
+- **Gráficos Resumen (Canvas):** Renderizado de distribución estadística en barra vertical en el panel lateral (estados, niveles de riesgo, etc.).
+- **Navegación Profunda (Deep-Dive):** Cada elemento de la tabla es interactivo y linkea directamente con el `ItemDetailModal` para revisión individual.
 
 ---
 

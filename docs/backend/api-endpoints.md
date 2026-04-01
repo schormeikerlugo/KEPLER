@@ -21,6 +21,7 @@ El Backend de KEPLER es un servicio construido en **Python** con **FastAPI**, di
 | `/api` | `telemetry.py` | Datos de telemetría en tiempo real |
 | `/api/missions` | `missions.py` | CRUD de misiones |
 | `/api/objects` | `objects.py` | CRUD de objetos, mapa, búsqueda por similitud |
+| `/api/routes` | `routes.py` | Logística y sugerencias de rutas con IA |
 | `/api` | `ai.py` | Embedding visual (CLIP) y enriquecimiento (Mistral) |
 | `/api/taxonomia` | `taxonomia.py` | Clasificación y taxonomía de objetos |
 | `/api` | `inference.py` | Inferencia de modelos (YOLOv26, etc.) |
