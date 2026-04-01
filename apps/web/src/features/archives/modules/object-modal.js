@@ -30,6 +30,9 @@ export class ObjectModal {
         }
         this.dom.img.src = imgSrc;
 
+        // Populate metadata section
+        this.renderMetadata(obj);
+
         // Populate Categories
         this.controller.taxonomyFilters.populateCategories(obj.categoria_id || null);
 
@@ -54,6 +57,59 @@ export class ObjectModal {
         document.body.classList.add('modal-open');
     }
 
+    renderMetadata(obj) {
+        const container = document.getElementById('modal-metadata');
+        if (!container) return;
+
+        const confidence = obj.metadata?.confidence;
+        const heading = obj.metadata?.heading;
+        const source = obj.metadata?.source;
+        const dateStr = new Date(obj.created_at).toLocaleString('es-ES', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+
+        // GPS coordinates
+        let gpsLink = '';
+        if (obj.metadata?.lat && obj.metadata?.lng) {
+            const lat = obj.metadata.lat;
+            const lng = obj.metadata.lng;
+            gpsLink = `<a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" rel="noopener">${lat.toFixed(5)}, ${lng.toFixed(5)}</a>`;
+        }
+
+        container.innerHTML = `
+            ${confidence ? `
+            <div class="meta-item">
+                <span class="meta-label">Confianza</span>
+                <span class="meta-value">${(confidence * 100).toFixed(0)}%</span>
+            </div>` : ''}
+            ${source ? `
+            <div class="meta-item">
+                <span class="meta-label">Fuente</span>
+                <span class="meta-value">${source}</span>
+            </div>` : ''}
+            <div class="meta-item">
+                <span class="meta-label">Fecha</span>
+                <span class="meta-value">${dateStr}</span>
+            </div>
+            ${gpsLink ? `
+            <div class="meta-item">
+                <span class="meta-label">GPS</span>
+                <span class="meta-value">${gpsLink}</span>
+            </div>` : ''}
+            ${heading !== undefined ? `
+            <div class="meta-item">
+                <span class="meta-label">Rumbo</span>
+                <span class="meta-value">${heading.toFixed(1)}°</span>
+            </div>` : ''}
+            ${obj.tipo ? `
+            <div class="meta-item">
+                <span class="meta-label">Tipo</span>
+                <span class="meta-value">${obj.tipo}</span>
+            </div>` : ''}
+        `;
+    }
+
     closeModal() {
         this.dom.modal.style.display = 'none';
         document.body.classList.remove('modal-open');
@@ -66,16 +122,20 @@ export class ObjectModal {
         this.selectedTagIds = [...selectedTagIds];
         const apiTags = this.controller.apiTags;
 
+        if (!apiTags || apiTags.length === 0) {
+            this.dom.tagsSelector.innerHTML = '<span style="color:#555; font-size:0.75rem;">No hay etiquetas disponibles</span>';
+            return;
+        }
+
         this.dom.tagsSelector.innerHTML = apiTags.map(tag => {
             const isSelected = this.selectedTagIds.includes(tag.id);
+            const tagColor = tag.color || '#888';
             return `
-                <div class="tag-chip ${isSelected ? 'selected' : ''}" 
-                     data-id="${tag.id}" 
-                     style="padding: 5px 12px; border-radius: 15px; cursor: pointer; font-size: 0.8rem;
-                            background: ${isSelected ? tag.color : 'rgba(255,255,255,0.1)'};
-                            color: ${isSelected ? '#fff' : '#888'};
-                            border: 1px solid ${tag.color}44;
-                            transition: all 0.2s;">
+                <div class="tag-chip ${isSelected ? 'selected' : ''}"
+                     data-id="${tag.id}"
+                     style="background: ${isSelected ? tagColor + '33' : 'rgba(255,255,255,0.05)'};
+                            color: ${isSelected ? tagColor : '#888'};
+                            border-color: ${tagColor}44;">
                     ${tag.nombre}
                 </div>
             `;
@@ -147,7 +207,7 @@ export class ObjectModal {
         } else {
             alert("Error al guardar cambios.");
         }
-        this.dom.btnSave.textContent = "GUARDAR CAMBIOS";
+        this.dom.btnSave.textContent = "Guardar Cambios";
     }
 
     async deleteObject() {
@@ -164,10 +224,11 @@ export class ObjectModal {
                 o => o.id !== this.selectedObject.id
             );
             this.controller.objectsGrid.renderGrid();
+            this.controller.objectsGrid.updateTabCount();
             this.closeModal();
         } else {
             alert("Error al eliminar.");
         }
-        this.dom.btnDelete.textContent = "ELIMINAR";
+        this.dom.btnDelete.textContent = "Eliminar";
     }
 }

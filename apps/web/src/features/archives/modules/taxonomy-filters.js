@@ -24,8 +24,24 @@ export class TaxonomyFilters {
 
     async loadTaxonomy() {
         try {
+            // Try sessionStorage cache first (taxonomy rarely changes)
+            const cachedCats = sessionStorage.getItem('kepler_categories');
+            const cachedTags = sessionStorage.getItem('kepler_tags');
+
+            if (cachedCats && cachedTags) {
+                this.controller.apiCategories = JSON.parse(cachedCats);
+                this.controller.apiTags = JSON.parse(cachedTags);
+                this.populateFilterDropdowns();
+                return;
+            }
+
             this.controller.apiCategories = await taxonomiaApi.getCategories();
             this.controller.apiTags = await taxonomiaApi.getTags();
+
+            // Cache for session
+            sessionStorage.setItem('kepler_categories', JSON.stringify(this.controller.apiCategories));
+            sessionStorage.setItem('kepler_tags', JSON.stringify(this.controller.apiTags));
+
             this.populateFilterDropdowns();
         } catch (e) {
             console.error('Error loading taxonomy:', e);

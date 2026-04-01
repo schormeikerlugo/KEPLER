@@ -2,7 +2,7 @@
 .archives-container {
     width: 100%;
     min-height: 100vh;
-    padding: 30px;
+    padding: 24px;
     display: flex;
     flex-direction: column;
     gap: 20px;
@@ -13,46 +13,79 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: var(--bg-archives-primary);
-    backdrop-filter: var(--blur-archives);
-    border-radius: var(--radius-archives);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    padding: 20px 30px;
+    background: #111;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 18px 28px;
 }
 
 .header-title {
-    font-size: 1.6rem;
+    font-family: var(--font-jura);
+    font-size: 1.4rem;
     font-weight: 700;
     color: #fff;
-    letter-spacing: 3px;
+    letter-spacing: 2px;
     text-transform: uppercase;
 }
 
 .btn-back {
-    background: rgba(63, 168, 255, 0.1);
-    border: 2px solid var(--cyan);
-    color: var(--cyan);
-    padding: 12px 25px;
-    border-radius: 12px;
-    font-family: 'Jura', sans-serif;
-    font-size: 0.9rem;
-    font-weight: 600;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #ccc;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-family: var(--font-primary);
+    font-size: 0.85rem;
+    font-weight: 500;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     text-decoration: none;
-    text-transform: uppercase;
-    letter-spacing: 1px;
 }
 
 .btn-back:hover {
-    background: rgba(63, 168, 255, 0.2);
-    box-shadow: var(--cyan-glow);
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+}
+
+/* ========== STATS BAR ========== */
+.stats-bar {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.stat-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    background: rgba(255, 255, 255, 0.06);
+    color: #aaa;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.stat-chip .stat-value {
+    color: #fff;
+    font-weight: 600;
+}
+
+.stat-chip.active {
+    background: rgba(51, 154, 240, 0.12);
+    color: var(--archives-cyan);
+    border-color: rgba(51, 154, 240, 0.2);
+}
+
+.stat-chip.active .stat-value {
+    color: var(--archives-cyan);
 }
 
 /* ========== MAIN LAYOUT ========== */
 .archives-main {
     display: grid;
-    grid-template-columns: 320px 1fr;
+    grid-template-columns: 300px 1fr;
     gap: 20px;
     flex: 1;
 }

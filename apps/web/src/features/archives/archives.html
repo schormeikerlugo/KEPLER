@@ -19,7 +19,10 @@
         <!-- Header -->
         <header class="archives-header">
             <img src="/assets/logotipo.svg" alt="KEPLER" class="header-logo" style="height: 20px;">
-            <a href="/" class="btn-back">Volver al Dashboard</a>
+            <div class="stats-bar" id="stats-bar">
+                <!-- Populated by JS -->
+            </div>
+            <a href="/" class="btn-back">Dashboard</a>
         </header>
 
         <!-- Main Content -->
@@ -27,42 +30,88 @@
             <!-- Sidebar: Missions -->
             <aside class="missions-panel" id="mission-list">
                 <div class="panel-header">
-                    <span class="panel-title">Misiones Generales</span>
+                    <span class="panel-title">Misiones</span>
                 </div>
 
-                <div class="status-filters">
-                    <span class="status-badge"><span class="status-dot ongoing"></span> En Curso</span>
-                    <span class="status-badge"><span class="status-dot active"></span> Activo</span>
-                    <span class="status-badge"><span class="status-dot completed"></span> Completado</span>
+                <div class="status-filters" id="status-filters">
+                    <span class="status-badge live">En Curso</span>
+                    <span class="status-badge active">Activa</span>
+                    <span class="status-badge completed">Completada</span>
                 </div>
 
                 <!-- Mission cards populated by JS -->
-                <div style="color: #666; text-align: center; padding: 30px;">Cargando misiones...</div>
+                <div style="color: #555; text-align: center; padding: 30px; font-size: 0.85rem;">Cargando...</div>
             </aside>
 
-            <!-- Main Content: Objects Grid -->
+            <!-- Main Content Panel -->
             <main class="content-panel">
                 <div class="content-header">
                     <h2 class="content-title" id="current-mission-title">Selecciona una Misión</h2>
-
                     <div class="action-buttons">
-                        <button class="btn-action finish" id="btn-finish-mission"
-                            style="display:none;">Finalizar</button>
-                        <button class="btn-action delete" id="btn-delete-mission"
-                            style="display:none;">Eliminar</button>
-
-                        <select class="filter-select" id="filter-category">
-                            <option value="">Todas las Categorías ▼</option>
-                        </select>
-
-                        <select class="filter-select filter-tag" id="filter-tag">
-                            <option value="">Todas las Etiquetas ▼</option>
-                        </select>
+                        <button class="btn-action finish" id="btn-finish-mission" style="display:none;">Finalizar</button>
+                        <button class="btn-action delete" id="btn-delete-mission" style="display:none;">Eliminar</button>
                     </div>
                 </div>
 
-                <div class="objects-grid" id="evidence-grid">
-                    <div class="empty-state">Selecciona una misión para ver sus registros.</div>
+                <!-- Horizontal Tabs -->
+                <div class="content-tabs" id="content-tabs">
+                    <button class="tab-btn active" data-tab="objetos">
+                        Objetos <span class="tab-count" id="tab-count-objetos">0</span>
+                    </button>
+                    <button class="tab-btn" data-tab="personas">
+                        Personas <span class="tab-count" id="tab-count-personas">0</span>
+                    </button>
+                    <button class="tab-btn" data-tab="rutas">
+                        Rutas <span class="tab-count" id="tab-count-rutas">0</span>
+                    </button>
+                    <button class="tab-btn" data-tab="telemetria">
+                        Telemetría
+                    </button>
+                </div>
+
+                <!-- Tab: Objetos -->
+                <div class="tab-panel active" id="panel-objetos">
+                    <div class="action-buttons" style="margin-bottom: 10px;">
+                        <select class="filter-select" id="filter-category">
+                            <option value="">Todas las Categorías</option>
+                        </select>
+                        <select class="filter-select" id="filter-tag">
+                            <option value="">Todas las Etiquetas</option>
+                        </select>
+                    </div>
+                    <div class="objects-grid" id="evidence-grid">
+                        <div class="empty-state">Selecciona una misión para ver sus registros.</div>
+                    </div>
+                </div>
+
+                <!-- Tab: Personas -->
+                <div class="tab-panel" id="panel-personas">
+                    <div class="personas-grid" id="personas-grid">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">👤</div>
+                            No hay personas registradas en esta misión.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Rutas -->
+                <div class="tab-panel" id="panel-rutas">
+                    <div class="rutas-list" id="rutas-list">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🗺️</div>
+                            No hay rutas registradas en esta misión.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Telemetría -->
+                <div class="tab-panel" id="panel-telemetria">
+                    <div id="telemetry-content">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📡</div>
+                            Selecciona una misión para ver su telemetría.
+                        </div>
+                    </div>
                 </div>
             </main>
         </div>
@@ -70,16 +119,21 @@
 
     <!-- Detail Modal -->
     <div class="modal-overlay" id="detail-modal">
-        <button class="close-modal" id="btn-close-modal">×</button>
+        <button class="close-modal" id="btn-close-modal">&times;</button>
         <div class="modal-body">
             <div class="modal-img-container">
-                <img src="" alt="Evidence" class="modal-img" id="detail-img">
+                <img src="" alt="Evidencia" class="modal-img" id="detail-img">
             </div>
             <div class="modal-form">
                 <h3 class="modal-title">Editar Registro</h3>
 
+                <!-- Metadata section -->
+                <div class="modal-metadata" id="modal-metadata">
+                    <!-- Populated by JS -->
+                </div>
+
                 <div class="form-group">
-                    <label>Identificador / Nombre</label>
+                    <label>Nombre</label>
                     <input type="text" class="form-input" id="inp-detail-title">
                 </div>
 
@@ -87,13 +141,11 @@
                     <div class="form-group">
                         <label>Categoría</label>
                         <select class="form-select" id="inp-detail-category">
-                            <!-- Populated by JS -->
                         </select>
                     </div>
                     <div class="form-group">
                         <label>Subcategoría</label>
                         <select class="form-select" id="inp-detail-subcategory">
-                            <!-- Populated by JS -->
                         </select>
                     </div>
                 </div>
@@ -110,7 +162,6 @@
                 <div class="form-group">
                     <label>Etiquetas</label>
                     <div class="tags-container" id="tags-selector">
-                        <!-- Tags populated by JS -->
                     </div>
                 </div>
 
@@ -126,16 +177,12 @@
             </div>
         </div>
     </div>
-    </div>
-
-    <!-- Dynamic Confirmation Modal injected by ModalSystem.js -->
 
     <!-- Initialize Global Systems -->
     <script type="module">
         import { NotificationSystem } from '../../js/components/NotificationSystem.js';
         import { RealtimeService } from '../../js/services/RealtimeService.js';
 
-        // Initialize Global Notification System
         window.kepler = window.kepler || {};
         if (!window.kepler.notify) {
             window.kepler.notify = new NotificationSystem();

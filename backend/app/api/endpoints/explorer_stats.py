@@ -129,6 +129,7 @@ async def get_explorer_stats(
         all_missions = []
 
     # ── 2. Fetch routes with distance and terrain ──
+    routes = []
     try:
         routes_query = supabase.table("rutas_planificadas") \
             .select("id, distancia_total, tipo_terreno, estado_seguridad, created_at") \
@@ -142,7 +143,7 @@ async def get_explorer_stats(
         routes = routes_res.data or []
     except Exception as e:
         print(f"[ExplorerStats] Error fetching routes: {e}")
-        routes = []
+        routes = []  # Fallback: no routes, will use mission estimates
 
     # ── 3. Build combined dataset ──
     # If we have routes, use their distances + terrain;
@@ -162,11 +163,15 @@ async def get_explorer_stats(
     weather_data = None
 
     if lat is not None and lng is not None:
-        weather_result = await get_weather(lat, lng)
-        if weather_result:
-            weather_mult = weather_result.multiplicador
-            clima_actual = weather_result.categoria
-            weather_data = weather_result.to_dict()
+        try:
+            weather_result = await get_weather(lat, lng)
+            if weather_result:
+                weather_mult = weather_result.multiplicador
+                clima_actual = weather_result.categoria
+                weather_data = weather_result.to_dict()
+        except Exception as e:
+            print(f"[ExplorerStats] Weather fetch failed: {e}")
+            # Keep default values on weather failure
 
     # ── 5. Calculate hours of inactivity (for resistance recovery) ──
     hours_inactive = 24.0  # Default: full day rest

@@ -318,5 +318,189 @@ export const api = {
             console.error(e);
             return [];
         }
+    },
+
+    // --- MISSION SUB-ENTITIES ---
+
+    async getMissionPersonas(missionId, limit = 50, offset = 0) {
+        try {
+            const token = await auth.getToken();
+            const res = await fetch(`${API_BASE}/missions/${missionId}/personas?limit=${limit}&offset=${offset}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            return await res.json();
+        } catch (e) { return []; }
+    },
+
+    async getMissionRoutes(missionId, limit = 50, offset = 0) {
+        try {
+            const token = await auth.getToken();
+            const res = await fetch(`${API_BASE}/missions/${missionId}/rutas?limit=${limit}&offset=${offset}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            return await res.json();
+        } catch (e) { return []; }
+    },
+
+    async getMissionTelemetry(missionId) {
+        try {
+            const token = await auth.getToken();
+            const res = await fetch(`${API_BASE}/missions/${missionId}/telemetry`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            return await res.json();
+        } catch (e) { return { summary: null, samples: [] }; }
+    },
+
+    async getArchivesStats() {
+        try {
+            const token = await auth.getToken();
+            const res = await fetch(`${API_BASE}/missions/stats`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            return await res.json();
+        } catch (e) {
+            return { total_missions: 0, active_missions: 0, total_objects: 0, total_personas: 0, total_rutas: 0 };
+        }
+    },
+
+    async deletePersona(personaId) {
+        try {
+            const token = await auth.getToken();
+            const res = await fetch(`${API_BASE}/missions/delete-persona/${personaId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) return false;
+            return true;
+        } catch (e) { return false; }
+    },
+
+    async deleteRoute(routeId) {
+        try {
+            const token = await auth.getToken();
+            const res = await fetch(`${API_BASE}/missions/delete-ruta/${routeId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) return false;
+            return true;
+        } catch (e) { return false; }
+    },
+
+    // --- ROUTE INTELLIGENCE ---
+
+    async searchRouteCorridor(waypoints, bufferMeters = 200) {
+        try {
+            const token = await auth.getToken();
+            const res = await fetch(`${API_BASE}/routes/corridor`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ waypoints, buffer_meters: bufferMeters })
+            });
+            return await res.json();
+        } catch (e) {
+            console.error('Route corridor search failed:', e);
+            return { objects: [], pois: [], personas: [], rutas: [], corridor_distance_km: 0 };
+        }
+    },
+
+    async getRouteRiskAssessment(waypoints, bufferMeters = 200) {
+        try {
+            const token = await auth.getToken();
+            const res = await fetch(`${API_BASE}/routes/risk-assessment`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ waypoints, buffer_meters: bufferMeters })
+            });
+            return await res.json();
+        } catch (e) {
+            console.error('Risk assessment failed:', e);
+            return { nivel_riesgo: 'bajo', score: 0, alertas: [] };
+        }
+    },
+
+    async searchSimilarInCorridor(waypoints, embedding, bufferMeters = 200, matchThreshold = 0.75, matchCount = 10) {
+        try {
+            const token = await auth.getToken();
+            const res = await fetch(`${API_BASE}/routes/similarity-search`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    waypoints,
+                    embedding,
+                    buffer_meters: bufferMeters,
+                    match_threshold: matchThreshold,
+                    match_count: matchCount
+                })
+            });
+            return await res.json();
+        } catch (e) {
+            console.error('Visual similarity search failed:', e);
+            return { results: [] };
+        }
+    },
+
+    async getNearbyAlerts(lat, lng, radiusMeters = 300) {
+        try {
+            const token = await auth.getToken();
+            const res = await fetch(`${API_BASE}/routes/nearby-alerts`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ lat, lng, radius_meters: radiusMeters })
+            });
+            return await res.json();
+        } catch (e) {
+            console.error('Nearby alerts failed:', e);
+            return { peligros: [], hostiles: [], rutas_peligrosas: [], objetos: [], alertas: [] };
+        }
+    },
+
+    async getPlannedRoutes(limit = 50, offset = 0) {
+        try {
+            const token = await auth.getToken();
+            const res = await fetch(`${API_BASE}/routes/planned-routes?limit=${limit}&offset=${offset}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            return await res.json();
+        } catch (e) { return { routes: [], total: 0 }; }
+    },
+
+    async createPlannedRoute(data) {
+        try {
+            const token = await auth.getToken();
+            const res = await fetch(`${API_BASE}/routes/planned-routes`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(data)
+            });
+            return await res.json();
+        } catch (e) { return { route: null }; }
+    },
+
+    async deletePlannedRoute(routeId) {
+        try {
+            const token = await auth.getToken();
+            const res = await fetch(`${API_BASE}/routes/planned-routes/${routeId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            return res.ok;
+        } catch (e) { return false; }
     }
 };

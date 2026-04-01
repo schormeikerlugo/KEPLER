@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
 from app.services.ai_service import ai_service
@@ -89,7 +89,11 @@ class ObjectUpdateRequest(BaseModel):
 # --- ENDPOINTS ---
 
 @router.get("/map")
-async def get_map_objects(scope: str = "mine", user: dict = Depends(get_current_user)):
+async def get_map_objects(
+    scope: str = "mine",
+    user: dict = Depends(get_current_user),
+    limit: int = Query(default=100, le=300)
+):
     """
     Get objects for the map view.
     - scope=mine: Only user's objects (default)
@@ -99,32 +103,26 @@ async def get_map_objects(scope: str = "mine", user: dict = Depends(get_current_
         supabase = get_supabase()
         if not supabase:
             return {"error": "Database not configured", "objects": []}
-        
-        user_id = user.id if hasattr(user, 'id') else user.get("sub")
-        print(f"🗺️ MAP: scope={scope}, user_id={user_id}")
-        
+
+        user_id = user.id
+        print(f" MAP: scope={scope}, user_id={user_id}")
+
         if scope == "all":
-            # Fetch all objects with owner info
             res = supabase.table("objetos_exploracion").select(
                 "id, nombre, tipo, descripcion, posicion, metadata, created_at, user_id"
-            ).order("created_at", desc=True).limit(200).execute()
-            
+            ).order("created_at", desc=True).limit(limit).execute()
+
             objects = res.data or []
-            
-            # Get unique user_ids
+
             user_ids = list(set(obj.get("user_id") for obj in objects if obj.get("user_id")))
-            
-            # Fetch profiles for these users
             profiles = {}
             if user_ids:
                 profiles_res = supabase.table("profiles").select(
                     "id, username, display_name, avatar_url, bio"
                 ).in_("id", user_ids).execute()
-                
                 for p in (profiles_res.data or []):
                     profiles[p["id"]] = p
-            
-            # Add owner info to each object
+
             for obj in objects:
                 owner_id = obj.get("user_id")
                 profile = profiles.get(owner_id, {})
@@ -133,20 +131,19 @@ async def get_map_objects(scope: str = "mine", user: dict = Depends(get_current_
                 obj["owner_avatar"] = profile.get("avatar_url")
                 obj["owner_bio"] = profile.get("bio")
                 obj["is_mine"] = (owner_id == user_id)
-            
-            print(f"🗺️ MAP: Found {len(objects)} total objects")
+
+            print(f" MAP: Found {len(objects)} total objects")
             return {"objects": objects, "scope": "all"}
         else:
-            # Fetch only user's objects
             res = supabase.table("objetos_exploracion").select(
                 "id, nombre, tipo, descripcion, posicion, metadata, created_at"
-            ).eq("user_id", user_id).order("created_at", desc=True).limit(100).execute()
-            
-            print(f"🗺️ MAP: Found {len(res.data or [])} objects for user")
+            ).eq("user_id", user_id).order("created_at", desc=True).limit(limit).execute()
+
+            print(f" MAP: Found {len(res.data or [])} objects for user")
             return {"objects": res.data or [], "scope": "mine"}
-            
+
     except Exception as e:
-        print(f"🗺️ MAP ERROR: {e}")
+        print(f" MAP ERROR: {e}")
         return {"error": str(e), "objects": []}
 
 
@@ -159,30 +156,27 @@ async def get_user_profile(user_id: str, user: dict = Depends(get_current_user))
         supabase = get_supabase()
         if not supabase:
             return {"error": "Database not configured"}
-        
-        # Get profile info
+
         profile_res = supabase.table("profiles").select(
             "id, username, display_name, avatar_url, bio, created_at"
         ).eq("id", user_id).single().execute()
-        
+
         profile = profile_res.data if profile_res.data else {}
-        
-        # Count objects
+
         objects_res = supabase.table("objetos_exploracion").select(
             "id", count="exact"
         ).eq("user_id", user_id).execute()
         objects_count = objects_res.count or 0
-        
-        # Count missions (optional - table may not exist)
+
         missions_count = 0
         try:
-            missions_res = supabase.table("missions").select(
+            missions_res = supabase.table("misiones").select(
                 "id", count="exact"
             ).eq("user_id", user_id).execute()
             missions_count = missions_res.count or 0
         except:
-            pass  # Table doesn't exist, skip
-        
+            pass
+
         return {
             "id": user_id,
             "username": profile.get("username") or profile.get("display_name") or "Usuario",
@@ -193,7 +187,7 @@ async def get_user_profile(user_id: str, user: dict = Depends(get_current_user))
             "stats": {
                 "objects": objects_count,
                 "missions": missions_count,
-                "points": objects_count * 10 + missions_count * 50  # Simple point calc
+                "points": objects_count * 10 + missions_count * 50
             }
         }
     except Exception as e:
@@ -377,7 +371,9 @@ async def match_visual(req: MatchVisualRequest, user = Depends(get_current_user)
 async def update_object(object_id: str, req: ObjectUpdateRequest, user = Depends(get_current_user)):
     try:
         supabase = get_supabase()
-        if not supabase: return {"success": False}
+        if not supabase:
+            return {"success": False}
+
         update_data = {
             "nombre": req.nombre,
             "descripcion": req.descripcion,
@@ -386,13 +382,15 @@ async def update_object(object_id: str, req: ObjectUpdateRequest, user = Depends
         }
         if req.tipo:
             update_data["tipo"] = req.tipo
-            
-        # Ensure user owns the object
-        res = supabase.table("objetos_exploracion").update(update_data).eq("id", object_id).eq("user_id", user.id).execute()
-        
+
+        res = supabase.table("objetos_exploracion").update(update_data) \
+            .eq("id", object_id) \
+            .eq("user_id", user.id) \
+            .execute()
+
         if not res.data:
             return {"success": False, "error": "Object not found or permission denied"}
-            
+
         return {"success": True}
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -401,16 +399,14 @@ async def update_object(object_id: str, req: ObjectUpdateRequest, user = Depends
 async def delete_object(object_id: str, user = Depends(get_current_user)):
     try:
         supabase = get_supabase()
-        if not supabase: return {"success": False}
-        
-        # Ensure user owns the object
-        res = supabase.table("objetos_exploracion").delete().eq("id", object_id).eq("user_id", user.id).execute()
-        
-        # Check if deletion happened? Supabase delete returns data if successful and select set? 
-        # But if checks fail (policy), it might return empty.
-        # Since we use Service Role (get_supabase), we MUST manually check user_id if we want RLS logic behavior.
-        # I added .eq("user_id", user.id) above, so it will only delete if matches.
-        
+        if not supabase:
+            return {"success": False}
+
+        res = supabase.table("objetos_exploracion").delete() \
+            .eq("id", object_id) \
+            .eq("user_id", user.id) \
+            .execute()
+
         return {"success": True}
     except Exception as e:
         return {"success": False, "error": str(e)}

@@ -10,6 +10,7 @@ export class MissionsManager {
         this.controller = controller;
         this.missions = [];
         this.activeMissionId = null;
+        this.abortController = null;
     }
 
     get dom() {
@@ -17,7 +18,7 @@ export class MissionsManager {
     }
 
     async loadMissions() {
-        this.dom.missionList.innerHTML = '<div style="padding:20px; color:#aaa;">Cargando...</div>';
+        this.dom.missionList.innerHTML = '<div style="padding:20px; color:#555; font-size:0.85rem;">Cargando misiones...</div>';
         this.missions = await api.getMissions();
         this.renderMissions();
 
@@ -31,14 +32,27 @@ export class MissionsManager {
     async selectOrphaned() {
         this.activeMissionId = 'orphaned';
         this.renderMissions();
-        this.dom.headerTitle.textContent = "OBJETOS SIN MISIÓN";
-        this.dom.grid.innerHTML = '<div style="padding:20px;">Buscando huérfanos...</div>';
+        this.dom.headerTitle.textContent = "Sin Asignar";
+        this.dom.grid.innerHTML = '<div style="padding:20px; color:#555;">Buscando huérfanos...</div>';
+
+        // Hide mission action buttons
+        if (this.dom.btnFinishMission) this.dom.btnFinishMission.style.display = 'none';
+        if (this.dom.btnDeleteMission) this.dom.btnDeleteMission.style.display = 'none';
 
         this.controller.currentObjects = await api.getOrphanedObjects();
+        this.controller.filteredObjects = [...this.controller.currentObjects];
         this.controller.objectsGrid.renderGrid();
+
+        // Update tab counts
+        this.controller.objectsGrid.updateTabCount();
+        const personasCount = document.getElementById('tab-count-personas');
+        const rutasCount = document.getElementById('tab-count-rutas');
+        if (personasCount) personasCount.textContent = '0';
+        if (rutasCount) rutasCount.textContent = '0';
     }
 
     renderMissions() {
+        // Keep header and filters
         const existingHeader = this.dom.missionList.querySelector('.panel-header');
         const existingFilters = this.dom.missionList.querySelector('.status-filters');
 
@@ -50,86 +64,93 @@ export class MissionsManager {
         if (!existingHeader) {
             const header = document.createElement('div');
             header.className = 'panel-header';
-            header.innerHTML = '<span class="panel-title">Misiones Generales</span>';
+            header.innerHTML = '<span class="panel-title">Misiones</span>';
             this.dom.missionList.appendChild(header);
 
             const filters = document.createElement('div');
             filters.className = 'status-filters';
             filters.innerHTML = `
-                <span class="status-badge"><span class="status-dot ongoing"></span> En Curso</span>
-                <span class="status-badge"><span class="status-dot active"></span> Activo</span>
-                <span class="status-badge"><span class="status-dot completed"></span> Completado</span>
+                <span class="status-badge live">En Curso</span>
+                <span class="status-badge active">Activa</span>
+                <span class="status-badge completed">Completada</span>
             `;
             this.dom.missionList.appendChild(filters);
         }
 
-        // Get currently "En Vivo" mission from local storage
         const currentLiveId = localStorage.getItem('mars_current_mission_id');
 
-        this.missions.forEach(m => {
+        this.missions.forEach((m, index) => {
             const card = document.createElement('div');
-
-            // Logic: 
-            // 1. Live (En Curso) = Active AND matches currentLiveId
-            // 2. Active (Activo) = Active BUT NOT currentLiveId
-            // 3. Completed = Finalized
 
             let statusClass = 'status-completed';
             if (m.estado === 'activa') {
-                if (m.id == currentLiveId) {
-                    statusClass = 'status-live'; // Green
-                } else {
-                    statusClass = 'status-active'; // Blue
-                }
+                statusClass = m.id == currentLiveId ? 'status-live' : 'status-active';
             }
 
             card.className = `mission-card ${statusClass} ${this.activeMissionId === m.id ? 'active' : ''}`;
+            card.style.animationDelay = `${index * 0.04}s`;
             card.onclick = () => this.selectMission(m.id);
 
             const dateStr = new Date(m.inicio_at).toLocaleDateString('es-ES', {
                 day: '2-digit', month: '2-digit', year: 'numeric'
-            }) + ' - ' + new Date(m.inicio_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+            });
+
+            // Mission counts from backend
+            const objCount = m.objeto_count || 0;
+            const perCount = m.persona_count || 0;
+            const rutCount = m.ruta_count || 0;
+
+            // Extra info from new columns
+            const terreno = m.tipo_terreno ? `<span class="mission-count-badge">${m.tipo_terreno}</span>` : '';
+            const dificultad = m.dificultad ? `<span class="mission-count-badge">${m.dificultad}</span>` : '';
 
             card.innerHTML = `
                 <div class="mission-name">${m.titulo || m.codigo}</div>
-                <div class="mission-meta">📅 ${dateStr}</div>
-                <div class="mission-meta">📍 ${m.zona || 'Sin ubicación'}</div>
+                <div class="mission-meta">${dateStr}${m.zona ? ' · ' + m.zona : ''}</div>
+                <div class="mission-counts">
+                    ${objCount > 0 ? `<span class="mission-count-badge"><span class="count-num">${objCount}</span> objetos</span>` : ''}
+                    ${perCount > 0 ? `<span class="mission-count-badge"><span class="count-num">${perCount}</span> personas</span>` : ''}
+                    ${rutCount > 0 ? `<span class="mission-count-badge"><span class="count-num">${rutCount}</span> rutas</span>` : ''}
+                    ${terreno}
+                    ${dificultad}
+                </div>
             `;
             this.dom.missionList.appendChild(card);
         });
 
         // Orphaned card
         const orphanCard = document.createElement('div');
-        orphanCard.className = `mission-card ${this.activeMissionId === 'orphaned' ? 'active' : ''}`;
+        orphanCard.className = `mission-card orphan-card ${this.activeMissionId === 'orphaned' ? 'active' : ''}`;
         orphanCard.onclick = () => this.selectOrphaned();
         orphanCard.innerHTML = `
-            <div class="mission-name">SIN ASIGNAR</div>
-            <div class="mission-meta">📦 Items sueltos</div>
+            <div class="mission-name">Sin Asignar</div>
+            <div class="mission-meta">Objetos sueltos</div>
         `;
         this.dom.missionList.appendChild(orphanCard);
     }
 
     async selectMission(id) {
+        // Abort previous in-flight requests
+        if (this.abortController) {
+            this.abortController.abort();
+        }
+        this.abortController = new AbortController();
+
         this.activeMissionId = id;
         this.renderMissions();
 
         const mission = this.missions.find(m => m.id === id);
         const isOrphaned = id === 'orphaned';
-        const titleText = isOrphaned ? "OBJETOS SIN MISIÓN" : (mission.titulo || mission.codigo).toUpperCase();
+        const titleText = isOrphaned ? "Sin Asignar" : (mission?.titulo || mission?.codigo || '').toUpperCase();
 
-        // Set Title text
         this.dom.headerTitle.textContent = titleText;
 
         // Reset Buttons
         if (this.dom.btnFinishMission) this.dom.btnFinishMission.style.display = 'none';
         if (this.dom.btnDeleteMission) this.dom.btnDeleteMission.style.display = 'none';
 
-        // Show Buttons based on state
         if (mission && !isOrphaned) {
-            // Show Delete
             if (this.dom.btnDeleteMission) this.dom.btnDeleteMission.style.display = 'inline-block';
-
-            // Show Finish if active
             if (mission.estado === 'activa' && this.dom.btnFinishMission) {
                 this.dom.btnFinishMission.style.display = 'inline-block';
             }
@@ -137,25 +158,38 @@ export class MissionsManager {
 
         this.bindMissionActions(mission);
 
-        this.dom.grid.innerHTML = '<div style="padding:20px;">Cargando registros...</div>';
-        this.controller.currentObjects = await api.getMissionObjects(id);
-        this.controller.filteredObjects = [...this.controller.currentObjects];
-        this.controller.objectsGrid.renderGrid();
+        // Load data for current active tab
+        await this.loadCurrentTabData(id);
+    }
+
+    async loadCurrentTabData(missionId) {
+        const activeTab = document.querySelector('.tab-btn.active');
+        const tabName = activeTab?.dataset.tab || 'objetos';
+
+        if (tabName === 'objetos' || !tabName) {
+            this.dom.grid.innerHTML = '<div style="padding:20px; color:#555;">Cargando registros...</div>';
+            this.controller.currentObjects = await api.getMissionObjects(missionId);
+            this.controller.filteredObjects = [...this.controller.currentObjects];
+            this.controller.objectsGrid.renderGrid();
+            this.controller.objectsGrid.updateTabCount();
+        }
+
+        if (this.controller.personasGrid) {
+            await this.controller.personasGrid.loadPersonas(missionId);
+        }
+        if (this.controller.rutasGrid) {
+            await this.controller.rutasGrid.loadRutas(missionId);
+        }
+        if (this.controller.telemetryPanel) {
+            await this.controller.telemetryPanel.loadTelemetry(missionId);
+        }
     }
 
     bindMissionActions(mission) {
-        console.log("Binding actions for mission:", mission?.id);
-
-        // 1. Finish Button
         const btnFinish = this.dom.btnFinishMission;
-        console.log("Btn Finish found:", !!btnFinish);
-
         if (btnFinish && mission) {
             btnFinish.onclick = async (e) => {
-                console.log("Finish clicked");
                 e.stopPropagation();
-
-                // Use Custom Confirmation (FINISH / BLUE)
                 if (await this.controller.confirmAction("¿Forzar finalización de esta misión?", 'FINISH')) {
                     btnFinish.textContent = "...";
                     await api.endMission(mission.id);
@@ -165,22 +199,13 @@ export class MissionsManager {
             };
         }
 
-        // 2. Delete Button
         const btnDelete = this.dom.btnDeleteMission;
-        console.log("Btn Delete found:", !!btnDelete);
-
         if (btnDelete && mission) {
             btnDelete.onclick = async (e) => {
-                console.log("Delete clicked");
                 e.stopPropagation();
-
-                // Use Custom Confirmation (DELETE / RED)
-                if (await this.controller.confirmAction("⚠️ ¿ELIMINAR MISIÓN Y TODOS SUS OBJETOS?\n\nEsta acción no se puede deshacer.", 'DELETE')) {
+                if (await this.controller.confirmAction("¿ELIMINAR MISIÓN Y TODOS SUS DATOS?\n\nEsta acción no se puede deshacer.", 'DELETE')) {
                     btnDelete.textContent = "...";
-                    console.log("Calling api.deleteMission...");
                     const res = await api.deleteMission(mission.id);
-                    console.log("Delete result:", res);
-
                     if (res.success) {
                         await this.loadMissions();
                     } else {

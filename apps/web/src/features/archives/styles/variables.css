@@ -1,14 +1,12 @@
+/* Archives Variables - Migrated to tokens.css */
+/* Legacy vars kept only for backwards compat, prefer tokens.css */
+
 :root {
-    --bg-archives-primary: rgba(10, 15, 25, 0.85);
-    --bg-archives-card: rgba(20, 30, 50, 0.6);
-    --bg-archives-card-dark: rgba(10, 15, 25, 0.8);
-    --radius-archives: 20px;
-    --blur-archives: blur(15px);
-    --cyan: #3FA8FF;
-    --cyan-glow: 0 0 20px rgba(63, 168, 255, 0.4);
-    --green: #00d4aa;
-    --yellow: #ffaa00;
-    --red: #ff4444;
+    --archives-cyan: var(--color-secondary-500, #339af0);
+    --archives-cyan-glow: 0 0 20px rgba(51, 154, 240, 0.4);
+    --archives-green: #00d4aa;
+    --archives-yellow: #ffaa00;
+    --archives-red: #ff4444;
 }
 
 * {
@@ -18,9 +16,9 @@
 }
 
 body {
-    background: #000;
-    color: white;
-    font-family: 'Jura', sans-serif;
+    background: var(--bg-primary);
+    color: #fff;
+    font-family: var(--font-primary);
     min-height: 100vh;
     overflow-x: hidden;
 }

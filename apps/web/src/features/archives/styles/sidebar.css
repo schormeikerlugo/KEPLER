@@ -1,38 +1,33 @@
 /* ========== SIDEBAR - MISSIONS ========== */
 .missions-panel {
-    background: var(--bg-archives-primary);
-    backdrop-filter: var(--blur-archives);
-    border-radius: var(--radius-archives);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    padding: 25px;
+    background: #111;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 20px;
     display: flex;
     flex-direction: column;
-    gap: 15px;
-    max-height: calc(100vh - 160px);
+    gap: 10px;
+    max-height: calc(100vh - 180px);
     overflow-y: auto;
-
-    /* Hide scrollbar but keep functionality */
     scrollbar-width: none;
-    /* Firefox */
     -ms-overflow-style: none;
-    /* IE/Edge */
 }
 
 .missions-panel::-webkit-scrollbar {
     display: none;
-    /* Chrome/Safari */
 }
 
 .panel-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-bottom: 15px;
-    border-bottom: 1px solid rgba(63, 168, 255, 0.2);
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .panel-title {
-    font-size: 1rem;
+    font-family: var(--font-jura);
+    font-size: 0.9rem;
     font-weight: 600;
     color: #fff;
     letter-spacing: 1px;
@@ -42,100 +37,135 @@
 /* Mission Status Filters */
 .status-filters {
     display: flex;
-    gap: 15px;
+    gap: 10px;
     flex-wrap: wrap;
-    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .status-badge {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 6px;
-    font-size: 0.75rem;
-    color: #888;
-    text-transform: uppercase;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    white-space: nowrap;
 }
 
-.status-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
+.status-badge.live {
+    background: rgba(0, 200, 120, 0.15);
+    color: #00c878;
 }
 
-.status-dot.active {
-    background: var(--cyan);
-    box-shadow: 0 0 8px var(--cyan);
+.status-badge.active {
+    background: rgba(51, 154, 240, 0.15);
+    color: var(--archives-cyan);
 }
 
-.status-dot.ongoing {
-    background: var(--green);
-    box-shadow: 0 0 8px var(--green);
-}
-
-.status-dot.completed {
-    background: #666;
+.status-badge.completed {
+    background: rgba(150, 150, 150, 0.15);
+    color: #999;
 }
 
 /* Mission Card */
 .mission-card {
-    background: var(--bg-archives-card-dark);
-    border-radius: 15px;
-    padding: 18px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    padding: 16px;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     border: 1px solid transparent;
+    animation: slideUp 0.3s ease-out both;
 }
 
 .mission-card:hover {
-    background: rgba(63, 168, 255, 0.1);
-    border-color: rgba(63, 168, 255, 0.3);
-    transform: translateX(5px);
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.08);
 }
 
 .mission-card.active {
-    background: rgba(63, 168, 255, 0.15);
-    border-color: var(--cyan);
-    box-shadow: var(--cyan-glow);
+    background: rgba(51, 154, 240, 0.08);
+    border-color: rgba(51, 154, 240, 0.3);
 }
 
-/* Status Indicators (Left Line) */
+/* Status Left Line */
 .mission-card.status-live {
-    border-left: 4px solid var(--green);
-    /* En Curso (Live) */
-    padding-left: 14px;
+    border-left: 3px solid #00c878;
+    padding-left: 13px;
 }
 
 .mission-card.status-active {
-    border-left: 4px solid var(--cyan);
-    /* Activo (Blue) */
-    padding-left: 14px;
+    border-left: 3px solid var(--archives-cyan);
+    padding-left: 13px;
 }
 
 .mission-card.status-completed {
-    border-left: 4px solid #666;
-    /* Completado */
-    padding-left: 14px;
+    border-left: 3px solid rgba(150, 150, 150, 0.3);
+    padding-left: 13px;
 }
 
 .mission-name {
-    font-size: 1rem;
+    font-size: 0.9rem;
     font-weight: 600;
     color: #fff;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .mission-meta {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 0.8rem;
-    color: #888;
-    margin-bottom: 6px;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: #666;
+    margin-bottom: 4px;
 }
 
-.mission-meta svg,
-.mission-meta img {
-    width: 14px;
-    height: 14px;
-    opacity: 0.7;
+/* Mission Count Badges */
+.mission-counts {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
 }
+
+.mission-count-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.68rem;
+    font-weight: 500;
+    background: rgba(255, 255, 255, 0.06);
+    color: #888;
+}
+
+.mission-count-badge .count-num {
+    color: #ccc;
+    font-weight: 600;
+}
+
+/* Orphan Card */
+.mission-card.orphan-card {
+    border: 1px dashed rgba(255, 255, 255, 0.12);
+    background: transparent;
+}
+
+.mission-card.orphan-card:hover {
+    border-color: rgba(255, 170, 0, 0.3);
+    background: rgba(255, 170, 0, 0.05);
+}
+
+/* Stagger animation for cards */
+.mission-card:nth-child(1) { animation-delay: 0s; }
+.mission-card:nth-child(2) { animation-delay: 0.04s; }
+.mission-card:nth-child(3) { animation-delay: 0.08s; }
+.mission-card:nth-child(4) { animation-delay: 0.12s; }
+.mission-card:nth-child(5) { animation-delay: 0.16s; }
+.mission-card:nth-child(6) { animation-delay: 0.2s; }
+.mission-card:nth-child(7) { animation-delay: 0.24s; }
+.mission-card:nth-child(8) { animation-delay: 0.28s; }

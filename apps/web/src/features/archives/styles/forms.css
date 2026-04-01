@@ -1,111 +1,100 @@
-/* Filter Dropdowns */
+/* ========== FILTER DROPDOWNS ========== */
 .filter-select {
-    padding: 10px 30px 10px 15px;
-    background: var(--bg-archives-card-dark);
-    border: 1px solid rgba(63, 168, 255, 0.3);
-    color: var(--cyan);
-    border-radius: 10px;
-    font-family: 'Jura', sans-serif;
-    font-size: 0.8rem;
+    padding: 8px 32px 8px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #ccc;
+    border-radius: 8px;
+    font-family: var(--font-primary);
+    font-size: 0.78rem;
     cursor: pointer;
-    transition: all 0.3s ease;
-    min-width: 160px;
+    transition: all 0.2s ease;
+    min-width: 140px;
     appearance: none;
     -webkit-appearance: none;
     -moz-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%233FA8FF' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%23888' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 12px center;
+    background-position: right 10px center;
 }
 
 .filter-select:focus {
     outline: none;
-    border-color: var(--cyan);
-    box-shadow: 0 0 10px rgba(63, 168, 255, 0.2);
+    border-color: rgba(51, 154, 240, 0.5);
+    box-shadow: 0 0 0 2px rgba(51, 154, 240, 0.15);
 }
 
 .filter-select option {
-    background: #1a1a2e;
+    background: #0f141c;
     color: #fff;
-    padding: 10px;
 }
 
-/* Green variant for tags filter */
-.filter-select.filter-tag {
-    border-color: rgba(0, 212, 170, 0.3);
-    color: var(--green);
-}
-
-.filter-select.filter-tag:focus {
-    border-color: var(--green);
-    box-shadow: 0 0 10px rgba(0, 212, 170, 0.2);
-}
-
-/* Form Elements */
+/* ========== FORM ELEMENTS ========== */
 .form-group {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
 }
 
 .form-group label {
-    font-size: 0.75rem;
-    color: #888;
+    font-size: 0.72rem;
+    color: #666;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
 }
 
 .form-input,
 .form-textarea {
     width: 100%;
-    padding: 12px 15px;
-    background: var(--bg-archives-card-dark);
-    border: 1px solid rgba(63, 168, 255, 0.3);
-    border-radius: 10px;
+    padding: 10px 14px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
     color: #fff;
-    font-family: 'Jura', sans-serif;
-    font-size: 0.95rem;
-    transition: all 0.3s ease;
+    font-family: var(--font-primary);
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+    outline: none;
 }
 
 .form-select {
     width: 100%;
-    padding: 12px 35px 12px 15px;
-    background: var(--bg-archives-card-dark);
-    border: 1px solid rgba(63, 168, 255, 0.3);
-    border-radius: 10px;
+    padding: 10px 34px 10px 14px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
     color: #fff;
-    font-family: 'Jura', sans-serif;
-    font-size: 0.95rem;
-    transition: all 0.3s ease;
+    font-family: var(--font-primary);
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
     appearance: none;
     -webkit-appearance: none;
     -moz-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%233FA8FF' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%23888' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 12px center;
+    background-position: right 10px center;
+    outline: none;
 }
 
 .form-input:focus,
 .form-select:focus,
 .form-textarea:focus {
-    outline: none;
-    border-color: var(--cyan);
-    box-shadow: 0 0 15px rgba(63, 168, 255, 0.2);
+    border-color: rgba(51, 154, 240, 0.5);
+    box-shadow: 0 0 0 2px rgba(51, 154, 240, 0.15);
 }
 
 .form-select option {
-    background: #1a1a2e;
+    background: #0f141c;
     color: #fff;
 }
 
 .form-textarea {
-    min-height: 100px;
+    min-height: 80px;
     resize: vertical;
 }
 
 .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 15px;
+    gap: 12px;
 }

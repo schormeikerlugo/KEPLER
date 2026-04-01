@@ -5,37 +5,46 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(10px);
-    z-index: 1000;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    z-index: 1400;
     display: none;
     justify-content: center;
     align-items: center;
     padding: 20px;
 }
 
+.modal-overlay.visible {
+    display: flex;
+    animation: fadeIn 0.2s ease-out;
+}
+
 .modal-body {
-    background: var(--bg-archives-primary);
-    backdrop-filter: var(--blur-archives);
-    border-radius: var(--radius-archives);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(17, 17, 17, 0.95);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-radius: 20px;
+    border: 1px solid rgba(51, 154, 240, 0.4);
     width: 100%;
     max-width: 900px;
     max-height: 90vh;
     display: grid;
-    grid-template-columns: 350px 1fr;
+    grid-template-columns: 340px 1fr;
     overflow: hidden;
+    box-shadow: 0 0 30px rgba(51, 154, 240, 0.15);
+    animation: slideUp 0.3s ease-out;
 }
 
 .modal-img-container {
-    background: #0a0a15;
+    background: rgba(0, 0, 0, 0.4);
     display: flex;
     justify-content: center;
     align-items: center;
-    border: 2px solid var(--cyan);
-    border-radius: 15px;
-    margin: 25px;
+    margin: 20px;
+    border-radius: 12px;
     overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .modal-img {
@@ -45,90 +54,107 @@
 }
 
 .modal-form {
-    padding: 30px 30px 30px 15px;
+    padding: 28px 28px 28px 12px;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 16px;
     overflow-y: auto;
+    scrollbar-width: none;
+}
+
+.modal-form::-webkit-scrollbar {
+    display: none;
 }
 
 .modal-title {
-    font-size: 1.3rem;
+    font-family: var(--font-jura);
+    font-size: 1.15rem;
     font-weight: 600;
     color: #fff;
-    letter-spacing: 2px;
+    letter-spacing: 1px;
     text-transform: uppercase;
-    margin-bottom: 10px;
+    margin-bottom: 4px;
 }
 
 .close-modal {
     position: absolute;
-    top: 20px;
-    right: 25px;
+    top: 18px;
+    right: 22px;
     background: none;
     border: none;
-    color: #888;
-    font-size: 2rem;
+    color: #666;
+    font-size: 1.8rem;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.2s ease;
+    line-height: 1;
+    z-index: 10;
 }
 
 .close-modal:hover {
-    color: var(--red);
-    transform: scale(1.1);
+    color: #ff4444;
+    transform: scale(1.15);
 }
 
-/* Tags in Modal */
+/* ========== METADATA SECTION ========== */
+.modal-metadata {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.meta-label {
+    font-size: 0.68rem;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.meta-value {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: #aaa;
+}
+
+.meta-value a {
+    color: var(--archives-cyan);
+    text-decoration: none;
+}
+
+.meta-value a:hover {
+    text-decoration: underline;
+}
+
+/* ========== TAGS IN MODAL ========== */
 .tags-container {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
-    padding: 15px;
-    background: var(--bg-archives-card-dark);
-    border: 1px solid rgba(63, 168, 255, 0.3);
+    gap: 8px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
     border-radius: 10px;
-    min-height: 60px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    min-height: 48px;
 }
 
 .tag-chip {
-    padding: 8px 15px;
-    border-radius: 20px;
-    font-size: 0.8rem;
+    padding: 4px 12px;
+    border-radius: 14px;
+    font-size: 0.75rem;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
     border: 1px solid transparent;
-    text-transform: uppercase;
-}
-
-.tag-chip.frecuente {
-    background: rgba(63, 168, 255, 0.2);
-    color: var(--cyan);
-    border-color: var(--cyan);
-}
-
-.tag-chip.favorito {
-    background: rgba(255, 170, 0, 0.2);
-    color: var(--yellow);
-    border-color: var(--yellow);
-}
-
-.tag-chip.peligro {
-    background: rgba(255, 68, 68, 0.2);
-    color: var(--red);
-    border-color: var(--red);
-}
-
-.tag-chip.temporal {
-    background: rgba(100, 100, 100, 0.3);
-    color: #888;
-    border-color: #666;
-}
-
-.tag-chip.verificado {
-    background: rgba(0, 212, 170, 0.2);
-    color: var(--green);
-    border-color: var(--green);
+    user-select: none;
 }
 
 .tag-chip:hover {
@@ -136,47 +162,48 @@
 }
 
 .tag-chip.selected {
-    box-shadow: 0 0 10px currentColor;
+    box-shadow: 0 0 8px currentColor;
 }
 
-/* Modal Actions */
+/* ========== MODAL ACTIONS ========== */
 .modal-actions {
     display: flex;
-    gap: 15px;
+    gap: 12px;
     margin-top: auto;
-    padding-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .btn-modal {
     flex: 1;
-    padding: 14px 25px;
-    border-radius: 12px;
-    font-family: 'Jura', sans-serif;
-    font-size: 0.95rem;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-family: var(--font-primary);
+    font-size: 0.85rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
 }
 
 .btn-modal.delete {
     background: transparent;
-    border: 2px solid var(--red);
-    color: var(--red);
+    border: 1px solid rgba(255, 68, 68, 0.4);
+    color: var(--archives-red);
 }
 
 .btn-modal.delete:hover {
-    background: rgba(255, 68, 68, 0.15);
+    background: rgba(255, 68, 68, 0.12);
 }
 
 .btn-modal.save {
-    background: rgba(63, 168, 255, 0.2);
-    border: 2px solid var(--cyan);
-    color: var(--cyan);
+    background: rgba(51, 154, 240, 0.15);
+    border: 1px solid rgba(51, 154, 240, 0.4);
+    color: var(--archives-cyan);
 }
 
 .btn-modal.save:hover {
-    background: rgba(63, 168, 255, 0.3);
-    box-shadow: var(--cyan-glow);
+    background: rgba(51, 154, 240, 0.25);
+    box-shadow: 0 0 15px rgba(51, 154, 240, 0.2);
 }

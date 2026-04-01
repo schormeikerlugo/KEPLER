@@ -6,6 +6,7 @@
 import { supabase } from '../../../js/auth.js';
 import { auth } from '../../../js/auth.js';
 import { profileService } from '../../../js/services/ProfileService.js';
+import { initRoutePlanner } from './route-planner.js';
 
 /**
  * Initialize all sidebar modules
@@ -20,7 +21,8 @@ export async function initSidebar() {
         initProfileStats(user.id),
         initWeeklyChart(user.id),
         initNews(user.id),
-        initSidebarAvatar()
+        initSidebarAvatar(),
+        initRoutePlanner()
     ]);
 
     console.log('[Sidebar] All modules initialized');

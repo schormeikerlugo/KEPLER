@@ -4,12 +4,16 @@
  */
 
 import { auth } from '../../js/auth.js';
+import { api } from '../../js/services/api.js';
 
 // Import modules
 import { MissionsManager } from './modules/missions.js';
 import { ObjectsGrid } from './modules/objects-grid.js';
 import { ObjectModal } from './modules/object-modal.js';
 import { TaxonomyFilters } from './modules/taxonomy-filters.js';
+import { PersonasGrid } from './modules/personas-grid.js';
+import { RutasGrid } from './modules/rutas-grid.js';
+import { TelemetryPanel } from './modules/telemetry-panel.js';
 import { ModalSystem } from '../../js/components/ModalSystem.js';
 
 class ArchivesController {
@@ -60,7 +64,10 @@ class ArchivesController {
         this.objectsGrid = new ObjectsGrid(this);
         this.objectModal = new ObjectModal(this);
         this.taxonomyFilters = new TaxonomyFilters(this);
-        this.modalSystem = new ModalSystem(); // Init new system
+        this.personasGrid = new PersonasGrid(this);
+        this.rutasGrid = new RutasGrid(this);
+        this.telemetryPanel = new TelemetryPanel(this);
+        this.modalSystem = new ModalSystem();
 
         this.init();
     }
@@ -76,16 +83,62 @@ class ArchivesController {
         // Load taxonomy data
         await this.taxonomyFilters.loadTaxonomy();
 
+        // Load global stats
+        this.loadStats();
+
         // Bind events
         this.bindEvents();
+
+        // Bind tab switching
+        this.bindTabs();
 
         // Load missions
         await this.missionsManager.loadMissions();
     }
 
+    async loadStats() {
+        const stats = await api.getArchivesStats();
+        const statsBar = document.getElementById('stats-bar');
+        if (!statsBar) return;
+
+        statsBar.innerHTML = `
+            <span class="stat-chip">
+                Misiones: <span class="stat-value">${stats.total_missions}</span>
+            </span>
+            <span class="stat-chip active">
+                Activas: <span class="stat-value">${stats.active_missions}</span>
+            </span>
+            <span class="stat-chip">
+                Objetos: <span class="stat-value">${stats.total_objects}</span>
+            </span>
+            ${stats.total_personas > 0 ? `
+            <span class="stat-chip">
+                Personas: <span class="stat-value">${stats.total_personas}</span>
+            </span>` : ''}
+            ${stats.total_rutas > 0 ? `
+            <span class="stat-chip">
+                Rutas: <span class="stat-value">${stats.total_rutas}</span>
+            </span>` : ''}
+        `;
+    }
+
     bindEvents() {
         // Modal close
         this.dom.btnCloseModal.addEventListener('click', () => this.objectModal.closeModal());
+
+        // Close modal on overlay click
+        this.dom.modal.addEventListener('click', (e) => {
+            if (e.target === this.dom.modal) {
+                this.objectModal.closeModal();
+            }
+        });
+
+        // Close modal on Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.dom.modal.style.display === 'flex') {
+                this.objectModal.closeModal();
+            }
+        });
 
         // Save object
         this.dom.btnSave.addEventListener('click', async () => {
@@ -105,12 +158,41 @@ class ArchivesController {
         this.taxonomyFilters.bindFilterEvents();
     }
 
-    /**
-     * Shows a custom confirmation modal using the system
-     * @param {string} message 
-     * @param {string} type - 'DELETE' | 'FINISH' | 'CONFIRM'
-     * @returns {Promise<boolean>}
-     */
+    bindTabs() {
+        const tabsContainer = document.getElementById('content-tabs');
+        if (!tabsContainer) return;
+
+        tabsContainer.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const tabName = btn.dataset.tab;
+
+                // Update active tab button
+                tabsContainer.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                // Update active panel
+                document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+                const panel = document.getElementById(`panel-${tabName}`);
+                if (panel) panel.classList.add('active');
+
+                // Load data for the tab if mission is selected
+                const missionId = this.missionsManager.activeMissionId;
+                if (missionId) {
+                    if (tabName === 'objetos') {
+                        // Objects are already loaded, just re-render
+                        this.objectsGrid.renderGrid();
+                    } else if (tabName === 'personas') {
+                        await this.personasGrid.loadPersonas(missionId);
+                    } else if (tabName === 'rutas') {
+                        await this.rutasGrid.loadRutas(missionId);
+                    } else if (tabName === 'telemetria') {
+                        await this.telemetryPanel.loadTelemetry(missionId);
+                    }
+                }
+            });
+        });
+    }
+
     confirmAction(message, type = 'DELETE') {
         return this.modalSystem.confirm(message, type);
     }
