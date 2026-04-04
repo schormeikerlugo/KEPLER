@@ -38,6 +38,9 @@
       <button class="mobile-nav-item" id="mobile-btn-map">
         🗺️ <span>Mapa</span>
       </button>
+      <button class="mobile-nav-item" id="mobile-btn-routes">
+        🧭 <span>Rutas Planificadas</span>
+      </button>
     </div>
 
     <div class="mobile-nav-footer">
@@ -322,6 +325,64 @@
     style="display:none; width:100%; height:100vh; position:fixed; top:0; left:0; background:#050a14; z-index:150;">
     <button id="btn-close-map" class="map-back-btn" style="display: none;">← VOLVER</button>
     <div id="map-view-container" style="width:100%; height:100vh;"></div>
+
+    <!-- Route Planning Panel (shown when route mode is active) -->
+    <div class="map-route-panel" id="map-route-panel">
+      <div class="route-panel-header">
+        <div>
+          <h3 class="route-panel-title">🧭 Planificador de Rutas</h3>
+          <p class="route-panel-subtitle">Click en el mapa para agregar waypoints</p>
+        </div>
+      </div>
+
+      <div class="route-form-group">
+        <label class="route-form-label">Nombre</label>
+        <input type="text" id="route-input-name" class="route-form-input" placeholder="Ej: Patrulla Norte" />
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <div class="route-form-group">
+          <label class="route-form-label">Terreno</label>
+          <select id="route-select-terrain" class="route-form-select">
+            <option value="llano">Llano</option>
+            <option value="tierra">Tierra</option>
+            <option value="rocoso">Rocoso</option>
+            <option value="montañoso">Montañoso</option>
+            <option value="barro">Barro</option>
+          </select>
+        </div>
+        <div class="route-form-group">
+          <label class="route-form-label">Seguridad</label>
+          <select id="route-select-safety" class="route-form-select">
+            <option value="seguro">Seguro</option>
+            <option value="precaucion">Precaución</option>
+            <option value="peligro">Peligro</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="route-waypoints">
+        <div class="route-waypoints-header">
+          <span class="route-waypoints-title">Waypoints</span>
+          <span class="route-waypoint-count" id="route-wp-count">0</span>
+        </div>
+        <div class="route-waypoint-hint" id="route-wp-hint">Click en el mapa para agregar puntos</div>
+        <div class="route-waypoint-list" id="route-wp-list"></div>
+      </div>
+
+      <div class="route-actions">
+        <button class="route-action-btn secondary" id="route-btn-clear" disabled>🗑️ Limpiar</button>
+        <button class="route-action-btn secondary" id="route-btn-undo" disabled>↩️ Deshacer</button>
+        <button class="route-action-btn primary" id="route-btn-save" disabled>💾 Guardar</button>
+      </div>
+
+      <!-- Corridor Analysis -->
+      <div class="route-corridor" id="route-corridor">
+        <div id="route-risk-badge"></div>
+        <div class="route-stats-grid" id="route-stats-grid"></div>
+        <div id="route-alerts-list"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -351,6 +412,19 @@
         <label class="mission-field-label">📍 Zona</label>
         <input type="text" id="inp-dash-mission-zone" class="mission-input" placeholder="Se detecta por GPS o escríbela manualmente...">
         <span id="zone-description-helper" class="mission-field-hint ai-hint"></span>
+      </div>
+      <!-- Route Selector -->
+      <div class="mission-field">
+        <label class="mission-field-label">🗺️ Ruta Planificada</label>
+        <select id="select-mission-route" class="mission-select">
+          <option value="">— Sin ruta (exploración libre) —</option>
+        </select>
+        <span id="route-selector-hint" class="mission-field-hint">Selecciona una ruta guardada para guiar tu misión con waypoints</span>
+        <div id="route-preview-info" class="route-preview-info" style="display:none;">
+          <span id="route-preview-distance" class="route-preview-stat"></span>
+          <span id="route-preview-waypoints" class="route-preview-stat"></span>
+          <span id="route-preview-terrain" class="route-preview-stat"></span>
+        </div>
       </div>
       <div class="mission-divider"></div>
       <!-- AI Engine (locked) -->

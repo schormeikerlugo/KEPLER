@@ -15,7 +15,10 @@ export const api = {
     // --- DASHBOARD ---
     async getDashboardStats() {
         try {
-            const res = await fetch(`${API_BASE}/dashboard/stats?t=${Date.now()}`);
+            const token = await auth.getToken();
+            const res = await fetch(`${API_BASE}/dashboard/stats?t=${Date.now()}`, {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
             if (!res.ok) throw new Error('Failed to fetch stats');
             return await res.json();
         } catch (err) {
@@ -36,10 +39,10 @@ export const api = {
             ai: false
         };
         try {
-            const res = await fetch(`${API_BASE}/dashboard/stats?t=${Date.now()}`);
+            const res = await fetch(`/health?t=${Date.now()}`);
             if (res.ok) {
                 status.backend = true;
-                status.database = true; // If stats load, DB is connected
+                status.database = true; // If health responds, backend + DB are up
             }
             // Check AI (Ollama) - ping with auth token
             try {

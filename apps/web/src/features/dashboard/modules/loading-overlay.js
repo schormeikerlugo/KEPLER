@@ -419,10 +419,10 @@ async function loadProfile(userId) {
 async function loadMissions(userId) {
     try {
         const { data } = await supabase
-            .from('missions')
-            .select('id, name, status, zone, created_at')
+            .from('misiones')
+            .select('id, titulo, estado, zona_geografica, inicio_at')
             .eq('user_id', userId)
-            .order('created_at', { ascending: false })
+            .order('inicio_at', { ascending: false })
             .limit(20);
 
         if (data) {

@@ -19,9 +19,22 @@ La topología ideal requiere dos roles:
 ### 🟢 Fase 1: Desktop Optimization (COMPLETADA)
 *   **Logros:** Transferencia de la carga neuronal (YOLO) al Backend Python, liberando a la web de congelamientos de RAM. Implementación de WebSockets ultrarrápidos y nueva grilla de telemetría (Batería, GPS real, Radar de otros usuarios). Todo 100% viable y funcional.
 
-### 🟡 Fase 2: The "Field Unit" - React Native Mobile (Siguiente Paso)
-*   **Descripción:** Abordar la app celular. Cambiar la "simulación con delay" de ARCamera a una cámara nativa profesional.
+### 🟡 Fase 2: The "Field Unit" - React Native Mobile + Web UX (EN PROGRESO)
+*   **Descripción:** Abordar la app celular + unificar la experiencia web como SPA.
 *   **Viabilidad [ALTA]:** React Native soporta componentes C++ de alta respuesta a través de JSI (JavaScript Interface).
+
+#### Fase 2A — Web UX Unificada (COMPLETADA)
+*   **SPA Router:** Navegación sin recargas de página mediante `window.kepler.navigate()` con `pushState` + transiciones fade (150ms). Soporte para botones atrás/adelante e intercepción de `<a>` clicks.
+*   **Rutas SPA:** `/`, `/ar`, `/login`, `/taxonomia`, `/ia`, `/profile`, `/archives` — todas renderizan en `#app` sin recargar.
+*   **Archives integrado al SPA:** Refactorizado de página HTML standalone a módulo con `render(container)`.
+*   **Transiciones de sección:** Mapa Táctico usa fade + scale al alternar con el dashboard.
+*   **Selector de Ruta en Misión:** Al iniciar misión se puede seleccionar una ruta guardada. Auto-rellena terreno, zona y coords. Los waypoints se guardan en `localStorage` para AR.
+*   **Modales unificados:** Todos los modales usan las mismas animaciones `modal-enter`/`modal-exit` y backdrop consistente (`blur(8px) rgba(0,0,0,0.85)`).
+*   **Notificaciones refactorizadas:** Panel Bitácora con overlay full-height, backdrop blur, summary chips con contadores por tipo, cierre con Escape/click-outside.
+*   **Sistema de estado corregido:** Health check usa `/health` (sin auth), elimina falsos negativos en Backend/DB.
+*   **Proxy de geolocalización:** Endpoint `/api/utils/geolocate` evita CORS/rate-limit de ipapi.co. Cadena: GPS → cache → proxy backend.
+
+#### Fase 2B — Mobile Field Unit (Siguiente Paso)
 *   **Plan de Acción (Roadmap Técnico):**
     1.  Abandonar Expo Go (ya que no soporta código nativo profundo sin compilar en la nube). Migrar el proyecto a **EAS (Expo Application Services)** para compilar binarios APK (Android) / IPA (iOS) reales.
     2.  Integrar `react-native-vision-camera`. Es la librería más potente del mercado moderno.

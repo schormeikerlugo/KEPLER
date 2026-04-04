@@ -158,33 +158,47 @@
 }
 
 
-/* --- LOG PANEL (BITÁCORA) --- */
-#notification-log-panel {
+/* --- LOG OVERLAY (Full-screen backdrop) --- */
+#notification-log-overlay {
     position: fixed;
-    top: 80px;
-    /* Below main header */
-    right: -420px;
-    /* Hidden state */
-    width: 380px;
-    height: calc(100vh - 100px);
-    background: rgba(10, 14, 20, 0.75);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-right: none;
-    border-radius: 16px 0 0 16px;
-    overflow: hidden;
+    inset: 0;
     z-index: 9990;
-    display: flex;
-    flex-direction: column;
-    box-shadow: -15px 0 40px rgba(0, 0, 0, 0.5);
-    pointer-events: auto;
-    transition: right 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-    font-family: var(--font-primary, 'Inter', sans-serif);
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.35s ease, visibility 0.35s ease;
 }
 
-#notification-log-panel.open {
+#notification-log-overlay.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* --- LOG PANEL (BITÁCORA) — Side drawer, full height --- */
+#notification-log-panel {
+    position: absolute;
+    top: 0;
     right: 0;
+    width: 400px;
+    height: 100vh;
+    background: rgba(10, 14, 20, 0.88);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -15px 0 60px rgba(0, 0, 0, 0.5);
+    pointer-events: auto;
+    font-family: var(--font-primary, 'Inter', sans-serif);
+    transform: translateX(100%);
+    transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#notification-log-overlay.open #notification-log-panel {
+    transform: translateX(0);
 }
 
 /* Embedded Subtle Gradient Glows */
@@ -195,7 +209,9 @@
     right: 0;
     bottom: 0;
     left: 0;
-    background: radial-gradient(circle at top right, rgba(63, 168, 255, 0.05), transparent 50%);
+    background:
+        radial-gradient(circle at top right, rgba(63, 168, 255, 0.05), transparent 50%),
+        radial-gradient(circle at bottom left, rgba(0, 212, 170, 0.03), transparent 50%);
     pointer-events: none;
     z-index: 0;
 }
@@ -209,6 +225,7 @@
     background: rgba(255, 255, 255, 0.02);
     position: relative;
     z-index: 1;
+    box-sizing: border-box;
 }
 
 .log-title {
@@ -251,10 +268,67 @@
     scrollbar-width: none;
     position: relative;
     z-index: 1;
+    box-sizing: border-box;
 }
 
 .log-content::-webkit-scrollbar {
     display: none;
+}
+
+/* Summary Chips Bar */
+.log-summary {
+    display: flex;
+    gap: 8px;
+    padding: 12px 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    position: relative;
+    z-index: 1;
+    flex-wrap: wrap;
+    box-sizing: border-box;
+}
+
+.summary-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.78rem;
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.summary-chip:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.summary-chip.active {
+    background: rgba(63, 168, 255, 0.12);
+    border-color: rgba(63, 168, 255, 0.3);
+    color: rgba(200, 230, 255, 0.95);
+}
+
+.chip-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.chip-dot.critical { background: #ff4444; }
+.chip-dot.warning  { background: #ffbb33; }
+.chip-dot.success  { background: #00d4aa; }
+.chip-dot.info     { background: #33b5e5; }
+
+.chip-count {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
 }
 
 /* Filter Tabs */
@@ -510,7 +584,20 @@
 
     #notification-log-panel {
         width: 100%;
-        right: -100%;
         border-radius: 0;
+        border-left: none;
+    }
+
+    .log-summary {
+        padding: 10px 16px;
+        gap: 6px;
+    }
+
+    .log-header {
+        padding: 16px;
+    }
+
+    .log-content {
+        padding: 16px;
     }
 }

@@ -10,6 +10,23 @@
     min-width: 0;
 }
 
+/* ── GPS Permission Hint ── */
+.gps-permission-hint {
+    padding: 8px 12px;
+    background: rgba(0, 180, 255, 0.08);
+    border: 1px solid rgba(0, 180, 255, 0.2);
+    border-radius: 8px;
+    font-size: 0.75rem;
+    color: rgba(180, 220, 255, 0.9);
+    text-align: center;
+    animation: gps-hint-fade 0.4s ease-out;
+}
+
+@keyframes gps-hint-fade {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 /* ── Shared Sidebar Card ── */
 .sidebar-card {
     background: #111;

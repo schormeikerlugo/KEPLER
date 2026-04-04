@@ -28,6 +28,8 @@ export class MapControls {
 
             <!-- Quick action buttons (desktop) -->
             <div class="map-quick-actions" id="map-quick-actions">
+                <button class="map-quick-btn mode-btn active" id="map-btn-explore" title="Explorar">🔍</button>
+                <button class="map-quick-btn mode-btn" id="map-btn-routes" title="Planificar Rutas">🧭</button>
                 <button class="map-quick-btn" id="map-btn-refresh" title="Refresh">🔄</button>
                 <button class="map-quick-btn" id="map-btn-location" title="Mi ubicación">🎯</button>
                 <button class="map-quick-btn" id="map-btn-layers" title="Capas">🌙</button>
@@ -41,6 +43,15 @@ export class MapControls {
                         <button class="map-menu-close" id="map-menu-close">×</button>
                     </div>
                     <div class="map-menu-items">
+                        <button class="map-menu-item" data-action="mode-explore">
+                            <span class="menu-icon">🔍</span>
+                            <span>Explorar</span>
+                        </button>
+                        <button class="map-menu-item" data-action="mode-routes">
+                            <span class="menu-icon">🧭</span>
+                            <span>Planificar Rutas</span>
+                        </button>
+                        <div class="map-menu-divider"></div>
                         <button class="map-menu-item" data-action="objects">
                             <span class="menu-icon">📦</span>
                             <span>Objetos</span>
@@ -198,6 +209,15 @@ export class MapControls {
             this.controller.location?.goToMyLocation();
         });
 
+        // Mode toggle buttons
+        document.getElementById('map-btn-explore')?.addEventListener('click', () => {
+            this.setMode('explore');
+        });
+
+        document.getElementById('map-btn-routes')?.addEventListener('click', () => {
+            this.setMode('routes');
+        });
+
         document.getElementById('map-btn-layers')?.addEventListener('click', (e) => {
             e.stopPropagation();
             this.openLayerModal();
@@ -251,6 +271,12 @@ export class MapControls {
         this.closeMenu(); // Close menu after action
 
         switch (action) {
+            case 'mode-explore':
+                this.setMode('explore');
+                break;
+            case 'mode-routes':
+                this.setMode('routes');
+                break;
             case 'refresh':
                 this.controller.loadObjects();
                 this.showToast('Objetos actualizados');
@@ -278,6 +304,23 @@ export class MapControls {
                 document.getElementById('btn-close-map')?.click();
                 break;
         }
+    }
+
+    /**
+     * Set map mode (explore | routes)
+     */
+    setMode(mode) {
+        this.controller.setMode(mode);
+
+        // Update button states
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+
+        const activeBtn = document.getElementById(`map-btn-${mode}`);
+        if (activeBtn) activeBtn.classList.add('active');
+
+        this.showToast(mode === 'routes' ? 'Modo Rutas activado' : 'Modo Explorar activado');
     }
 
     /**

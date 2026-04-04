@@ -2,9 +2,14 @@ from fastapi import APIRouter, Response, HTTPException, Request
 from fastapi.responses import FileResponse, StreamingResponse
 import httpx
 import os
+import time
 from pathlib import Path
 
 router = APIRouter()
+
+# ── IP Geolocation Cache (avoids rate limits) ──
+_geo_cache = {}  # key: client_ip, value: { data, timestamp }
+GEO_CACHE_TTL = 3600  # 1 hour
 
 # Directory for PMTiles files
 PMTILES_DIR = Path(__file__).parent.parent.parent.parent / "data" / "pmtiles"
@@ -214,3 +219,48 @@ async def proxy_avatar(user_id: str):
     
     # Return 404 if not found
     raise HTTPException(status_code=404, detail="Avatar not found")
+
+
+@router.get("/geolocate")
+async def geolocate_by_ip(request: Request):
+    """
+    Server-side proxy for IP geolocation.
+    Calls ipapi.co from the backend to avoid CORS and caches results
+    to prevent rate limiting (max 1 request per IP per hour).
+    """
+    # Get client IP from headers (supports reverse proxy)
+    client_ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+    if not client_ip:
+        client_ip = request.client.host if request.client else "unknown"
+
+    # Check cache
+    cached = _geo_cache.get(client_ip)
+    if cached and (time.time() - cached["timestamp"]) < GEO_CACHE_TTL:
+        return cached["data"]
+
+    # Call ipapi.co server-side
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(f"https://ipapi.co/{client_ip}/json/", headers={
+                "User-Agent": "KeplerApp/1.0"
+            })
+
+            if resp.status_code == 200:
+                ip_data = resp.json()
+                result = {
+                    "success": True,
+                    "latitude": ip_data.get("latitude"),
+                    "longitude": ip_data.get("longitude"),
+                    "city": ip_data.get("city"),
+                    "region": ip_data.get("region"),
+                    "country": ip_data.get("country_name"),
+                    "source": "ip"
+                }
+                _geo_cache[client_ip] = {"data": result, "timestamp": time.time()}
+                return result
+
+            # Rate limited or error — return graceful fallback
+            return {"success": False, "error": f"Upstream returned {resp.status_code}"}
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}

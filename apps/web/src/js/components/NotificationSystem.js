@@ -21,7 +21,13 @@ export class NotificationSystem {
         this.container.id = 'notification-container';
         document.body.appendChild(this.container);
 
-        // 2. Create Log Panel (Bitácora)
+        // 2. Create Log Overlay (backdrop) + Panel (Bitácora)
+        this.logOverlay = document.createElement('div');
+        this.logOverlay.id = 'notification-log-overlay';
+        this.logOverlay.onclick = (e) => {
+            if (e.target === this.logOverlay) this.toggleLog(false);
+        };
+
         this.logPanel = document.createElement('div');
         this.logPanel.id = 'notification-log-panel';
         this.logPanel.innerHTML = `
@@ -37,6 +43,7 @@ export class NotificationSystem {
                     </button>
                 </div>
             </div>
+            <div class="log-summary" id="log-summary"></div>
             <div class="log-filters">
                 <div class="select-wrapper">
                     <select id="log-filter-select" class="log-filter-select">
@@ -51,7 +58,9 @@ export class NotificationSystem {
             </div>
             <div class="log-content" id="log-content"></div>
         `;
-        document.body.appendChild(this.logPanel);
+
+        this.logOverlay.appendChild(this.logPanel);
+        document.body.appendChild(this.logOverlay);
 
         // Bind Close
         this.logPanel.querySelector('.log-close').onclick = () => this.toggleLog(false);
@@ -74,6 +83,13 @@ export class NotificationSystem {
         if (filterSelect) {
             filterSelect.addEventListener('change', (e) => this.setFilter(e.target.value));
         }
+
+        // Close on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.logOverlay.classList.contains('open')) {
+                this.toggleLog(false);
+            }
+        });
 
         // 3. Preload Sounds
         const audioPath = '/assets/song/notifications/';
@@ -149,14 +165,15 @@ export class NotificationSystem {
     }
 
     toggleLog(forceState = null) {
-        const isOpen = this.logPanel.classList.contains('open');
+        const isOpen = this.logOverlay.classList.contains('open');
         const newState = forceState !== null ? forceState : !isOpen;
 
         if (newState) {
-            this.logPanel.classList.add('open');
+            this.logOverlay.classList.add('open');
+            this.updateLogUI();
             this.updateBadgeToZero();
         } else {
-            this.logPanel.classList.remove('open');
+            this.logOverlay.classList.remove('open');
         }
     }
 
@@ -174,6 +191,31 @@ export class NotificationSystem {
             counts.all++;
             if (counts[n.type] !== undefined) counts[n.type]++;
         });
+
+        // Update summary bar
+        const summary = this.logPanel.querySelector('#log-summary');
+        if (summary) {
+            summary.innerHTML = `
+                <button class="summary-chip ${this.currentFilter === 'all' ? 'active' : ''}" data-filter="all">
+                    <span class="chip-count">${counts.all}</span> Total
+                </button>
+                <button class="summary-chip critical ${this.currentFilter === 'critical' ? 'active' : ''}" data-filter="critical">
+                    <span class="chip-dot critical"></span><span class="chip-count">${counts.critical}</span>
+                </button>
+                <button class="summary-chip warning ${this.currentFilter === 'warning' ? 'active' : ''}" data-filter="warning">
+                    <span class="chip-dot warning"></span><span class="chip-count">${counts.warning}</span>
+                </button>
+                <button class="summary-chip success ${this.currentFilter === 'success' ? 'active' : ''}" data-filter="success">
+                    <span class="chip-dot success"></span><span class="chip-count">${counts.success}</span>
+                </button>
+                <button class="summary-chip info ${this.currentFilter === 'info' ? 'active' : ''}" data-filter="info">
+                    <span class="chip-dot info"></span><span class="chip-count">${counts.info}</span>
+                </button>
+            `;
+            summary.querySelectorAll('.summary-chip').forEach(chip => {
+                chip.onclick = () => this.setFilter(chip.dataset.filter);
+            });
+        }
 
         const labels = {
             all: '📋 Todas las Notificaciones',

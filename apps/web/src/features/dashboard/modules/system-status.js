@@ -368,11 +368,11 @@ function startStatusMonitoring() {
 
 async function checkBackendStatus() {
     try {
-        const res = await fetch('/api/dashboard/stats?t=' + Date.now());
+        const res = await fetch('/health?t=' + Date.now());
         if (res.ok) {
             updateStatus('backend', 'ok', 'Activo');
         } else {
-            updateStatus('backend', 'warning', 'Error');
+            updateStatus('backend', 'warning', `HTTP ${res.status}`);
         }
     } catch {
         updateStatus('backend', 'error', 'Sin conexión');

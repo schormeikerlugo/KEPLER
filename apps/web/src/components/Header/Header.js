@@ -24,12 +24,10 @@ export async function initHeader(containerId, options = {}) {
                     <span class="menu-item-icon">🗺️</span>
                     <span class="menu-item-text">Mapa Táctico</span>
                 </button>
-                <a href="/ia" style="text-decoration:none;">
-                    <button class="menu-item-btn">
-                        <span class="menu-item-icon">🧠</span>
-                        <span class="menu-item-text">Inteligencia IA</span>
-                    </button>
-                </a>
+                <button class="menu-item-btn" data-navigate="/ia">
+                    <span class="menu-item-icon">🧠</span>
+                    <span class="menu-item-text">Inteligencia IA</span>
+                </button>
                 <button id="btn-archives" class="menu-item-btn">
                     <span class="menu-item-icon">📦</span>
                     <span class="menu-item-text">Archivos</span>
@@ -41,12 +39,10 @@ export async function initHeader(containerId, options = {}) {
             `;
         } else if (options.context === 'ia') {
             dropdown.innerHTML = `
-                <a href="/" style="text-decoration:none;">
-                    <button class="menu-item-btn primary">
-                        <span class="menu-item-icon">📊</span>
-                        <span class="menu-item-text">Ir al Dashboard</span>
-                    </button>
-                </a>
+                <button class="menu-item-btn primary" data-navigate="/">
+                    <span class="menu-item-icon">📊</span>
+                    <span class="menu-item-text">Ir al Dashboard</span>
+                </button>
             `;
         }
     }
@@ -88,6 +84,12 @@ function setupMainMenu() {
     const menuItems = menu.querySelectorAll('.menu-item-btn');
     menuItems.forEach(item => {
         item.addEventListener('click', () => {
+            // SPA navigation for items with data-navigate
+            const navPath = item.getAttribute('data-navigate');
+            if (navPath && window.kepler?.navigate) {
+                window.kepler.navigate(navPath);
+            }
+
             setTimeout(() => {
                 menu.classList.remove('active');
                 btn.classList.remove('active');
@@ -162,7 +164,7 @@ async function setupProfile() {
         const myProfileBtn = document.getElementById('btn-profile');
         if (myProfileBtn) {
             myProfileBtn.addEventListener('click', () => {
-                window.location.href = '/profile';
+                window.kepler?.navigate?.('/profile') || (window.location.href = '/profile');
             });
         }
     } catch (error) {

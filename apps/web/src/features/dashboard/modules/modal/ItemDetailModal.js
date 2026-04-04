@@ -100,9 +100,13 @@ class ItemDetailModal {
 
     close() {
         if (!this.modal) return;
-        this.modal.style.display = 'none';
-        this.currentId = null;
-        this.currentTable = null;
+        this.modal.classList.add('closing');
+        setTimeout(() => {
+            this.modal.style.display = 'none';
+            this.modal.classList.remove('closing');
+            this.currentId = null;
+            this.currentTable = null;
+        }, 250);
     }
 
     /**

@@ -17,7 +17,8 @@ import { TelemetryPanel } from './modules/telemetry-panel.js';
 import { ModalSystem } from '../../js/components/ModalSystem.js';
 
 class ArchivesController {
-    constructor() {
+    constructor(container) {
+        this.container = container;
         // Data state
         this.currentObjects = [];
         this.filteredObjects = [];
@@ -76,7 +77,7 @@ class ArchivesController {
         // Auth check
         const user = await auth.getUser();
         if (!user) {
-            window.location.href = '../../index.html';
+            window.kepler?.navigate?.('/login') || (window.location.href = '/login');
             return;
         }
 
@@ -198,5 +199,19 @@ class ArchivesController {
     }
 }
 
-// Initialize
-new ArchivesController();
+/**
+ * SPA render entry point
+ */
+export async function render(container) {
+    const [{ default: template }] = await Promise.all([
+        import('./archives-template.html?raw'),
+        import('./archives.css')
+    ]);
+    container.innerHTML = template;
+    new ArchivesController(container);
+}
+
+// Support standalone page (archives.html) — auto-init if no SPA router
+if (document.querySelector('.archives-container')) {
+    new ArchivesController(document.querySelector('.archives-container').parentElement);
+}

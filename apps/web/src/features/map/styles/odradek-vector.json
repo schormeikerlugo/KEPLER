@@ -1,7 +1,7 @@
 {
   "version": 8,
   "name": "KEPLER Odradek Vector",
-  "glyphs": "https://cdn.protomaps.com/fonts/pbf/{fontstack}/{range}.pbf",
+  "glyphs": "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
   "sources": {
     "protomaps": {
       "type": "vector",

@@ -26,7 +26,8 @@ El Backend de KEPLER es un servicio construido en **Python** con **FastAPI**, di
 | `/api/taxonomia` | `taxonomia.py` | Clasificación y taxonomía de objetos |
 | `/api` | `inference.py` | Inferencia de modelos (YOLOv26, etc.) |
 | `/api/explorer` | `explorer_stats.py` | Algoritmo de Resistencia y Desgaste |
-| `/api/utils` | `utils.py` | Utilidades y proxy de tiles |
+| `/api/utils` | `utils.py` | Utilidades: proxy de tiles, avatar, PMTiles, geolocalización |
+| `/health` | `main.py` | Health check del backend (sin auth) |
 
 ## Endpoints Detallados
 
@@ -47,6 +48,24 @@ El Backend de KEPLER es un servicio construido en **Python** con **FastAPI**, di
 - **GET** — Calcula Desgaste del Calzado y Resistencia Física.
 - Acepta `?lat=&lng=` para clima real vía Open-Meteo.
 - Ver [explorer-stats.md](explorer-stats.md) para detalle del algoritmo.
+
+### Geolocalización por IP (`/api/utils/geolocate`)
+- **GET** — Proxy server-side a ipapi.co para geolocalización por IP.
+- Evita problemas de CORS y rate-limit del cliente.
+- Cache en memoria por IP del cliente (TTL: 1 hora).
+- Retorna: `{ success, latitude, longitude, city, region, country, source: "ip" }`.
+- Usado como fallback cuando GPS no está disponible y no hay coords en cache.
+
+### Health Check (`/health`)
+- **GET** — Verifica que el backend está operativo (sin autenticación).
+- Retorna: `{ status: "healthy", services: ["database", "ai_model"] }`.
+- Usado por `system-status.js` para el indicador de estado del sistema.
+
+### Misiones (`/api/missions`)
+- **POST** `/start` — Inicia misión. Acepta `ruta_planificada_id` opcional para vincular ruta planificada.
+- **POST** `/end` — Finaliza misión activa con resumen.
+- **GET** `/` — Lista misiones del usuario.
+- **POST** `/describe-zone` — Genera descripción de zona via GPS + IA.
 
 ## Autenticación
 - JWT de Supabase verificado en `app/api/deps.py`

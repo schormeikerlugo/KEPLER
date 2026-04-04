@@ -4,6 +4,91 @@
  */
 
 import { dbService } from '../../../../js/services/DatabaseService.js';
+import { api } from '../../../../js/services/api.js';
+
+// Cache for loaded routes
+let cachedRoutes = [];
+
+/**
+ * Load planned routes into the route selector dropdown
+ */
+async function loadRoutesIntoSelector() {
+    const routeSelect = document.getElementById('select-mission-route');
+    if (!routeSelect) return;
+
+    // Keep first option (sin ruta), remove rest
+    while (routeSelect.options.length > 1) routeSelect.remove(1);
+
+    try {
+        const res = await api.getPlannedRoutes(50, 0);
+        cachedRoutes = res.routes || [];
+
+        for (const route of cachedRoutes) {
+            const opt = document.createElement('option');
+            opt.value = route.id;
+            const dist = route.distancia_total ? `${(route.distancia_total / 1000).toFixed(1)}km` : '';
+            const wps = route.waypoints?.length || 0;
+            opt.textContent = `${route.nombre} — ${wps} waypoints${dist ? ` · ${dist}` : ''}`;
+            routeSelect.appendChild(opt);
+        }
+    } catch (e) {
+        console.warn('[Mission] Could not load routes:', e.message);
+    }
+}
+
+/**
+ * Handle route selection change — prefill mission fields from route data
+ */
+function setupRouteSelector() {
+    const routeSelect = document.getElementById('select-mission-route');
+    if (!routeSelect) return;
+
+    routeSelect.addEventListener('change', () => {
+        const routeId = routeSelect.value;
+        const previewInfo = document.getElementById('route-preview-info');
+        const hint = document.getElementById('route-selector-hint');
+
+        if (!routeId) {
+            if (previewInfo) previewInfo.style.display = 'none';
+            if (hint) hint.textContent = 'Selecciona una ruta guardada para guiar tu misión con waypoints';
+            return;
+        }
+
+        const route = cachedRoutes.find(r => r.id === routeId);
+        if (!route) return;
+
+        // Show route preview
+        if (previewInfo) {
+            previewInfo.style.display = 'flex';
+            const distEl = document.getElementById('route-preview-distance');
+            const wpsEl = document.getElementById('route-preview-waypoints');
+            const terrEl = document.getElementById('route-preview-terrain');
+
+            if (distEl) distEl.textContent = `📏 ${route.distancia_total ? (route.distancia_total / 1000).toFixed(1) + ' km' : 'N/A'}`;
+            if (wpsEl) wpsEl.textContent = `📍 ${route.waypoints?.length || 0} waypoints`;
+            if (terrEl) terrEl.textContent = `🏔️ ${route.tipo_terreno || 'No definido'}`;
+        }
+        if (hint) hint.textContent = '✅ Ruta seleccionada — los waypoints guiarán tu exploración';
+
+        // Auto-fill terrain if route has it
+        if (route.tipo_terreno) {
+            const terrenoSelect = document.getElementById('select-mission-terreno');
+            if (terrenoSelect) {
+                const match = [...terrenoSelect.options].find(o => o.value === route.tipo_terreno);
+                if (match) terrenoSelect.value = route.tipo_terreno;
+            }
+        }
+
+        // Auto-fill zone from first waypoint name or coords
+        if (route.waypoints?.length > 0) {
+            const first = route.waypoints[0];
+            const zoneInput = document.getElementById('inp-dash-mission-zone');
+            if (zoneInput && !zoneInput.dataset.gpsSet) {
+                zoneInput.value = route.nombre || `Lat: ${first.lat?.toFixed(4)}, Lng: ${first.lng?.toFixed(4)}`;
+            }
+        }
+    });
+}
 
 export function initMission() {
     const startBtn = document.getElementById('btn-start-mission');
@@ -12,11 +97,16 @@ export function initMission() {
     const closeMissionBtn = document.getElementById('btn-close-mission');
     const confirmMissionBtn = document.getElementById('btn-confirm-start-mission');
 
+    // Setup route selector change handler once
+    setupRouteSelector();
+
     // Function to handle opening the modal
     const openMissionModal = async () => {
         if (!missionModal) return;
         missionModal.style.display = 'flex';
 
+        // Load routes into selector each time modal opens (fresh data)
+        loadRoutesIntoSelector();
 
         // Restore Saved Selections
         // AI Mode is implicitly 'local'
@@ -145,11 +235,18 @@ export function initMission() {
     }
 
 
-    // Close Modal
-    if (closeMissionBtn) {
-        closeMissionBtn.addEventListener('click', () => {
+    // Close Modal with animation
+    const closeMissionModal = () => {
+        if (!missionModal) return;
+        missionModal.classList.add('closing');
+        setTimeout(() => {
             missionModal.style.display = 'none';
-        });
+            missionModal.classList.remove('closing');
+        }, 250);
+    };
+
+    if (closeMissionBtn) {
+        closeMissionBtn.addEventListener('click', closeMissionModal);
     }
 
     // Confirm Start
@@ -177,27 +274,50 @@ export function initMission() {
                 descripcionIA = helper.textContent.replace(/^📍\s*/, '').trim();
             }
 
+            // Phase 2: Get selected route
+            const routeSelect = document.getElementById('select-mission-route');
+            const selectedRouteId = routeSelect?.value || null;
+            const selectedRoute = selectedRouteId ? cachedRoutes.find(r => r.id === selectedRouteId) : null;
+
             // Phase 1: Capture enrichment fields
             const missionOpts = {
                 tipo_terreno: terrenoSelect?.value || null,
                 objetivo: objetivoInput?.value?.trim() || null,
                 dificultad: dificultadSelect?.value || null,
-                coords_inicio: null
+                coords_inicio: null,
+                ruta_planificada_id: selectedRouteId
             };
 
-            // Try to capture GPS coords for mission start point
-            try {
-                const pos = await new Promise((resolve, reject) => {
-                    navigator.geolocation.getCurrentPosition(resolve, reject, { maximumAge: 60000, timeout: 3000 });
-                });
-                missionOpts.coords_inicio = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-            } catch (e) { /* GPS optional here, already captured zone */ }
+            // Use route's first waypoint as coords_inicio if available
+            if (selectedRoute?.waypoints?.length > 0) {
+                const first = selectedRoute.waypoints[0];
+                missionOpts.coords_inicio = { lat: first.lat, lng: first.lng };
+            }
+
+            // Fallback: try GPS coords for mission start point
+            if (!missionOpts.coords_inicio) {
+                try {
+                    const pos = await new Promise((resolve, reject) => {
+                        navigator.geolocation.getCurrentPosition(resolve, reject, { maximumAge: 60000, timeout: 3000 });
+                    });
+                    missionOpts.coords_inicio = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                } catch (e) { /* GPS optional here, already captured zone */ }
+            }
 
             try {
                 confirmMissionBtn.textContent = 'Iniciando...';
+
+                // Store route waypoints for AR Explorer to consume
+                if (selectedRoute?.waypoints?.length) {
+                    localStorage.setItem('kepler_mission_waypoints', JSON.stringify(selectedRoute.waypoints));
+                    localStorage.setItem('kepler_mission_route_name', selectedRoute.nombre || '');
+                } else {
+                    localStorage.removeItem('kepler_mission_waypoints');
+                    localStorage.removeItem('kepler_mission_route_name');
+                }
+
                 await dbService.startMission(title, zone, descripcionIA, missionOpts);
-                window.history.pushState({}, '', '/ar');
-                window.location.reload();
+                window.kepler.navigate('/ar');
             } catch (e) {
                 console.error("Error starting mission:", e);
                 alert("Error al iniciar misión. Revisa consola.");
@@ -211,7 +331,7 @@ export function initMission() {
     const archivesBtn = document.getElementById('btn-archives');
     if (archivesBtn) {
         archivesBtn.addEventListener('click', () => {
-            window.location.href = '/src/features/archives/archives.html';
+            window.kepler.navigate('/archives');
         });
     }
 
@@ -219,7 +339,7 @@ export function initMission() {
     const taxonomiaBtn = document.getElementById('btn-taxonomia');
     if (taxonomiaBtn) {
         taxonomiaBtn.addEventListener('click', () => {
-            window.location.href = '/taxonomia';
+            window.kepler.navigate('/taxonomia');
         });
     }
 

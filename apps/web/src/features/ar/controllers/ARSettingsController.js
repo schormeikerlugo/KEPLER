@@ -85,19 +85,19 @@ export class ARSettingsController {
                             document.getElementById('summary-geotrack').textContent = summary.geoTrailPoints;
                             summaryModal.style.display = 'flex';
                             document.getElementById('btn-summary-continue')?.addEventListener('click', () => {
-                                window.location.href = '/';
+                                window.kepler.navigate('/');
                             });
                             return; // Don't redirect yet — wait for button click
                         }
                     }
-                    window.location.href = '/';
+                    window.kepler.navigate('/');
                 } else {
                     this.context.ui.showToast("Error de conexión al finalizar.");
                 }
             } else {
                 this.context.ui.showToast("Error: No se detecta misión activa en memoria.");
                 if (confirm("Forzar salida (La misión seguirá activa en BD)?")) {
-                    window.location.href = '/';
+                    window.kepler.navigate('/');
                 }
             }
         });
@@ -142,7 +142,7 @@ export class ARSettingsController {
         // Abort Mission (In Settings)
         document.getElementById('btn-exit')?.addEventListener('click', () => {
             if (confirm('¿Abortar misión y volver al Dashboard?')) {
-                window.location.href = '/dashboard/';
+                window.kepler.navigate('/');
             }
         });
     }

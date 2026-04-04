@@ -19,7 +19,8 @@ export class DatabaseService {
                 tipo_terreno: opts.tipo_terreno || null,
                 objetivo: opts.objetivo || null,
                 dificultad: opts.dificultad || null,
-                coords_inicio: opts.coords_inicio || null
+                coords_inicio: opts.coords_inicio || null,
+                ruta_planificada_id: opts.ruta_planificada_id || null
             });
 
             if (res.success && res.mission_id) {

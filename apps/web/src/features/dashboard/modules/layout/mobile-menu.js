@@ -52,7 +52,7 @@ export function initMobileMenu(user, missionModal) {
         const mobileNavUser = document.getElementById('mobile-nav-user');
         if (mobileNavUser) {
             mobileNavUser.addEventListener('click', () => {
-                window.location.href = '/src/features/profile/profile.html';
+                window.kepler?.navigate?.('/profile') || (window.location.href = '/src/features/profile/profile.html');
             });
         }
     }
@@ -72,13 +72,15 @@ export function initMobileMenu(user, missionModal) {
 
     if (mobileBtnArchives) {
         mobileBtnArchives.addEventListener('click', () => {
-            window.location.href = '/src/features/archives/archives.html';
+            closeMobileMenu();
+            window.kepler.navigate('/archives');
         });
     }
 
     if (mobileBtnTaxonomia) {
         mobileBtnTaxonomia.addEventListener('click', () => {
-            window.location.href = '/src/features/taxonomia/taxonomia.html';
+            closeMobileMenu();
+            window.kepler.navigate('/taxonomia');
         });
     }
 
@@ -118,6 +120,15 @@ export function initMobileMenu(user, missionModal) {
             } else {
                 console.error('📱 ERROR: window.kepler.map not available!');
             }
+        });
+    }
+
+    // Mobile routes button
+    const mobileBtnRoutes = document.getElementById('mobile-btn-routes');
+    if (mobileBtnRoutes) {
+        mobileBtnRoutes.addEventListener('click', () => {
+            closeMobileMenu();
+            window.location.href = '/routes';
         });
     }
 }

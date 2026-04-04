@@ -2,6 +2,7 @@
  * MapController.js
  * Manages MapLibre GL JS map instance and object rendering.
  * Supports both Raster and Vector tiles (PMTiles).
+ * Supports multiple modes: explore (default), routes (waypoints).
  */
 
 import { supabase } from '../../js/auth.js';
@@ -12,6 +13,7 @@ import { MapFilters } from './modules/MapFilters.js';
 import { MapLayers } from './modules/MapLayers.js';
 import { MapMarkers } from './modules/MapMarkers.js';
 import { MapObjectPanel } from './modules/MapObjectPanel.js';
+import { MapWaypoints } from './modules/MapWaypoints.js';
 import { Protocol } from 'pmtiles';
 
 export class MapController {
@@ -22,6 +24,7 @@ export class MapController {
         this.isInitialized = false;
         this.objects = [];
         this.viewScope = 'mine';
+        this.mode = 'explore'; // 'explore' | 'routes'
 
         // Feature modules
         this.location = null;
@@ -31,6 +34,7 @@ export class MapController {
         this.panelMod = null;
         this.searchMod = null;
         this.filtersMod = null;
+        this.waypointsMod = null;
         this.searchTerm = '';
 
         // Inject Styles
@@ -118,10 +122,29 @@ export class MapController {
 
         console.log('🗺️ Initializing MapLibre Engine...');
 
-        // 1. Create Map Instance
-        this.map = new maplibregl.Map({
-            container: this.containerId,
-            style: {
+        // 1. Determine initial style BEFORE creating the map
+        //    Check for vector regions first to avoid raster→vector flash
+        let initialStyle = null;
+        try {
+            const regionsRes = await fetch('/api/utils/pmtiles/available');
+            const regionsData = await regionsRes.json();
+            const regions = regionsData.regions || [];
+
+            if (regions.length > 0) {
+                const styleRes = await fetch('/src/features/map/styles/odradek-vector.json');
+                initialStyle = await styleRes.json();
+                const region = regions[0].id;
+                initialStyle.sources.protomaps.url = `pmtiles://${window.location.origin}/api/utils/pmtiles/${region}.pmtiles`;
+                this._preloadedRegions = regions;
+                console.log('🎨 Vector style pre-loaded');
+            }
+        } catch (e) {
+            console.log('📍 Vector pre-check failed, using raster fallback');
+        }
+
+        // Fallback: raster OSM style
+        if (!initialStyle) {
+            initialStyle = {
                 version: 8,
                 sources: {
                     'osm': {
@@ -131,26 +154,36 @@ export class MapController {
                         attribution: 'OpenStreetMap'
                     }
                 },
-                layers: [
-                    {
-                        id: 'simple-tiles',
-                        type: 'raster',
-                        source: 'osm',
-                        minzoom: 0,
-                        maxzoom: 22
-                    }
-                ]
-            },
+                layers: [{
+                    id: 'simple-tiles',
+                    type: 'raster',
+                    source: 'osm',
+                    minzoom: 0,
+                    maxzoom: 22
+                }]
+            };
+        }
+
+        // 2. Create Map Instance with the correct style from the start
+        this.map = new maplibregl.Map({
+            container: this.containerId,
+            style: initialStyle,
             center: this.baseCoords,
             zoom: 13,
             attributionControl: false
         });
 
-        // 2. Add Controls
+        // 3. Add Controls
         this.map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
         // Initialize Layers Module
         this.layersMod = new MapLayers(this);
+
+        // Sync pre-loaded regions into layers module
+        if (this._preloadedRegions) {
+            this.layersMod.availableRegions = this._preloadedRegions;
+            this.layersMod.renderMode = 'vector';
+        }
 
         // Compatibility for MapControls (legacy API)
         this.layers = {
@@ -158,24 +191,28 @@ export class MapController {
             cycleLayer: () => this.layersMod.cycleLayer()
         };
 
-        // 3. Wait for load
+        // 4. Wait for load
         this.map.on('load', async () => {
             console.log('✅ Map Engine Loaded');
 
-            // Check for available vector tile regions
-            await this.layersMod.checkAvailableRegions();
-
-            // Use vector mode if regions available, otherwise raster dark
-            if (this.layersMod.availableRegions.length > 0) {
-                console.log('🎨 Vector tiles available, using vector mode');
-                await this.layersMod.setVectorStyle();
-            } else {
-                console.log('📍 No vector regions, using raster Odradek mode');
-                this.layersMod.setLayer('dark');
+            // If regions weren't pre-loaded, check now and apply
+            if (!this._preloadedRegions) {
+                await this.layersMod.checkAvailableRegions();
+                if (this.layersMod.availableRegions.length > 0) {
+                    await this.layersMod.setVectorStyle();
+                } else {
+                    this.layersMod.setLayer('dark');
+                }
             }
 
             // Initialize Core Modules
             this.location = new MapLocation(this);
+
+            // Initialize Markers Module (clustering)
+            this.markersMod = new MapMarkers(this);
+
+            // Initialize Waypoints Module
+            this.waypointsMod = new MapWaypoints(this);
 
             // Only load UI and Objects if it's the main map
             if (!this.isTactical) {
@@ -193,9 +230,6 @@ export class MapController {
                 this.filtersMod.createUI(searchContainer);
             }
 
-            // Initialize Markers Module (Needed for User Location Marker)
-            this.markersMod = new MapMarkers(this);
-
             this.isInitialized = true;
 
             // Load Objects only for main map
@@ -204,6 +238,31 @@ export class MapController {
                 this.bindGeotrackListener();
             }
         });
+    }
+
+    /**
+     * Set map mode: 'explore' | 'routes'
+     */
+    setMode(newMode) {
+        if (this.mode === newMode) return;
+        this.mode = newMode;
+
+        if (newMode === 'routes') {
+            // Disable object markers, enable waypoints
+            this.waypointsMod?.enable();
+            this.map.getCanvas().style.cursor = 'crosshair';
+        } else {
+            // Re-enable object markers, disable waypoints
+            this.waypointsMod?.disable();
+            this.map.getCanvas().style.cursor = '';
+        }
+
+        // Emit mode change event
+        window.dispatchEvent(new CustomEvent('kepler:map-mode-changed', {
+            detail: { mode: newMode }
+        }));
+
+        console.log(`[Map] Mode: ${newMode}`);
     }
 
     /**

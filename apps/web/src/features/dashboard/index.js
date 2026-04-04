@@ -37,46 +37,47 @@ import { initModuleFullViewModal } from './modules/modal/ModuleFullViewModal.js'
  * Main render function - initializes the dashboard
  * @param {HTMLElement} container - The container element to render into
  */
+// Track listener to avoid duplicates on re-navigation
+let _dataUpdateHandler = null;
+
 export async function render(container) {
     const user = await auth.getUser();
 
-    // Inject HTML template
+    // Inject HTML template immediately (instant visual feedback)
     container.innerHTML = template;
 
-    // Show loading overlay on first visit
+    // Show loading overlay only on first visit ever
     if (!sessionStorage.getItem('kepler_preload_done')) {
         await showLoadingOverlay(user.id);
         sessionStorage.setItem('kepler_preload_done', 'true');
     }
 
-    // 1. Initialize Header (shared component)
+    // 1. Initialize Header (await to ensure layout is stable before showing)
     await initHeader('global-header-container', { context: 'dashboard' });
 
-    // 2. Initialize Map Controller (fullscreen toggle only)
+    // 2. Initialize Map Controller + navigation
     const mapController = new MapController('map-view-container');
     setupNavigation(mapController);
 
-    // 3. Initialize all dashboard data modules in parallel
-    await initDashboardModules();
-
-    // 4. Setup user profile in header
-    await setupUserProfile(user);
-
-    // 5. Setup Notification Bell
+    // 3. Setup interactive elements immediately
     bindNotificationBell();
-
-    // 6. Initialize modals + mobile menu
     const missionModal = initMission();
     initItemDetailModal();
     initModuleFullViewModal();
     initMobileMenu(user, missionModal);
 
-    // 7. Listen for data updates from Deep-Dive Modal to refresh UI
-    window.addEventListener('kepler:data_updated', async (e) => {
+    // 4. Load data modules + profile in parallel (non-blocking)
+    initDashboardModules();
+    setupUserProfile(user);
+
+    // Listen for data updates (remove previous listener to avoid duplicates on re-nav)
+    if (_dataUpdateHandler) {
+        window.removeEventListener('kepler:data_updated', _dataUpdateHandler);
+    }
+    _dataUpdateHandler = async (e) => {
         const table = e.detail?.table;
         console.log(`[Dashboard] Auto-refresh triggered for table: ${table}`);
-        
-        // Re-fetch and re-render the affected card
+
         if (!table || table === 'objetos_exploracion') initObjectsCard();
         if (!table || table === 'personas_encontradas') initPersonasCard();
         if (!table || table === 'rutas_exploracion') initRutasCard();
@@ -84,10 +85,9 @@ export async function render(container) {
         if (!table || table === 'misiones') {
             import('./modules/missions-card.js').then(m => m.fetchMissions && m.fetchMissions());
         }
-        
-        // Always refresh alerts in case the update resolved an alert
         initAlerts();
-    });
+    };
+    window.addEventListener('kepler:data_updated', _dataUpdateHandler);
 
     /**
      * Helper to inject Dummy Routes for the authenticated user.
@@ -255,19 +255,45 @@ function setupNavigation(mapController) {
     const btnCloseMap = document.getElementById('btn-close-map');
     const dashBody = document.querySelector('.dash-body');
     const mapSection = document.getElementById('map-view-section');
+    const routePanel = document.getElementById('map-route-panel');
 
     const closeMap = () => {
         if (btnMap) btnMap.classList.remove('active');
-        if (mapSection) mapSection.style.display = 'none';
-        if (dashBody) dashBody.style.display = 'grid';
+        // Fade out map, fade in dashboard
+        if (mapSection) {
+            mapSection.classList.add('section-exit');
+            setTimeout(() => {
+                mapSection.style.display = 'none';
+                mapSection.classList.remove('section-exit');
+                if (dashBody) {
+                    dashBody.style.display = 'grid';
+                    dashBody.classList.add('section-enter');
+                    setTimeout(() => dashBody.classList.remove('section-enter'), 250);
+                }
+            }, 200);
+        }
         if (btnCloseMap) btnCloseMap.style.display = 'none';
+        mapController.setMode('explore');
     };
 
     const openMap = async () => {
         if (btnMap) btnMap.classList.add('active');
-        if (dashBody) dashBody.style.display = 'none';
-        if (mapSection) mapSection.style.display = 'block';
-        if (btnCloseMap) btnCloseMap.style.display = 'block';
+        // Fade out dashboard, fade in map
+        if (dashBody) {
+            dashBody.classList.add('section-exit');
+            await new Promise(r => setTimeout(r, 200));
+            dashBody.style.display = 'none';
+            dashBody.classList.remove('section-exit');
+        }
+        if (mapSection) {
+            mapSection.style.display = 'block';
+            mapSection.classList.add('section-enter');
+            setTimeout(() => mapSection.classList.remove('section-enter'), 250);
+        }
+        if (btnCloseMap) {
+            btnCloseMap.style.display = 'flex';
+            btnCloseMap.style.visibility = 'visible';
+        }
         await mapController.init();
         mapController.invalidateSize();
     };
@@ -284,4 +310,171 @@ function setupNavigation(mapController) {
     });
 
     if (btnCloseMap) btnCloseMap.addEventListener('click', closeMap);
+
+    // Listen for mode changes
+    window.addEventListener('kepler:map-mode-changed', (e) => {
+        const mode = e.detail?.mode;
+        if (routePanel) {
+            routePanel.classList.toggle('active', mode === 'routes');
+        }
+        // Toggle object panel visibility
+        const objPanel = document.querySelector('.map-object-panel');
+        if (objPanel) {
+            objPanel.style.display = mode === 'routes' ? 'none' : '';
+        }
+    });
+
+    // Route panel event handlers
+    setupRoutePanel(mapController);
+}
+
+/**
+ * Setup route panel UI events
+ */
+function setupRoutePanel(mapController) {
+    const wpCount = document.getElementById('route-wp-count');
+    const wpList = document.getElementById('route-wp-list');
+    const wpHint = document.getElementById('route-wp-hint');
+    const btnUndo = document.getElementById('route-btn-undo');
+    const btnClear = document.getElementById('route-btn-clear');
+    const btnSave = document.getElementById('route-btn-save');
+    const inputName = document.getElementById('route-input-name');
+
+    if (!wpCount) return;
+
+    // Update waypoints UI
+    function updateWaypointUI() {
+        const wp = mapController.waypointsMod;
+        if (!wp) return;
+
+        const waypoints = wp.getWaypoints();
+        wpCount.textContent = waypoints.length;
+
+        const canSave = waypoints.length >= 2 && inputName?.value?.trim()?.length > 0;
+        if (btnSave) btnSave.disabled = !canSave;
+        if (btnUndo) btnUndo.disabled = waypoints.length === 0;
+        if (btnClear) btnClear.disabled = waypoints.length === 0;
+
+        if (waypoints.length === 0) {
+            if (wpHint) wpHint.style.display = 'block';
+            if (wpList) wpList.innerHTML = '';
+            return;
+        }
+
+        if (wpHint) wpHint.style.display = 'none';
+        if (wpList) {
+            wpList.innerHTML = waypoints.map((w, i) => `
+                <div class="route-waypoint-item">
+                    <span class="route-wp-num">${i + 1}</span>
+                    <span class="route-wp-coords">${w.lat.toFixed(5)}, ${w.lng.toFixed(5)}</span>
+                    <button class="route-wp-remove" data-index="${i}">×</button>
+                </div>
+            `).join('');
+
+            wpList.querySelectorAll('.route-wp-remove').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const idx = parseInt(e.target.dataset.index);
+                    wp.removeWaypointAt(idx);
+                    updateWaypointUI();
+                });
+            });
+        }
+    }
+
+    // Waypoint events
+    window.addEventListener('kepler:waypoint-added', updateWaypointUI);
+    window.addEventListener('kepler:waypoint-removed', updateWaypointUI);
+    window.addEventListener('kepler:waypoints-cleared', updateWaypointUI);
+
+    inputName?.addEventListener('input', updateWaypointUI);
+
+    // Undo
+    btnUndo?.addEventListener('click', () => {
+        mapController.waypointsMod?.removeLastWaypoint();
+        updateWaypointUI();
+    });
+
+    // Clear
+    btnClear?.addEventListener('click', () => {
+        mapController.waypointsMod?.clearWaypoints();
+        updateWaypointUI();
+    });
+
+    // Save route
+    btnSave?.addEventListener('click', async () => {
+        const wp = mapController.waypointsMod;
+        if (!wp || wp.getWaypoints().length < 2) return;
+
+        const name = inputName?.value?.trim();
+        if (!name) return;
+
+        const terrain = document.getElementById('route-select-terrain')?.value || 'llano';
+        const safety = document.getElementById('route-select-safety')?.value || 'seguro';
+        const distKm = (wp.getTotalDistance() / 1000).toFixed(2);
+
+        try {
+            const { api } = await import('../../js/services/api.js');
+            const result = await api.createPlannedRoute({
+                nombre: name,
+                tipo_terreno: terrain,
+                estado_seguridad: safety,
+                distancia_total: parseFloat(distKm),
+                waypoints: wp.getWaypoints()
+            });
+
+            if (result.route) {
+                window.kepler?.notify?.success('Ruta guardada');
+                if (inputName) inputName.value = '';
+                wp.clearWaypoints();
+                updateWaypointUI();
+            }
+        } catch (e) {
+            console.error('Save route failed:', e);
+            window.kepler?.notify?.error('Error al guardar');
+        }
+    });
+
+    // Corridor analysis
+    window.addEventListener('kepler:corridor-analyzed', (e) => {
+        const risk = e.detail;
+        const corridor = document.getElementById('route-corridor');
+        if (!corridor || !risk) return;
+
+        corridor.classList.add('active');
+
+        const nivelColor = {
+            'bajo': '#4ADE80', 'medio': '#FBBF24',
+            'alto': '#F97316', 'critico': '#EF4444'
+        };
+        const color = nivelColor[risk.nivel_riesgo] || '#6B7280';
+
+        const icons = { 'bajo': '✓', 'medio': '⚠', 'alto': '⚠', 'critico': '✕' };
+        const labels = { 'bajo': 'Bajo', 'medio': 'Medio', 'alto': 'Alto', 'critico': 'Crítico' };
+
+        document.getElementById('route-risk-badge').innerHTML = `
+            <div class="route-risk-badge" style="background:${color}15; color:${color}; border-color:${color}">
+                <span>${icons[risk.nivel_riesgo] || '?'}</span>
+                <span>Riesgo: ${labels[risk.nivel_riesgo] || 'N/A'}</span>
+                <span style="margin-left:auto; opacity:0.8">${risk.score || 0} pts</span>
+            </div>
+        `;
+
+        const stats = risk.stats || {};
+        document.getElementById('route-stats-grid').innerHTML = `
+            <div class="route-stat-cell"><span class="route-stat-num">${stats.peligros_criticos || 0}</span><span class="route-stat-label">Críticos</span></div>
+            <div class="route-stat-cell"><span class="route-stat-num">${stats.hostiles || 0}</span><span class="route-stat-label">Hostiles</span></div>
+            <div class="route-stat-cell"><span class="route-stat-num">${stats.rutas_peligrosas || 0}</span><span class="route-stat-label">Rutas</span></div>
+            <div class="route-stat-cell"><span class="route-stat-num">${stats.objetos_cerca || 0}</span><span class="route-stat-label">Objetos</span></div>
+        `;
+
+        const alertIcons = { 'critical': '🚨', 'danger': '⚠️', 'warning': '⚡', 'info': 'ℹ️' };
+        const alertsHtml = (risk.alertas || []).map(a => `
+            <div class="route-alert-item alert-${a.tipo}">
+                <span>${alertIcons[a.tipo] || '•'}</span>
+                <span>${a.mensaje}</span>
+            </div>
+        `).join('');
+
+        document.getElementById('route-alerts-list').innerHTML = alertsHtml || '<div style="text-align:center; color:#4ADE80; font-size:12px; padding:8px;">Sin alertas ✓</div>';
+    });
 }

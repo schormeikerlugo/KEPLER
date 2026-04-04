@@ -153,13 +153,13 @@ async def get_nearby_alerts(
 async def get_planned_routes(
     limit: int = 50,
     offset: int = 0,
-    current_user: dict = Depends(get_current_user)
+    user=Depends(get_current_user)
 ):
     supabase = get_supabase()
     if not supabase:
         raise HTTPException(status_code=500, detail="Supabase not configured")
 
-    result = supabase.table("rutas_planificadas").select("*").eq("user_id", current_user["id"]).range(offset, offset + limit - 1).execute()
+    result = supabase.table("rutas_planificadas").select("*").eq("user_id", user.id).range(offset, offset + limit - 1).execute()
 
     return {"routes": result.data, "total": len(result.data)}
 
@@ -167,14 +167,14 @@ async def get_planned_routes(
 @router.post("/planned-routes")
 async def create_planned_route(
     request: CreatePlannedRouteRequest,
-    current_user: dict = Depends(get_current_user)
+    user=Depends(get_current_user)
 ):
     supabase = get_supabase()
     if not supabase:
         raise HTTPException(status_code=500, detail="Supabase not configured")
 
     data = {
-        "user_id": current_user["id"],
+        "user_id": user.id,
         "nombre": request.nombre,
         "punto_control_destino": request.punto_control_destino,
         "distancia_total": request.distancia_total,
@@ -193,12 +193,12 @@ async def create_planned_route(
 @router.delete("/planned-routes/{route_id}")
 async def delete_planned_route(
     route_id: str,
-    current_user: dict = Depends(get_current_user)
+    user=Depends(get_current_user)
 ):
     supabase = get_supabase()
     if not supabase:
         raise HTTPException(status_code=500, detail="Supabase not configured")
 
-    result = supabase.table("rutas_planificadas").delete().eq("id", route_id).eq("user_id", current_user["id"]).execute()
+    result = supabase.table("rutas_planificadas").delete().eq("id", route_id).eq("user_id", user.id).execute()
 
     return {"success": len(result.data) > 0}

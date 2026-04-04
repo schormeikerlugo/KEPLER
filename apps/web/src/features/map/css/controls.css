@@ -12,6 +12,7 @@
 }
 
 /* ========== FLOATING ACTION BUTTON ========== */
+/* Hidden on desktop, visible on mobile */
 .map-control-fab {
     width: 50px;
     height: 50px;
@@ -23,9 +24,25 @@
     cursor: pointer;
     box-shadow: 0 4px 20px rgba(63, 168, 255, 0.4);
     transition: all 0.3s ease;
-    display: flex;
+    display: none; /* Hidden by default (desktop) */
     align-items: center;
     justify-content: center;
+}
+
+/* Show FAB only on mobile */
+@media (max-width: 768px) {
+    .map-control-fab {
+        display: flex;
+    }
+
+    .map-menu-overlay {
+        display: none; /* Controlled by JS */
+    }
+
+    /* Hide back button on mobile (use FAB menu instead) */
+    .map-back-btn {
+        display: none !important;
+    }
 }
 
 .map-control-fab:hover {
@@ -55,9 +72,11 @@
     width: 40px;
     height: 40px;
     border-radius: 10px;
-    background: rgba(10, 15, 25, 0.9);
-    border: 1px solid rgba(63, 168, 255, 0.3);
-    color: #fff;
+    background: rgba(13, 13, 13, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #aaa;
     font-size: 1.1rem;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -67,9 +86,24 @@
 }
 
 .map-quick-btn:hover {
-    background: rgba(63, 168, 255, 0.2);
-    border-color: #3FA8FF;
+    background: rgba(30, 30, 30, 0.9);
+    border-color: rgba(63, 168, 255, 0.4);
+    color: #fff;
     transform: scale(1.05);
+}
+
+/* Mode toggle buttons */
+.map-quick-btn.mode-btn.active {
+    background: rgba(63, 168, 255, 0.15);
+    border-color: #3FA8FF;
+    color: #fff;
+    box-shadow: 0 0 12px rgba(63, 168, 255, 0.2);
+}
+
+.map-quick-btn.mode-btn {
+    width: auto;
+    padding: 0 10px;
+    gap: 4px;
 }
 
 .map-quick-btn.loading {

@@ -87,11 +87,8 @@ async function generateContextTip(userId) {
     try {
         // Fetch explorer stats (shoe condition, resistance)
         const token = await auth.getToken();
-        const baseUrl = import.meta.env.VITE_SUPABASE_URL.startsWith('/')
-            ? '' : import.meta.env.VITE_SUPABASE_URL.replace(/\/+$/, '').replace(':8443', ':8000');
-        const apiBase = baseUrl || '/api';
 
-        const statsRes = await fetch(`${apiBase}/api/explorer/stats`, {
+        const statsRes = await fetch('/api/explorer/stats', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
@@ -201,28 +198,69 @@ async function fetchExplorerStats() {
         // ── Geolocation: GPS first, IP fallback ──
         let lat = null, lng = null;
 
-        // Attempt 1: GPS (browser/device)
+        // Attempt 1: GPS (browser/device) with permission awareness
         try {
+            // Check GPS permission state before prompting
+            let gpsPermission = 'unknown';
+            if (navigator.permissions) {
+                try {
+                    const status = await navigator.permissions.query({ name: 'geolocation' });
+                    gpsPermission = status.state; // 'granted', 'denied', 'prompt'
+                } catch (_) { /* permissions API not supported for geolocation */ }
+            }
+
+            // If permission will trigger a prompt, show a friendly hint
+            if (gpsPermission === 'prompt') {
+                const statsContainer = document.querySelector('.sidebar-stats') || document.querySelector('.right-sidebar');
+                if (statsContainer) {
+                    const hint = document.createElement('div');
+                    hint.id = 'gps-permission-hint';
+                    hint.className = 'gps-permission-hint';
+                    hint.innerHTML = '📍 KEPLER necesita tu ubicación para clima y estadísticas en tiempo real';
+                    statsContainer.prepend(hint);
+                    // Auto-remove after GPS resolves
+                    setTimeout(() => hint.remove(), 10000);
+                }
+            }
+
+            // Skip GPS call entirely if already denied (go straight to fallbacks)
+            if (gpsPermission === 'denied') {
+                throw new Error('GPS permission denied');
+            }
+
             const pos = await new Promise((resolve, reject) => {
                 navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
             });
             lat = pos.coords.latitude;
             lng = pos.coords.longitude;
+            // Remove hint on success
+            document.getElementById('gps-permission-hint')?.remove();
             console.log(`[Sidebar] Location via GPS: ${lat}, ${lng}`);
         } catch (gpsErr) {
-            console.log('[Sidebar] GPS not available, trying IP fallback...');
+            console.log('[Sidebar] GPS not available, trying fallbacks...');
 
-            // Attempt 2: IP-based geolocation (ipapi.co, free, HTTPS, no key)
-            try {
-                const ipRes = await fetch('https://ipapi.co/json/');
-                if (ipRes.ok) {
-                    const ipData = await ipRes.json();
-                    lat = ipData.latitude ?? null;
-                    lng = ipData.longitude ?? null;
-                    console.log(`[Sidebar] Location via IP: ${lat}, ${lng}`);
+            // Fallback 1: cached coords from sessionStorage
+            const cachedLat = sessionStorage.getItem('kepler_lat');
+            const cachedLng = sessionStorage.getItem('kepler_lng');
+            if (cachedLat && cachedLng) {
+                lat = parseFloat(cachedLat);
+                lng = parseFloat(cachedLng);
+                console.log(`[Sidebar] Location via cache: ${lat}, ${lng}`);
+            } else {
+                // Fallback 2: server-side IP geolocation proxy (no CORS issues)
+                try {
+                    const geoRes = await fetch('/api/utils/geolocate');
+                    if (geoRes.ok) {
+                        const geoData = await geoRes.json();
+                        if (geoData.success && geoData.latitude && geoData.longitude) {
+                            lat = geoData.latitude;
+                            lng = geoData.longitude;
+                            console.log(`[Sidebar] Location via IP proxy: ${lat}, ${lng}`);
+                        }
+                    }
+                } catch (ipErr) {
+                    console.log('[Sidebar] IP geolocation proxy also failed');
                 }
-            } catch (ipErr) {
-                console.log('[Sidebar] IP geolocation also failed, using defaults');
             }
         }
 

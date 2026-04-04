@@ -13,23 +13,27 @@ El dashboard es la vista principal de KEPLER. Muestra telemetría en vivo, misio
 |---|---|
 | `css/base.css` | Layout principal (grid 2 columnas: contenido + sidebar) |
 | `css/dashboard-cards.css` | Estilos de cards, tablas, badges, telemetría, alertas |
-| `css/sidebar.css` | Sidebar derecho: perfil, stats, gráfico semanal, noticias |
+| `css/sidebar.css` | Sidebar derecho: perfil, stats, gráfico semanal, noticias, hint GPS |
 | `css/responsive.css` | Breakpoints para tablet/mobile |
 | `css/index.css` | Importaciones centrales de CSS |
+| `css/modal.css` | Modales: misión, history, ItemDetail (animaciones unificadas `modal-enter`/`modal-exit`) |
+| `css/full-view-modal.css` | Modal Full View expandible (animaciones unificadas) |
 
 ### JavaScript — Módulos
 | Archivo | Función |
 |---|---|
-| `index.js` | Orquestador principal, inicializa todos los módulos |
+| `index.js` | Orquestador principal, inicializa todos los módulos. Renderiza non-blocking (datos en background). |
 | `modules/alerts.js` | Alertas y notificaciones del dashboard |
 | `modules/missions-card.js` | Card de Misiones Recientes (tabla con badge de estado) |
 | `modules/pois-card.js` | Card de Puntos de Interés (lista con conteo) |
 | `modules/objects-card.js` | Card de Objetos + gráfico radar (canvas) |
 | `modules/personas-card.js` | Card de Personas Encontradas (avatar + tabla) |
 | `modules/rutas-card.js` | Card de Rutas Planificadas (distancia + seguridad) |
-| `modules/sidebar.js` | Sidebar: tips, stats del explorador, gráfico semanal, noticias IA |
-| `modules/modal/ItemDetailModal.js` | Modal Universal Glassmorphism para mostrar detalles ricos, etiquetas interactuables y renderizado GPS. |
-| `modules/modal/ModuleFullViewModal.js` | Modal Full View con tablas, filtros en tiempo real y gráficos de distribución para observar módulo al completo. |
+| `modules/sidebar.js` | Sidebar: tips, stats del explorador, gráfico semanal, noticias IA. Geolocalización con cadena GPS → cache → proxy backend. |
+| `modules/mission/index.js` | Modal de Iniciar Misión con selector de rutas planificadas, auto-relleno de campos, y almacenamiento de waypoints para AR. |
+| `modules/modal/ItemDetailModal.js` | Modal Universal Glassmorphism con animación de cierre. |
+| `modules/modal/ModuleFullViewModal.js` | Modal Full View con animación de entrada/salida unificada. |
+| `modules/system-status.js` | Panel de estado del sistema (Backend vía `/health`, GPS, Sync, IA). |
 
 ---
 
@@ -61,6 +65,89 @@ Un componente diseñado para expandir la información de cualquier módulo del d
 - **Filtros en Tiempo Real:** Caja de búsqueda iterativa para encontrar rápidamente registros en todo el dataset.
 - **Gráficos Resumen (Canvas):** Renderizado de distribución estadística en barra vertical en el panel lateral (estados, niveles de riesgo, etc.).
 - **Navegación Profunda (Deep-Dive):** Cada elemento de la tabla es interactivo y linkea directamente con el `ItemDetailModal` para revisión individual.
+
+---
+
+## 🗺️ SPA Router (`main.js`)
+
+KEPLER usa un router SPA nativo (sin librerías). Toda la navegación entre secciones ocurre sin recargas de página.
+
+### Función global: `window.kepler.navigate(path)`
+- Usa `history.pushState()` para cambiar URL sin reload
+- Transición fade-out/fade-in de 150ms entre secciones
+- Soporte para botones atrás/adelante del navegador (`popstate`)
+- Intercepta clicks en `<a href>` internos automáticamente
+- Rutas externas (login, logout) mantienen `window.location.href` para reiniciar auth
+
+### Rutas SPA registradas
+| Ruta | Módulo | Nota |
+|---|---|---|
+| `/` | Dashboard | Vista principal |
+| `/ar` | AR Explorer | Cámara + detección |
+| `/login` | Login | Autenticación |
+| `/taxonomia` | Taxonomía | Clasificación de objetos |
+| `/ia` | Inteligencia IA | Chat + análisis |
+| `/profile` | Perfil | Configuración de usuario |
+| `/archives` | Archivos | Explorador de misiones y registros |
+
+---
+
+## 🚀 Selector de Ruta en Misión (`mission/index.js`)
+
+Al abrir el modal "Iniciar Misión", el sistema carga las rutas planificadas del backend (`api.getPlannedRoutes()`).
+
+### Flujo
+1. Modal abre → se puebla dropdown `#select-mission-route` con rutas guardadas
+2. Al seleccionar ruta → preview con distancia, waypoints, terreno
+3. Auto-rellena: tipo de terreno, zona (nombre de ruta), coords de inicio (primer waypoint)
+4. Al confirmar: `ruta_planificada_id` se envía al backend, waypoints se guardan en `localStorage` para AR
+5. AR Explorer lee `kepler_mission_waypoints` para guiar la exploración
+
+---
+
+## 🔔 Sistema de Notificaciones (`NotificationSystem.js`)
+
+### Toasts
+- Aparecen en esquina superior derecha con slide-in desde la derecha
+- Tipos: `critical` (persistente), `warning` (7s), `success` (4s), `info` (5s)
+- Audio feedback por tipo con volúmenes diferenciados
+
+### Bitácora (Panel de Log)
+- Overlay full-height con backdrop blur al abrir
+- Panel lateral de 400px deslizante desde la derecha
+- **Summary chips**: Contadores clickeables por tipo (Total, Críticas, Advertencias, Éxitos, Info)
+- Filtro por tipo via chips o dropdown select
+- Timeline agrupada por fecha (Hoy, Ayer, fechas anteriores)
+- Acciones: eliminar individual, eliminar por día, limpiar todo
+- Cierre: click fuera, botón X, o tecla Escape
+- Almacenamiento: `NotificationStore` con sync a Supabase + localStorage fallback
+
+---
+
+## 🎭 Sistema de Modales Unificado
+
+Todos los modales comparten las mismas animaciones y backdrop:
+
+| Modal | Clase CSS | Tamaño | Z-Index |
+|---|---|---|---|
+| Iniciar Misión | `.history-modal` | 460px | 2000 |
+| Full View | `.full-view-modal-overlay` | 85% (max 1400px) | 2000 |
+| Item Detail | `.detail-modal-overlay` | 900px | 2500 |
+| Confirmación | `.sys-modal-overlay` | 400px | 20000 |
+
+### Animaciones
+- **Entrada**: `modal-enter` — `translateY(20px) scale(0.98)` → normal (0.3s ease-out)
+- **Salida**: `modal-exit` — normal → `translateY(12px) scale(0.98)` (0.25s ease-in)
+- **Backdrop**: `rgba(0, 0, 0, 0.85)` + `backdrop-filter: blur(8px)` (consistente en todos)
+
+### Patrón de cierre (JS)
+```js
+element.classList.add('closing');
+setTimeout(() => {
+    element.style.display = 'none';
+    element.classList.remove('closing');
+}, 250);
+```
 
 ---
 

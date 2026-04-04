@@ -1,0 +1,821 @@
+/**
+ * KEPLER Routes Page Styles
+ * Fullscreen map with floating panel
+ */
+
+/* ── Page Layout ── */
+.routes-page {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #000;
+}
+
+.routes-map-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+.routes-map-container .maplibregl-canvas {
+    outline: none;
+}
+
+/* ── Floating Right Panel (Glassmorphism) ── */
+.routes-panel {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    bottom: 12px;
+    width: 380px;
+    background: rgba(13, 13, 13, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    overflow-y: auto;
+    padding: 24px 20px;
+    z-index: 10;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.routes-panel::-webkit-scrollbar {
+    width: 4px;
+}
+
+.routes-panel::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 4px;
+}
+
+/* ── Panel Header ── */
+.panel-header {
+    margin-bottom: 24px;
+}
+
+.panel-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 4px 0;
+}
+
+.panel-subtitle {
+    font-size: 13px;
+    color: #666;
+    margin: 0;
+}
+
+/* ── Form ── */
+.route-form {
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 14px;
+}
+
+.form-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+
+.form-input,
+.form-select {
+    width: 100%;
+    padding: 10px 12px;
+    background: #151515;
+    border: 1px solid #252525;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+
+.form-input:focus,
+.form-select:focus {
+    outline: none;
+    border-color: #3FA8FF;
+}
+
+.form-select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+}
+
+.form-select option {
+    background: #151515;
+    color: #fff;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+/* ── Route Type Toggle ── */
+.route-type-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.type-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 12px 10px;
+    background: #151515;
+    border: 1px solid #252525;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.type-btn:hover {
+    border-color: #3FA8FF;
+    background: #1a1a1a;
+}
+
+.type-btn.active {
+    border-color: #3FA8FF;
+    background: rgba(63, 168, 255, 0.1);
+}
+
+.type-icon {
+    font-size: 20px;
+}
+
+.type-label {
+    font-size: 13px;
+    color: #fff;
+    font-weight: 500;
+}
+
+.type-hint {
+    font-size: 10px;
+    color: #666;
+}
+
+/* ── Waypoints Section ── */
+.waypoints-section {
+    margin-bottom: 20px;
+}
+
+.waypoints-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.waypoints-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0;
+}
+
+.waypoints-count {
+    background: #3FA8FF;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    min-width: 20px;
+    text-align: center;
+}
+
+.waypoints-hint {
+    text-align: center;
+    padding: 30px 20px;
+    color: #555;
+    font-size: 13px;
+    border: 1px dashed #252525;
+    border-radius: 8px;
+}
+
+.waypoints-list {
+    max-height: 200px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #333 transparent;
+}
+
+.waypoints-list::-webkit-scrollbar {
+    width: 3px;
+}
+
+.waypoints-list::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 3px;
+}
+
+.wp-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: #121212;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    transition: background 0.2s;
+}
+
+.wp-item:hover {
+    background: #1a1a1a;
+}
+
+.wp-item-num {
+    background: #3FA8FF;
+    color: #fff;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.wp-item-coords {
+    font-size: 12px;
+    color: #888;
+    font-family: 'JetBrains Mono', monospace;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wp-item-remove {
+    background: none;
+    border: none;
+    color: #555;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.wp-item-remove:hover {
+    color: #EF4444;
+}
+
+.waypoint-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.wp-action-btn {
+    flex: 1;
+    padding: 8px;
+    background: #151515;
+    border: 1px solid #252525;
+    border-radius: 6px;
+    color: #888;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.wp-action-btn:hover:not(:disabled) {
+    background: #1a1a1a;
+    color: #fff;
+    border-color: #444;
+}
+
+.wp-action-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.wp-action-btn.danger:hover:not(:disabled) {
+    border-color: #EF4444;
+    color: #EF4444;
+}
+
+/* ── Corridor Analysis ── */
+.corridor-section {
+    margin-bottom: 20px;
+    padding: 14px;
+    background: #111;
+    border-radius: 10px;
+    border: 1px solid #1a1a1a;
+}
+
+.corridor-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0 0 12px 0;
+}
+
+.risk-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 20px;
+    border: 1px solid;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+.risk-score {
+    margin-left: auto;
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.stat-item {
+    background: #0a0a0a;
+    padding: 10px 6px;
+    border-radius: 6px;
+    text-align: center;
+}
+
+.stat-num {
+    display: block;
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.stat-label {
+    font-size: 9px;
+    color: #666;
+    text-transform: uppercase;
+}
+
+.corridor-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.corridor-alert.alert-critical {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: #FCA5A5;
+}
+
+.corridor-alert.alert-danger {
+    background: rgba(249, 115, 22, 0.1);
+    border: 1px solid rgba(249, 115, 22, 0.2);
+    color: #FDBA74;
+}
+
+.corridor-alert.alert-warning {
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid rgba(251, 191, 36, 0.2);
+    color: #FDE68A;
+}
+
+.corridor-alert.alert-settlement {
+    background: rgba(167, 139, 250, 0.1);
+    border: 1px solid rgba(167, 139, 250, 0.2);
+    color: #C4B5FD;
+}
+
+.corridor-alert.alert-info {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    color: #93C5FD;
+}
+
+.no-alerts {
+    text-align: center;
+    color: #4ADE80;
+    font-size: 13px;
+    padding: 8px;
+}
+
+/* ── Action Buttons ── */
+.route-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.action-btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+}
+
+.action-btn.secondary {
+    background: #151515;
+    border: 1px solid #252525;
+    color: #888;
+}
+
+.action-btn.secondary:hover:not(:disabled) {
+    background: #1a1a1a;
+    color: #fff;
+    border-color: #444;
+}
+
+.action-btn.primary {
+    background: linear-gradient(135deg, #3FA8FF 0%, #1E88E5 100%);
+    color: #fff;
+}
+
+.action-btn.primary:hover:not(:disabled) {
+    box-shadow: 0 4px 15px rgba(63, 168, 255, 0.3);
+}
+
+.action-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* ── Divider ── */
+.panel-divider {
+    height: 1px;
+    background: linear-gradient(to right, transparent, #252525, transparent);
+    margin: 20px 0;
+}
+
+/* ── Saved Routes ── */
+.saved-routes-section {
+    /* container */
+}
+
+.saved-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.saved-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0;
+}
+
+.refresh-btn {
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+
+.refresh-btn:hover {
+    opacity: 1;
+}
+
+.saved-list {
+    /* container */
+}
+
+.loading-placeholder {
+    text-align: center;
+    color: #555;
+    font-size: 13px;
+    padding: 20px;
+}
+
+.empty-state {
+    text-align: center;
+    color: #555;
+    font-size: 13px;
+    padding: 20px;
+}
+
+.empty-state.error {
+    color: #EF4444;
+}
+
+.saved-route-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: #121212;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    transition: background 0.2s;
+}
+
+.saved-route-item:hover {
+    background: #1a1a1a;
+}
+
+.route-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.route-info .route-name {
+    font-size: 14px;
+    color: #fff;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.route-info .route-meta {
+    font-size: 11px;
+    color: #666;
+}
+
+.route-actions-btns {
+    display: flex;
+    gap: 4px;
+}
+
+.route-action-btn {
+    background: none;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 4px;
+    opacity: 0.5;
+    transition: all 0.2s;
+}
+
+.route-action-btn:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.route-action-btn.delete-btn:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+/* ── Waypoint Map Markers ── */
+.waypoint-marker {
+    width: 28px;
+    height: 28px;
+    background: #3FA8FF;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.waypoint-marker:hover {
+    transform: scale(1.15);
+}
+
+.wp-num {
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+}
+
+/* ── MapLibre Overrides ── */
+.routes-map-container .maplibregl-ctrl-group {
+    background: #1a1a1a;
+    border: 1px solid #252525;
+}
+
+.routes-map-container .maplibregl-ctrl-group button {
+    background-color: transparent;
+}
+
+.routes-map-container .maplibregl-ctrl-group button:hover {
+    background-color: #252525;
+}
+
+.routes-map-container .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+    filter: invert(1);
+}
+
+/* ── Odradek Scanner Mode (Tactical Map Style) ── */
+.routes-map-container.map-mode-odradek .maplibregl-canvas {
+    filter: invert(100%) sepia(100%) saturate(400%) hue-rotate(190deg) brightness(90%) contrast(130%);
+    transition: filter 0.8s ease;
+}
+
+.routes-map-container.map-mode-odradek .maplibregl-ctrl {
+    filter: invert(100%);
+}
+
+/* Keep waypoint markers normal colors */
+.routes-map-container.map-mode-odradek .maplibregl-marker {
+    filter: none !important;
+}
+
+.routes-map-container.map-mode-odradek .waypoint-marker {
+    filter: none !important;
+}
+
+/* ── Map Controls Overlay ── */
+.route-map-controls {
+    position: absolute;
+    top: 60px;
+    left: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 10;
+}
+
+.route-map-btn {
+    width: 38px;
+    height: 38px;
+    background: rgba(13, 13, 13, 0.9);
+    border: 1px solid #252525;
+    border-radius: 8px;
+    color: #aaa;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    backdrop-filter: blur(8px);
+}
+
+.route-map-btn:hover {
+    background: rgba(30, 30, 30, 0.95);
+    border-color: #3FA8FF;
+    color: #fff;
+}
+
+/* ── Layer Selector Modal ── */
+.routes-layer-modal {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    backdrop-filter: blur(4px);
+}
+
+.layer-modal-content {
+    background: #111;
+    border: 1px solid #252525;
+    border-radius: 16px;
+    padding: 20px;
+    width: 320px;
+    max-width: 90%;
+}
+
+.layer-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    font-size: 16px;
+    color: #fff;
+}
+
+.layer-modal-close {
+    background: none;
+    border: none;
+    color: #666;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.layer-modal-close:hover {
+    color: #fff;
+}
+
+.layer-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.layer-option-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 16px 10px;
+    background: #151515;
+    border: 1px solid #252525;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.layer-option-card:hover {
+    border-color: #3FA8FF;
+    background: #1a1a1a;
+}
+
+.layer-option-card.active {
+    border-color: #3FA8FF;
+    background: rgba(63, 168, 255, 0.1);
+}
+
+.layer-icon {
+    font-size: 28px;
+}
+
+.layer-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.layer-desc {
+    font-size: 11px;
+    color: #666;
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+    .routes-panel {
+        top: auto;
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+        width: auto;
+        max-height: 55vh;
+        border-radius: 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .routes-panel {
+        top: auto;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        max-height: 60vh;
+        border-radius: 16px 16px 0 0;
+    }
+
+    .route-map-controls {
+        top: 8px;
+        left: 8px;
+    }
+}

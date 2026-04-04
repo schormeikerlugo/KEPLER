@@ -92,6 +92,7 @@ class MissionStartRequest(BaseModel):
     objetivo: Optional[str] = None
     dificultad: Optional[str] = None
     coords_inicio: Optional[Dict[str, float]] = None
+    ruta_planificada_id: Optional[str] = None
 
 class MissionEndRequest(BaseModel):
     mission_id: str
@@ -120,7 +121,8 @@ async def start_mission(req: MissionStartRequest, user = Depends(get_current_use
             "tipo_terreno": req.tipo_terreno,
             "objetivo": req.objetivo,
             "dificultad": req.dificultad,
-            "coords_inicio": req.coords_inicio
+            "coords_inicio": req.coords_inicio,
+            "ruta_planificada_id": req.ruta_planificada_id
         }
         res = supabase.table("misiones").insert(mission_data).execute()
         if res.data:

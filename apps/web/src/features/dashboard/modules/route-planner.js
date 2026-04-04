@@ -89,7 +89,7 @@ function renderRiskAssessment(container, risk) {
         ${risk.alertas && risk.alertas.length > 0 ? `
             <div class="route-alerts">
                 <h5 class="alerts-title">Alertas</h5>
-                ${risk.alerts.map(alert => `
+                ${risk.alertas.map(alert => `
                     <div class="route-alert alert-${alert.tipo}">
                         <span class="alert-icon">${getAlertIcon(alert.tipo)}</span>
                         <span class="alert-msg">${alert.mensaje}</span>

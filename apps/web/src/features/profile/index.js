@@ -64,7 +64,7 @@ function setupBackButton() {
     const backBtn = document.getElementById('btn-back');
     if (backBtn) {
         backBtn.addEventListener('click', () => {
-            window.location.href = '/';
+            window.kepler?.navigate?.('/') || (window.location.href = '/');
         });
     }
 }

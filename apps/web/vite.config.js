@@ -5,6 +5,7 @@ export default defineConfig({
   plugins: [
     basicSsl()
   ],
+  appType: 'spa', // Enable SPA fallback (all routes → index.html)
   server: {
     host: true, // Listen on all IP addresses
     port: 5180,  // Different port from React app

@@ -130,10 +130,13 @@ class ModuleFullViewModal {
     }
 
     close() {
-        this.overlay.classList.remove('active');
-        this.currentModule = null;
-        this.rawData = [];
-        this.filteredData = [];
+        this.overlay.classList.add('closing');
+        setTimeout(() => {
+            this.overlay.classList.remove('active', 'closing');
+            this.currentModule = null;
+            this.rawData = [];
+            this.filteredData = [];
+        }, 250);
     }
 
     renderThead(columns) {

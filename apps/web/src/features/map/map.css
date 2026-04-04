@@ -134,32 +134,44 @@
 }
 
 /* ============================================
-   OBJECT SIDEBAR PANEL
+   OBJECT SIDEBAR PANEL (Glassmorphism)
    ============================================ */
 .map-object-panel {
     position: absolute;
-    top: 180px;
-    left: 15px;
-    width: 280px;
-    max-height: 70vh;
+    top: 60px;
+    left: 12px;
+    width: 240px;
+    max-height: calc(100vh - 180px);
     height: auto;
-    background: rgba(5, 10, 20, 0.92);
-    border: 1px solid rgba(63, 168, 255, 0.4);
-    border-radius: 8px;
-    z-index: 1000;
+    background: rgba(13, 13, 13, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    z-index: 900;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(10px);
-    transition: max-height 0.3s ease, height 0.3s ease;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    transition: all 0.3s ease;
 }
 
 /* Ensure list container respects parent bounds */
 .map-object-panel .map-object-list {
-    max-height: 60vh;
+    max-height: calc(100vh - 200px);
     overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
     transition: max-height 0.3s ease;
+}
+
+.map-object-panel .map-object-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.map-object-panel .map-object-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
 }
 
 /* Smooth item animations */
@@ -181,12 +193,13 @@
 }
 
 .map-object-panel-header {
-    padding: 12px 15px;
-    background: rgba(63, 168, 255, 0.15);
-    border-bottom: 1px solid rgba(63, 168, 255, 0.3);
+    padding: 16px;
+    background: rgba(63, 168, 255, 0.08);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    border-radius: 16px 16px 0 0;
 }
 
 .map-object-panel-header .header-actions {
@@ -664,4 +677,679 @@
 
 .maplibregl-ctrl-logo {
     display: none !important;
+}
+
+/* ============================================
+   ROUTE PLANNING PANEL (Glassmorphism)
+   ============================================ */
+.map-route-panel {
+    position: absolute;
+    top: 60px;
+    left: 12px;
+    width: 300px;
+    max-height: calc(100vh - 100px);
+    background: rgba(13, 13, 13, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    z-index: 900;
+    overflow-y: auto;
+    padding: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    display: none;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+.map-route-panel.active {
+    display: block;
+}
+
+.map-route-panel::-webkit-scrollbar {
+    width: 4px;
+}
+
+.map-route-panel::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.route-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.route-panel-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+}
+
+.route-panel-subtitle {
+    font-size: 12px;
+    color: #666;
+    margin: 2px 0 0;
+}
+
+/* Route Form */
+.route-form-group {
+    margin-bottom: 12px;
+}
+
+.route-form-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.route-form-input,
+.route-form-select {
+    width: 100%;
+    padding: 8px 10px;
+    background: rgba(20, 20, 20, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 13px;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+
+.route-form-input:focus,
+.route-form-select:focus {
+    outline: none;
+    border-color: #3FA8FF;
+}
+
+.route-form-select {
+    appearance: none;
+    cursor: pointer;
+}
+
+/* Waypoints List */
+.route-waypoints {
+    margin: 12px 0;
+}
+
+.route-waypoints-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.route-waypoints-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    margin: 0;
+}
+
+.route-waypoint-count {
+    background: #3FA8FF;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 8px;
+}
+
+.route-waypoint-hint {
+    text-align: center;
+    padding: 20px;
+    color: #555;
+    font-size: 12px;
+    border: 1px dashed rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+.route-waypoint-list {
+    max-height: 150px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.route-waypoint-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: rgba(20, 20, 20, 0.6);
+    border-radius: 6px;
+    margin-bottom: 4px;
+}
+
+.route-wp-num {
+    width: 20px;
+    height: 20px;
+    background: #3FA8FF;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.route-wp-coords {
+    flex: 1;
+    font-size: 11px;
+    color: #888;
+    font-family: 'JetBrains Mono', monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.route-wp-remove {
+    background: none;
+    border: none;
+    color: #555;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+}
+
+.route-wp-remove:hover {
+    color: #EF4444;
+}
+
+/* Route Actions */
+.route-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.route-action-btn {
+    flex: 1;
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+}
+
+.route-action-btn.secondary {
+    background: rgba(20, 20, 20, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #888;
+}
+
+.route-action-btn.secondary:hover {
+    background: rgba(30, 30, 30, 0.9);
+    color: #fff;
+}
+
+.route-action-btn.primary {
+    background: linear-gradient(135deg, #3FA8FF 0%, #1E88E5 100%);
+    color: #fff;
+}
+
+.route-action-btn.primary:hover {
+    box-shadow: 0 4px 12px rgba(63, 168, 255, 0.3);
+}
+
+.route-action-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Route Corridor Analysis */
+.route-corridor {
+    margin-top: 16px;
+    padding: 12px;
+    background: rgba(20, 20, 20, 0.6);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    display: none;
+}
+
+.route-corridor.active {
+    display: block;
+}
+
+.route-risk-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 16px;
+    border: 1px solid;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.route-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+}
+
+.route-stat-cell {
+    text-align: center;
+    padding: 8px 4px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 6px;
+}
+
+.route-stat-num {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    display: block;
+}
+
+.route-stat-label {
+    font-size: 9px;
+    color: #666;
+    text-transform: uppercase;
+}
+
+/* Route Alert Items */
+.route-alert-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    margin-top: 8px;
+}
+
+.route-alert-item.alert-critical { background: rgba(239, 68, 68, 0.1); color: #FCA5A5; }
+.route-alert-item.alert-danger { background: rgba(249, 115, 22, 0.1); color: #FDBA74; }
+.route-alert-item.alert-warning { background: rgba(251, 191, 36, 0.1); color: #FDE68A; }
+.route-alert-item.alert-info { background: rgba(59, 130, 246, 0.1); color: #93C5FD; }
+
+/* ============================================
+   CLUSTER CATEGORY POPUP
+   ============================================ */
+.cluster-popup {
+    padding: 4px;
+}
+
+.cluster-popup-header {
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.cluster-total {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    font-family: 'Jura', sans-serif;
+}
+
+.cluster-categories {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.cluster-category-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(20, 20, 20, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-left: 3px solid var(--cat-color, #3FA8FF);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #ccc;
+}
+
+.cluster-category-btn:hover {
+    background: rgba(40, 40, 40, 0.95);
+    border-color: var(--cat-color, #3FA8FF);
+    transform: translateX(2px);
+}
+
+.cluster-category-btn .cat-icon {
+    font-size: 16px;
+}
+
+.cluster-category-btn .cat-name {
+    flex: 1;
+    font-size: 12px;
+    text-transform: capitalize;
+}
+
+.cluster-category-btn .cat-count {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.cluster-show-all {
+    margin-top: 4px;
+    border-left-color: #aaa;
+}
+
+.cluster-show-all:hover {
+    border-left-color: #fff;
+}
+
+/* ============================================
+   CLUSTER POPUP
+   ============================================ */
+.map-back-btn {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 1000;
+    background: rgba(13, 13, 13, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #aaa;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.map-back-btn:hover {
+    background: rgba(30, 30, 30, 0.95);
+    border-color: #3FA8FF;
+    color: #fff;
+}
+
+.map-back-btn::before {
+    content: '←';
+    font-size: 14px;
+}
+
+/* ============================================
+   CLUSTER POPUP — Glassmorphism Design System
+   ============================================ */
+
+/* MapLibre wrapper override */
+.cluster-popup-wrapper .maplibregl-popup-content,
+.custom-popup .maplibregl-popup-content {
+    background: rgba(10, 14, 20, 0.88);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(63, 168, 255, 0.18);
+    border-radius: 16px;
+    padding: 0;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,255,255,0.04) inset;
+    overflow: hidden;
+    min-width: 240px;
+}
+
+.cluster-popup-wrapper .maplibregl-popup-tip {
+    border-top-color: rgba(10, 14, 20, 0.88) !important;
+}
+
+.custom-popup .maplibregl-popup-tip {
+    border-top-color: rgba(10, 14, 20, 0.88) !important;
+}
+
+/* Drag handle header — cluster popup */
+.cluster-popup-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(63, 168, 255, 0.07);
+    border-bottom: 1px solid rgba(63, 168, 255, 0.12);
+    cursor: grab;
+    user-select: none;
+}
+
+.cluster-popup-header:active { cursor: grabbing; }
+
+.cluster-drag-hint {
+    color: rgba(255, 255, 255, 0.25);
+    font-size: 1rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.cluster-title {
+    font-family: 'Jura', sans-serif;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: #3FA8FF;
+    text-transform: uppercase;
+    flex: 1;
+}
+
+.cluster-total-badge {
+    font-family: 'Jura', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    border: 1px solid;
+    flex-shrink: 0;
+}
+
+/* Body: donut + breakdown */
+.cluster-popup-body {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.cluster-donut {
+    flex-shrink: 0;
+    border-radius: 50%;
+}
+
+.cluster-breakdown {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.cluster-breakdown-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: #ccc;
+}
+
+.cb-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.cb-icon { font-size: 0.8rem; }
+
+.cb-tipo {
+    flex: 1;
+    text-transform: capitalize;
+    color: #aaa;
+}
+
+.cb-count {
+    font-weight: 700;
+    color: var(--cat-color, #fff);
+    font-family: 'Jura', sans-serif;
+}
+
+/* Action buttons row */
+.cluster-actions {
+    padding: 10px 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.cluster-category-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--cat-color, rgba(63, 168, 255, 0.3));
+    border-radius: 20px;
+    color: #ccc;
+    font-size: 0.72rem;
+    font-family: 'Jura', sans-serif;
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.cluster-category-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    box-shadow: 0 0 8px var(--cat-color, rgba(63, 168, 255, 0.4));
+    transform: scale(1.04);
+}
+
+.cluster-category-btn:active { transform: scale(0.97); }
+
+.cluster-category-btn .cat-count {
+    background: var(--cat-color, #3FA8FF);
+    color: #000;
+    font-weight: 700;
+    padding: 0px 5px;
+    border-radius: 10px;
+    font-size: 0.65rem;
+}
+
+.cluster-show-all {
+    --cat-color: rgba(255, 255, 255, 0.4);
+    margin-top: 2px;
+}
+
+/* ============================================
+   INDIVIDUAL OBJECT POPUP (drag header + confidence)
+   ============================================ */
+
+.popup-drag-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    cursor: grab;
+    user-select: none;
+    border-radius: 16px 16px 0 0;
+}
+
+.popup-drag-header:active { cursor: grabbing; }
+
+.popup-content {
+    padding: 12px 14px 14px;
+}
+
+.popup-type-tag {
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Confidence bar */
+.popup-confidence-bar {
+    width: 100%;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 8px;
+}
+
+.popup-confidence-bar > div {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.6s ease;
+}
+
+/* Active marker stronger glow */
+.custom-marker.active .marker-pin {
+    transform: scale(1.25);
+    box-shadow: 0 0 30px var(--marker-color, var(--color-primary)),
+                0 0 60px var(--marker-color, rgba(63, 168, 255, 0.3));
+}
+
+.custom-marker.active .marker-pulse {
+    animation-duration: 1.5s;
+}
+
+/* ============================================
+   TYPE LEGEND HUD
+   ============================================ */
+.map-type-legend {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: rgba(10, 14, 20, 0.75);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 30px;
+    pointer-events: none;
+    z-index: 400;
+    max-width: calc(100% - 40px);
+    transition: opacity 0.3s ease;
+}
+
+.legend-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.7rem;
+    color: #ccc;
+    white-space: nowrap;
+}
+
+.legend-tipo {
+    text-transform: capitalize;
+    color: var(--badge-color, #3FA8FF);
+    font-weight: 600;
+}
+
+.legend-count {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.65rem;
 }
