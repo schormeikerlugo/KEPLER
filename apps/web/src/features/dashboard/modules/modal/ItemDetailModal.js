@@ -418,7 +418,7 @@ class ItemDetailModal {
             if (error) throw error;
 
             if (window.kepler?.notify) {
-                window.kepler.notify.success('Cambios guardados correctamente');
+                window.kepler.notify.success('Cambios guardados correctamente', { source: 'detail_modal', action: 'save', table: this.currentTable, recordId: this.currentId });
             }
 
             // Dispatch global event so cards can re-fetch data
@@ -431,7 +431,7 @@ class ItemDetailModal {
         } catch (error) {
             console.error('[ItemDetailModal] Update error:', error);
             if (window.kepler?.notify) {
-                window.kepler.notify.error('Error al guardar: ' + error.message);
+                window.kepler.notify.show('Error al guardar: ' + error.message, 'critical', 0, { source: 'detail_modal', action: 'save', table: this.currentTable, recordId: this.currentId, error: error.message });
             }
         } finally {
             this.saveBtn.textContent = btnText;
@@ -459,7 +459,7 @@ class ItemDetailModal {
             if (error) throw error;
 
             if (window.kepler?.notify) {
-                window.kepler.notify.success('Registro eliminado');
+                window.kepler.notify.success('Registro eliminado', { source: 'detail_modal', action: 'delete', table: this.currentTable, recordId: this.currentId });
             }
 
             // Sync Dashboard
@@ -472,7 +472,7 @@ class ItemDetailModal {
         } catch (error) {
             console.error('[ItemDetailModal] Delete error:', error);
             if (window.kepler?.notify) {
-                window.kepler.notify.error('Error al eliminar: ' + error.message);
+                window.kepler.notify.show('Error al eliminar: ' + error.message, 'critical', 0, { source: 'detail_modal', action: 'delete', table: this.currentTable, recordId: this.currentId, error: error.message });
             }
         } finally {
             this.deleteBtn.textContent = btnText;

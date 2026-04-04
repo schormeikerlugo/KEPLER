@@ -272,3 +272,37 @@ Responde SOLO con el emoji + título en español, sin comillas."""
             "response": "Error de conexión con el módulo Llama 3.",
             "chat_id": req.chat_id
         }
+
+
+# ── Lightweight AI Analysis (no LangChain agent, direct Ollama call) ──
+
+class AnalyzeRequest(BaseModel):
+    message: str
+    context: str = ""
+
+@router.post("/analyze")
+async def analyze_notification(
+    req: AnalyzeRequest,
+    user=Depends(get_current_user),
+    token: HTTPAuthorizationCredentials = Depends(security)
+):
+    """
+    Direct Ollama call for notification analysis.
+    Skips LangChain agent to avoid iteration limits.
+    """
+    try:
+        messages = [
+            {'role': 'system', 'content': req.context},
+            {'role': 'user', 'content': req.message}
+        ]
+
+        response = ollama.chat(
+            model='mistral:7b',
+            messages=messages
+        )
+
+        return {"response": response['message']['content'], "success": True}
+
+    except Exception as e:
+        print(f"[Analyze] Error: {e}")
+        return {"response": f"Error al analizar: {str(e)}", "success": False}

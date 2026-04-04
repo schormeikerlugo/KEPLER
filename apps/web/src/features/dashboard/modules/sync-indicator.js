@@ -144,11 +144,11 @@ export function initSyncIndicator(containerId = 'dash-header-left') {
             console.log('[SyncIndicator] Force sync result:', result);
         } else if (!status.isOnline) {
             if (window.kepler && window.kepler.notify) {
-                window.kepler.notify.show('📴 Sin conexión. Los objetos se sincronizarán automáticamente.', 'warning', 3000);
+                window.kepler.notify.show('📴 Sin conexión. Los objetos se sincronizarán automáticamente.', 'warning', 3000, { source: 'sync', isOnline: false, pendingCount: status.pendingCount || 0 });
             }
         } else {
             if (window.kepler && window.kepler.notify) {
-                window.kepler.notify.show('✅ Todo sincronizado', 'success', 2000);
+                window.kepler.notify.show('✅ Todo sincronizado', 'success', 2000, { source: 'sync', isOnline: true, pendingCount: 0 });
             }
         }
     });

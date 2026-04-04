@@ -239,8 +239,9 @@ function checkSystemHealth() {
             ? `Sistemas operativos\n${statuses.join(' | ')}`
             : `Algunos sistemas no responden\n${statuses.join(' | ')}`;
 
-        if (allGood) window.kepler.notify.success(msg);
-        else window.kepler.notify.warning(msg);
+        const healthCtx = { source: 'system_health', services: health };
+        if (allGood) window.kepler.notify.success(msg, healthCtx);
+        else window.kepler.notify.warning(msg, healthCtx);
 
         sessionStorage.setItem('kepler_status_shown', 'true');
     }, 1500);

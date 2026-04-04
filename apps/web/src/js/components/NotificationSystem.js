@@ -4,6 +4,7 @@
  */
 import { notificationStore } from '../services/NotificationStore.js';
 import { modalSystem } from './ModalSystem.js';
+import { deepDiveModal } from './DeepDiveModal.js';
 
 export class NotificationSystem {
     constructor() {
@@ -116,9 +117,9 @@ export class NotificationSystem {
      * @param {string} type - 'critical' | 'warning' | 'success' | 'info'
      * @param {number} duration - ms (0 for persistent)
      */
-    show(message, type = 'info', duration = 5000) {
-        // Save to persistent store
-        const id = notificationStore.add(message, type);
+    show(message, type = 'info', duration = 5000, context = null) {
+        // Save to persistent store (with optional context for AI deep-dive)
+        const id = notificationStore.add(message, type, context);
 
         // Create toast element
         const notification = document.createElement('div');
@@ -130,11 +131,16 @@ export class NotificationSystem {
                     ${this.getIcon(type)} ${type.toUpperCase()}
                 </div>
                 <div class="holo-notification-message">${message.replace(/\n/g, '<br>')}</div>
+                <div class="holo-notification-hint">Click para analizar</div>
             </div>
         `;
 
-        // Click to dismiss
-        notification.onclick = () => this.dismiss(notification);
+        // Click to dismiss + open AI deep-dive
+        notification.onclick = () => {
+            this.dismiss(notification);
+            const notifData = notificationStore.getAll().find(n => n.id === id);
+            if (notifData) deepDiveModal.show(notifData);
+        };
 
         this.container.appendChild(notification);
         this.playSound(type);
@@ -327,6 +333,17 @@ export class NotificationSystem {
                 }
             };
         });
+
+        // Deep-dive: click on log item opens AI analysis
+        content.querySelectorAll('.log-item').forEach(item => {
+            item.onclick = (e) => {
+                if (e.target.closest('.log-item-delete')) return;
+                const id = item.querySelector('.log-item-delete')?.dataset.id;
+                if (!id) return;
+                const notifData = notificationStore.getAll().find(n => n.id === id);
+                if (notifData) deepDiveModal.show(notifData);
+            };
+        });
     }
 
     formatDateLabel(dateStr) {
@@ -389,9 +406,9 @@ export class NotificationSystem {
         }
     }
 
-    // Shortcuts
-    critical(msg) { this.show(msg, 'critical', 0); } // Persistent
-    warning(msg) { this.show(msg, 'warning', 7000); }
-    success(msg) { this.show(msg, 'success', 4000); }
-    info(msg) { this.show(msg, 'info', 5000); }
+    // Shortcuts (optional context for AI deep-dive)
+    critical(msg, ctx) { this.show(msg, 'critical', 0, ctx); }
+    warning(msg, ctx) { this.show(msg, 'warning', 7000, ctx); }
+    success(msg, ctx) { this.show(msg, 'success', 4000, ctx); }
+    info(msg, ctx) { this.show(msg, 'info', 5000, ctx); }
 }

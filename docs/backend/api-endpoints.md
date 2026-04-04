@@ -61,6 +61,13 @@ El Backend de KEPLER es un servicio construido en **Python** con **FastAPI**, di
 - Retorna: `{ status: "healthy", services: ["database", "ai_model"] }`.
 - Usado por `system-status.js` para el indicador de estado del sistema.
 
+### Análisis IA Directo (`/api/chat/analyze`)
+- **POST** — Llamada directa a Ollama/Mistral sin LangChain agent.
+- Diseñado para análisis rápidos de notificaciones (evita límite de iteraciones del agente).
+- Body: `{ message: string, context: string }`.
+- Retorna: `{ response: string, success: boolean }`.
+- Usado por `DeepDiveModal.js` para generar análisis on-demand al clickear notificaciones.
+
 ### Misiones (`/api/missions`)
 - **POST** `/start` — Inicia misión. Acepta `ruta_planificada_id` opcional para vincular ruta planificada.
 - **POST** `/end` — Finaliza misión activa con resumen.

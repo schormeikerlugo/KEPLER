@@ -623,7 +623,11 @@ async function saveRoute() {
         } else {
             const result = await api.createPlannedRoute(routeData);
             if (result.route) {
-                window.kepler?.notify?.success('Ruta guardada exitosamente');
+                const wpCount = routeData.waypoints?.length || 0;
+                window.kepler?.notify?.success(
+                    `Ruta "${routeData.nombre}" guardada\n📍 ${wpCount} waypoints · ${routeData.distancia_total} km · ${routeData.tipo_terreno}`,
+                    { source: 'routes', action: 'create', route: { nombre: routeData.nombre, tipo_terreno: routeData.tipo_terreno, seguridad: routeData.estado_seguridad, distancia: routeData.distancia_total, waypoints: wpCount } }
+                );
                 // Limpiar formulario
                 document.getElementById('route-name').value = '';
                 clearAllWaypoints();
@@ -634,7 +638,7 @@ async function saveRoute() {
         }
     } catch (e) {
         console.error('Save failed:', e);
-        window.kepler?.notify?.error('Error al guardar ruta');
+        window.kepler?.notify?.show('Error al guardar ruta: ' + e.message, 'critical', 0, { source: 'routes', action: 'create_error', error: e.message });
     } finally {
         btn.textContent = '💾 Guardar Ruta';
         btn.disabled = true;
@@ -713,19 +717,24 @@ function loadRoute(routeId) {
     }
 
     editingRouteId = routeId;
-    window.kepler?.notify?.info('Ruta cargada para edición');
+    window.kepler?.notify?.info(
+        `Ruta "${route.nombre}" cargada para edicion\n📍 ${route.waypoints?.length || 0} waypoints`,
+        { source: 'routes', action: 'load', route: { id: routeId, nombre: route.nombre, waypoints: route.waypoints?.length || 0 } }
+    );
 }
 
 async function deleteRoute(routeId) {
     if (!confirm('¿Eliminar esta ruta planificada?')) return;
 
+    const route = savedRoutes.find(r => r.id === routeId);
+    const routeName = route?.nombre || 'Sin nombre';
     try {
         await api.deletePlannedRoute(routeId);
-        window.kepler?.notify?.success('Ruta eliminada');
+        window.kepler?.notify?.success(`Ruta "${routeName}" eliminada`, { source: 'routes', action: 'delete', route: { id: routeId, nombre: routeName } });
         await loadSavedRoutes();
     } catch (e) {
         console.error('Delete failed:', e);
-        window.kepler?.notify?.error('Error al eliminar ruta');
+        window.kepler?.notify?.show('Error al eliminar ruta: ' + e.message, 'critical', 0, { source: 'routes', action: 'delete_error', route: { id: routeId, nombre: routeName }, error: e.message });
     }
 }
 

@@ -107,7 +107,7 @@ export class NotificationStore {
      * @param {string} type - 'critical' | 'warning' | 'success' | 'info'
      * @returns {string} notification ID
      */
-    async add(message, type) {
+    async add(message, type, context = null) {
         const timestamp = new Date().toISOString();
         const localId = `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -117,7 +117,8 @@ export class NotificationStore {
             type,
             timestamp,
             date: timestamp.split('T')[0],
-            read: false
+            read: false,
+            context
         };
 
         // Add to local immediately

@@ -86,6 +86,26 @@ export const api = {
         }
     },
 
+    // --- AI ANALYSIS (direct Ollama, no LangChain agent) ---
+    async analyze(message, context = "") {
+        try {
+            const token = await auth.getToken();
+            const res = await fetch(`${API_BASE}/chat/analyze`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ message, context })
+            });
+            if (!res.ok) throw new Error(`Analyze failed: ${res.status}`);
+            return await res.json();
+        } catch (err) {
+            console.error('[API] Analyze error:', err);
+            return { response: null, success: false };
+        }
+    },
+
     async getChatHistory() {
         try {
             const token = await auth.getToken();

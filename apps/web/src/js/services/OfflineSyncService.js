@@ -47,14 +47,24 @@ class OfflineSyncService {
             // Try to sync immediately
             const result = await this._syncItem(pendingItem);
             if (result.success) {
-                this._notify('success', '✅ Objeto registrado correctamente');
+                const objName = data.nombre || data.label || data.class_name || 'Objeto';
+                this._notify('success', `✅ "${objName}" registrado correctamente`, {
+                    source: 'sync', action: 'create', isOnline: true,
+                    object: { nombre: objName, tipo: data.tipo || data.class_name }
+                });
                 return result;
             }
         }
 
         // If offline or sync failed, add to queue
         this._addToQueue(pendingItem);
-        this._notify('info', '💾 Objeto guardado localmente (pendiente de sincronización)');
+        const objName = data.nombre || data.label || data.class_name || 'Objeto';
+        const pending = this.getPendingCount();
+        this._notify('info', `💾 "${objName}" guardado localmente\n📋 ${pending} objeto(s) en cola de sincronizacion`, {
+            source: 'sync', action: 'queued', isOnline: this.isOnline,
+            object: { nombre: objName, tipo: data.tipo || data.class_name },
+            pendingCount: pending
+        });
 
         return {
             success: true,
@@ -129,13 +139,20 @@ class OfflineSyncService {
         window.addEventListener('online', () => {
             console.log('[OfflineSync] Connection restored');
             this.isOnline = true;
-            this._notify('success', '📶 Conexión restaurada');
+            const pending = this.getPendingCount();
+            const summary = this._getPendingSummary();
+            this._notify('success', `📶 Conexion restaurada${pending > 0 ? `\n📋 ${pending} objeto(s) pendientes de sync` : ''}`, {
+                source: 'sync', action: 'online', isOnline: true, pendingCount: pending, pendingItems: summary.labels
+            });
             this._notifyStatusChange();
 
-            // Auto-sync when back online
-            if (this.getPendingCount() > 0) {
+            if (pending > 0) {
                 setTimeout(() => {
-                    this._notify('info', `🔄 Sincronizando ${this.getPendingCount()} objetos pendientes...`);
+                    const s = this._getPendingSummary();
+                    const itemList = s.labels.join('\n  - ');
+                    this._notify('info', `🔄 Sincronizando ${pending} objetos...\n  - ${itemList}${s.hasMore ? '\n  ...y mas' : ''}`, {
+                        source: 'sync', action: 'syncing', isOnline: true, pendingCount: pending, pendingItems: s.labels
+                    });
                     this._processQueue();
                 }, 2000);
             }
@@ -144,7 +161,10 @@ class OfflineSyncService {
         window.addEventListener('offline', () => {
             console.log('[OfflineSync] Connection lost');
             this.isOnline = false;
-            this._notify('warning', '📴 Sin conexión. Los datos se guardarán localmente.');
+            const pending = this.getPendingCount();
+            this._notify('warning', `📴 Sin conexion${pending > 0 ? ` — ${pending} objeto(s) en cola local` : ''}`, {
+                source: 'sync', action: 'offline', isOnline: false, pendingCount: pending
+            });
             this._notifyStatusChange();
         });
 
@@ -152,7 +172,17 @@ class OfflineSyncService {
         setTimeout(() => {
             const pending = this.getPendingCount();
             if (pending > 0) {
-                this._notify('warning', `📤 Tienes ${pending} objeto(s) pendiente(s) de sincronización`);
+                const s = this._getPendingSummary();
+                const itemList = s.labels.join('\n  - ');
+                let msg = `📤 ${pending} objeto(s) pendiente(s) de sincronizacion`;
+                if (s.labels.length > 0) msg += `:\n  - ${itemList}`;
+                if (s.hasMore) msg += `\n  ...y ${pending - 5} mas`;
+                if (s.failed > 0) msg += `\n⚠️ ${s.failed} con error permanente`;
+
+                this._notify('warning', msg, {
+                    source: 'sync', action: 'startup_pending', isOnline: this.isOnline,
+                    pendingCount: pending, failedCount: s.failed, pendingItems: s.labels
+                });
                 if (this.isOnline) {
                     this._processQueue();
                 }
@@ -247,13 +277,18 @@ class OfflineSyncService {
         this.isSyncing = false;
         this._notifyStatusChange();
 
-        // Notify results
+        // Notify results with details
+        const remaining = this.getPendingCount();
+        const syncCtx = { source: 'sync', action: 'sync_result', synced, failed, remaining, isOnline: this.isOnline };
+
         if (synced > 0 && failed === 0) {
-            this._notify('success', `✅ ${synced} objeto(s) sincronizado(s) correctamente`);
+            this._notify('success', `✅ ${synced} objeto(s) sincronizado(s) correctamente${remaining > 0 ? `\n📋 ${remaining} aun pendientes` : ''}`, syncCtx);
         } else if (synced > 0 && failed > 0) {
-            this._notify('warning', `✅ ${synced} sincronizado(s), ⚠️ ${failed} con error`);
+            const failedSummary = this._getPendingSummary();
+            this._notify('warning', `✅ ${synced} sincronizado(s), ⚠️ ${failed} con error${failedSummary.labels.length > 0 ? ':\n  - ' + failedSummary.labels.join('\n  - ') : ''}`, { ...syncCtx, failedItems: failedSummary.labels });
         } else if (failed > 0) {
-            this._notify('error', `⚠️ Error al sincronizar ${failed} objeto(s)`);
+            const failedSummary = this._getPendingSummary();
+            this._notify('critical', `⚠️ Error al sincronizar ${failed} objeto(s)${failedSummary.labels.length > 0 ? ':\n  - ' + failedSummary.labels.join('\n  - ') : ''}`, { ...syncCtx, failedItems: failedSummary.labels });
         }
 
         return { success: true, synced, failed };
@@ -289,13 +324,27 @@ class OfflineSyncService {
     // PRIVATE: Notifications
     // ============================================================
 
-    _notify(type, message) {
+    _notify(type, message, context = null) {
         console.log(`[OfflineSync] ${type.toUpperCase()}: ${message}`);
 
-        // Use KEPLER notification system if available
         if (window.kepler && window.kepler.notify) {
-            window.kepler.notify.show(message, type, 4000);
+            window.kepler.notify.show(message, type, 4000, context);
         }
+    }
+
+    /**
+     * Build a summary of pending items for richer notifications
+     */
+    _getPendingSummary() {
+        const items = this.pendingQueue.filter(i => i.status !== 'failed');
+        const failed = this.pendingQueue.filter(i => i.status === 'failed');
+        const labels = items.map(i => {
+            const d = i.data || {};
+            const name = d.nombre || d.label || d.titulo || 'Sin nombre';
+            const type = d.tipo || d.class_name || 'objeto';
+            return `${type}: "${name}"`;
+        });
+        return { total: items.length, failed: failed.length, labels: labels.slice(0, 5), hasMore: labels.length > 5 };
     }
 
     _notifyStatusChange() {

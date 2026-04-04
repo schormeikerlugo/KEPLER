@@ -111,6 +111,8 @@ Al abrir el modal "Iniciar Misión", el sistema carga las rutas planificadas del
 - Aparecen en esquina superior derecha con slide-in desde la derecha
 - Tipos: `critical` (persistente), `warning` (7s), `success` (4s), `info` (5s)
 - Audio feedback por tipo con volúmenes diferenciados
+- Click en toast → abre Deep-Dive con análisis IA
+- Hint visual "Click para analizar" en cada toast
 
 ### Bitácora (Panel de Log)
 - Overlay full-height con backdrop blur al abrir
@@ -119,8 +121,59 @@ Al abrir el modal "Iniciar Misión", el sistema carga las rutas planificadas del
 - Filtro por tipo via chips o dropdown select
 - Timeline agrupada por fecha (Hoy, Ayer, fechas anteriores)
 - Acciones: eliminar individual, eliminar por día, limpiar todo
+- Click en cualquier item → abre Deep-Dive con análisis IA
 - Cierre: click fuera, botón X, o tecla Escape
 - Almacenamiento: `NotificationStore` con sync a Supabase + localStorage fallback
+
+### Context Metadata
+Cada notificación puede incluir un objeto `context` con metadata estructurada para enriquecer el análisis IA:
+```js
+window.kepler.notify.success('Mensaje', { source: 'realtime', event: 'COMPLETED', mission: {...}, stats: {...} });
+```
+
+Callers que pasan context:
+| Fuente | Datos en context |
+|---|---|
+| `RealtimeService` | mission (codigo, zona, estado), stats, user, event type |
+| `OfflineSyncService` | object (nombre, tipo), pendingCount, isOnline, action |
+| `routes/index.js` | route (nombre, terreno, distancia, waypoints), action |
+| `ItemDetailModal` | table, recordId, action, error |
+| `system-status` | services (backend, database, ai) |
+| `sync-indicator` | isOnline, pendingCount |
+
+### Deep-Dive Modal (`DeepDiveModal.js`)
+Modal con análisis IA on-demand generado por Mistral (`POST /api/chat/analyze`).
+
+**Flujo:**
+1. Click en notificación (toast o bitácora) → modal se abre con skeleton loading
+2. Detección de categoría: por `context.source` si disponible, o por análisis del texto del mensaje
+3. Prompt especializado enviado a Mistral via `/api/chat/analyze` (llamada directa a Ollama, sin LangChain)
+4. Respuesta parseada en secciones markdown con tablas, listas y formato
+5. Respuesta cacheada en memoria por sesión
+6. Botón "Regenerar Análisis" para forzar nueva consulta
+
+**18 prompts especializados con estructuras únicas por categoría:**
+
+| Categoría | Secciones |
+|---|---|
+| Misión completada | Informe, Tabla de Métricas, Plan Siguiente Expedición |
+| Misión nueva | Alerta de Despliegue, Perfil de Zona, Checklist Pre-Misión |
+| Misión activada | Misión en Curso, Estado Operativo, Protocolo de Campo |
+| Misión eliminada | Registro Eliminado, Datos Afectados, Protocolo de Verificación |
+| Ruta guardada | Ruta Planificada, Evaluación Táctica, Equipamiento Sugerido |
+| Ruta eliminada | Ruta Eliminada, Misiones Vinculadas |
+| Ruta cargada | Ruta en Edición, Optimizaciones Posibles |
+| Objeto registrado | Ficha de Registro, Clasificación, Próximos Pasos |
+| Objeto pendiente | Objeto Pendiente, Estado de Cola, Prioridad de Acción |
+| Sync resultado | Tabla de Resultados, Diagnóstico de Fallos |
+| Health OK | Tabla de Servicios, Rendimiento |
+| Health error | Tabla de Servicios, Diagnóstico, Impacto Operativo |
+| Record guardado/eliminado | Confirmación, Verificación/Datos Relacionados |
+| Record error | Error en BD, Causa Probable, Solución |
+| Genérico (sin context) | Evento, Contexto (mínimo) |
+
+**Detección por texto (fallback sin context):**
+Cuando una notificación no tiene `context` (ej: notificaciones antiguas), `_detectCategory()` analiza patrones del mensaje ("misión completada", "guardado localmente", "ruta guardada", etc.) para asignar el prompt correcto.
 
 ---
 

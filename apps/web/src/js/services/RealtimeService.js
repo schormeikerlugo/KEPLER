@@ -74,23 +74,24 @@ export class RealtimeService {
         const { eventType, new: newRec, old: oldRec } = payload;
         const userDisplayName = await this.getUserDisplayName(newRec?.user_id || oldRec?.user_id);
 
+        const missionCtx = { source: 'realtime', mission: { id: newRec?.id, codigo: newRec?.codigo, zona: newRec?.zona || oldRec?.zona, estado: newRec?.estado }, user: userDisplayName };
+
         if (eventType === 'INSERT') {
-            window.kepler.notify.info(`📡 NUEVA MISIÓN DETECTADA`);
-            window.kepler.notify.success(`Código: ${newRec.codigo || 'S/N'} | Zona: ${newRec.zona || 'Sin definir'}\n👤 por ${userDisplayName}`);
+            window.kepler.notify.info(`📡 NUEVA MISIÓN DETECTADA`, { ...missionCtx, event: 'INSERT' });
+            window.kepler.notify.success(`Código: ${newRec.codigo || 'S/N'} | Zona: ${newRec.zona || 'Sin definir'}\n👤 por ${userDisplayName}`, { ...missionCtx, event: 'INSERT' });
         }
         else if (eventType === 'UPDATE') {
             if (newRec.estado !== oldRec?.estado) {
                 if (newRec.estado === 'completada') {
-                    // Fetch mission stats
                     await this.showMissionCompletionStats(newRec, userDisplayName);
                 }
                 else if (newRec.estado === 'activa') {
-                    window.kepler.notify.warning(`🚀 MISIÓN ACTIVADA: ${newRec.codigo}\n👤 por ${userDisplayName}`);
+                    window.kepler.notify.warning(`🚀 MISIÓN ACTIVADA: ${newRec.codigo}\n👤 por ${userDisplayName}`, { ...missionCtx, event: 'ACTIVATED' });
                 }
             }
         }
         else if (eventType === 'DELETE') {
-            window.kepler.notify.warning(`⚠️ Misión eliminada del registro central.\n👤 por ${userDisplayName}`);
+            window.kepler.notify.warning(`⚠️ Misión eliminada del registro central.\n👤 por ${userDisplayName}`, { ...missionCtx, event: 'DELETE' });
         }
     }
 
@@ -116,7 +117,13 @@ export class RealtimeService {
                 duration = hrs > 0 ? `${hrs}h ${mins % 60}m` : `${mins}m`;
             }
 
-            // Show detailed notification with user attribution
+            const statsCtx = {
+                source: 'realtime', event: 'COMPLETED',
+                mission: { id: mission.id, codigo: mission.codigo, zona: mission.zona, estado: 'completada' },
+                stats: { totalObjects, manualObjects, checkpoints, duration },
+                user: userDisplayName
+            };
+
             window.kepler.notify.success(
                 `✅ MISIÓN COMPLETADA: ${mission.codigo}\n` +
                 `👤 por ${userDisplayName}\n` +
@@ -124,11 +131,12 @@ export class RealtimeService {
                 `⏱️ Duración: ${duration}\n` +
                 `📦 Objetos registrados: ${totalObjects}\n` +
                 `✋ Objetos manuales: ${manualObjects}\n` +
-                `🏕️ Puntos de asentamiento: ${checkpoints}`
+                `🏕️ Puntos de asentamiento: ${checkpoints}`,
+                statsCtx
             );
         } catch (e) {
             console.error('Error fetching mission stats:', e);
-            window.kepler.notify.success(`✅ MISIÓN COMPLETADA: ${mission.codigo}\n👤 por ${userDisplayName}`);
+            window.kepler.notify.success(`✅ MISIÓN COMPLETADA: ${mission.codigo}\n👤 por ${userDisplayName}`, { source: 'realtime', event: 'COMPLETED', mission: { codigo: mission.codigo } });
         }
     }
 }
