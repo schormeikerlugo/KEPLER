@@ -5,56 +5,147 @@
     }
 }
 
+/* ═══ MOBILE: Screen-based navigation ═══
+   Screen 1: Mission list (full width)
+   Screen 2: Content panel (full width, back button visible)
+   Screen 3: Detail modal (full screen overlay)
+*/
 @media (max-width: 768px) {
     .archives-container {
-        padding: 14px;
-    }
-
-    .archives-header {
-        flex-direction: column;
-        gap: 12px;
-        padding: 16px;
-        text-align: center;
-    }
-
-    .stats-bar {
-        justify-content: center;
-    }
-
-    .archives-main {
-        grid-template-columns: 1fr;
-    }
-
-    .missions-panel {
-        max-height: 220px;
-    }
-
-    .content-panel {
-        max-height: none;
-    }
-
-    .content-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .action-buttons {
-        width: 100%;
-        justify-content: flex-start;
-    }
-
-    .objects-grid {
-        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        padding: 10px;
         gap: 10px;
     }
 
+    .archives-header {
+        flex-direction: row;
+        gap: 10px;
+        padding: 12px 16px;
+        align-items: center;
+    }
+
+    .archives-header .header-logo {
+        height: 16px !important;
+    }
+
+    .stats-bar {
+        display: none; /* Hide stats on mobile — too much clutter */
+    }
+
+    .btn-back {
+        padding: 8px 14px;
+        font-size: 0.78rem;
+        margin-left: auto;
+    }
+
+    /* Main layout: single column, missions panel as screen 1 */
+    .archives-main {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    /* Missions panel — full screen, scrollable */
+    .missions-panel {
+        max-height: none;
+        border-radius: 12px;
+    }
+
+    /* Content panel — hidden by default on mobile, shown when mission selected */
+    .content-panel {
+        display: none;
+        max-height: none;
+    }
+
+    .archives-main.show-content .missions-panel {
+        display: none;
+    }
+
+    .archives-main.show-content .content-panel {
+        display: flex;
+    }
+
+    /* Mobile back button in content panel */
+    .mobile-back-missions {
+        display: flex !important;
+        align-items: center;
+        gap: 6px;
+        background: none;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #aaa;
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 0.78rem;
+        cursor: pointer;
+        margin-right: 12px;
+        font-family: inherit;
+    }
+
+    .mobile-back-missions:hover {
+        color: #fff;
+        border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    /* Content header layout */
+    .content-header {
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .content-title {
+        font-size: 0.9rem;
+        flex: 1;
+    }
+
+    .action-buttons {
+        width: auto;
+    }
+
+    /* Tabs scrollable */
+    .content-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .content-tabs::-webkit-scrollbar { display: none; }
+
+    .tab-btn {
+        padding: 8px 12px;
+        font-size: 0.72rem;
+        white-space: nowrap;
+    }
+
+    /* Objects grid compact */
+    .objects-grid {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 8px;
+    }
+
+    /* Personas list — full width rows */
     .personas-grid {
-        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        grid-template-columns: 1fr !important;
+    }
+
+    .persona-card {
+        padding: 10px 12px;
+    }
+
+    .persona-img {
+        width: 48px;
+        height: 48px;
+    }
+
+    /* Modals — full screen on mobile */
+    .modal-overlay {
+        align-items: flex-end !important;
     }
 
     .modal-body {
-        grid-template-columns: 1fr;
-        max-height: 90vh;
+        grid-template-columns: 1fr !important;
+        max-height: 95vh;
+        max-width: 100%;
+        border-radius: 16px 16px 0 0;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
     }
@@ -74,13 +165,13 @@
         grid-template-columns: 1fr;
     }
 
-    .content-tabs {
-        overflow-x: auto;
+    /* Persona identity modal — full mobile */
+    #persona-identity-modal .modal-body {
+        grid-template-columns: 1fr !important;
     }
 
-    .tab-btn {
-        padding: 8px 12px;
-        font-size: 0.72rem;
+    #persona-identity-modal .modal-img-container {
+        height: 140px;
     }
 
     body.modal-open {
@@ -104,7 +195,9 @@
     }
 
     .persona-img {
-        height: 100px;
+        width: 44px;
+        height: 44px;
+        border-radius: 8px;
     }
 
     .telemetry-panel {
@@ -116,8 +209,11 @@
         align-items: flex-start;
         gap: 10px;
     }
+}
 
-    .ruta-badges {
-        align-self: flex-start;
+/* Desktop: hide mobile-only elements */
+@media (min-width: 769px) {
+    .mobile-back-missions {
+        display: none !important;
     }
 }

@@ -1,6 +1,7 @@
 import { dbService } from '../../../js/services/DatabaseService.js';
 import { supabase } from '../../../js/auth.js';
 import { api } from '../../../js/services/api.js';
+import { captureQueue } from '../../../js/services/CaptureQueue.js';
 
 export class ARDataController {
     constructor(context) {
@@ -110,9 +111,12 @@ export class ARDataController {
         const { category, routeTarget } = this.classifyDetection(prediction.class);
         const coords = await this._getGPSCoords();
         const timestamp = new Date().toISOString();
+        const trackId = prediction.track_id;
+        const trackLabel = trackId != null ? ` [#${trackId}]` : '';
+        const confPct = (prediction.score * 100).toFixed(0);
 
-        // Get AI description (best effort)
-        let description = `${prediction.class} detectado automáticamente.`;
+        // Get AI description (best effort, non-blocking)
+        let description = `${prediction.class} detectado automaticamente. Confianza: ${confPct}%.`;
         try {
             const docRes = await fetch('/api/enrich-data', {
                 method: 'POST',
@@ -120,62 +124,76 @@ export class ARDataController {
                 body: JSON.stringify({ label: prediction.class })
             }).then(r => r.json());
             if (docRes?.description) description = docRes.description;
-        } catch (e) { /* enrichment failed, use default */ }
+        } catch (e) { /* enrichment failed */ }
 
-        // ── AI Re-Identification Pre-Check ──
-        // For persona/poi, try to match against existing entities before creating duplicates
-        if (snapshot && (routeTarget === 'persona' || routeTarget === 'poi')) {
+        // ── AI Re-Identification Pre-Check (CLIP embeddings) ──
+        if (snapshot && snapshot.length > 100) {
             try {
-                const matchRes = await api.matchVisual(snapshot, routeTarget === 'persona' ? 'persona' : 'poi');
-                if (matchRes.matched && matchRes.entity) {
+                const entityType = routeTarget === 'persona' ? 'persona'
+                    : routeTarget === 'poi' ? 'poi' : 'generic';
+                const matchRes = await api.matchVisual(snapshot, entityType, 0.78);
+                if (matchRes?.matched && matchRes.entity) {
                     const sim = (matchRes.entity.similarity * 100).toFixed(0);
                     return {
-                        type: routeTarget === 'persona' ? '👁️ RE-ID PERSONA' : '👁️ RE-ID POI',
-                        name: `${matchRes.entity.nombre} (${sim}% match)`
+                        type: `👁️ RE-ID`,
+                        name: `${matchRes.entity.nombre} (${sim}%)${trackLabel}`
                     };
                 }
             } catch (e) {
-                console.warn('[autoRoute] matchVisual failed, proceeding to create:', e.message);
+                console.warn('[autoRoute] Re-ID check failed:', e.message);
             }
         }
 
-        // ── Route to correct table (no match found) ──
+        // ── Create new record (no match found) ──
+        const location = coords || { lat: 0, lng: 0 };
+        const heading = this._getHeading();
+
         if (routeTarget === 'persona') {
+            const nombre = `Persona ${timestamp.slice(11, 19)}${trackLabel}`;
             const data = await this.createPersona({
-                nombre: `Persona ${timestamp.slice(11, 19)}`,
+                nombre,
                 alias: null,
                 contexto: 'desconocido',
-                notas: `Auto-captura Sentinel. Confianza: ${(prediction.score * 100).toFixed(0)}%. ${description}`
+                notas: `Sentinel auto-captura. ${confPct}% confianza. ${description}`,
+                image_base64: snapshot
             });
-            return data ? { type: '👤 PERSONA', name: data.nombre } : null;
+
+            if (data) {
+                this._addMarker(data.id, nombre, 'person', location);
+            }
+            return data ? { type: '👤 PERSONA', name: nombre } : null;
 
         } else if (routeTarget === 'poi') {
             const poiCategoryMap = {
                 bench: 'Mobiliario Urbano', fire_hydrant: 'Infraestructura',
-                stop_sign: 'Señalización', traffic_light: 'Señalización',
-                parking_meter: 'Infraestructura', building: 'Edificación',
-                house: 'Edificación', bridge: 'Infraestructura',
-                tent: 'Campamento', fountain: 'Recurso Hídrico'
+                stop_sign: 'Señalizacion', traffic_light: 'Señalizacion',
+                parking_meter: 'Infraestructura', building: 'Edificacion',
+                house: 'Edificacion', bridge: 'Infraestructura',
+                tent: 'Campamento', fountain: 'Recurso Hidrico'
             };
+            const nombre = `${poiCategoryMap[prediction.class.toLowerCase()] || prediction.class} — ${timestamp.slice(11, 19)}`;
             const data = await this.createPOI({
                 categoria_id: null,
-                nombre: `${poiCategoryMap[prediction.class.toLowerCase()] || prediction.class} — ${timestamp.slice(11, 19)}`,
+                nombre,
                 zona: null,
                 nivel_riesgo: 'bajo',
                 estado: 'activo',
-                descripcion: `Auto-captura Sentinel. ${description}`
+                descripcion: `Sentinel auto-captura. ${description}`,
+                image_base64: snapshot
             });
-            return data ? { type: '🏔️ POI', name: data.nombre } : null;
+
+            if (data) {
+                this._addMarker(data.id, nombre, category, location);
+            }
+            return data ? { type: '🏔️ POI', name: nombre } : null;
 
         } else {
-            // Generic object → objetos_exploracion (existing flow)
-            const heading = this._getHeading();
-            const location = coords || { lat: 0, lng: 0 };
-
+            // Generic object
+            const nombre = `${prediction.class.toUpperCase()}${trackLabel}`;
             const res = await api.createObject({
                 source: 'sentinel',
                 object_class: category,
-                name: prediction.class.toUpperCase(),
+                name: nombre,
                 confidence: prediction.score,
                 timestamp,
                 location,
@@ -186,24 +204,30 @@ export class ARDataController {
                     description,
                     created_by: 'SENTINEL_AUTO',
                     ai_class: prediction.class,
-                    ai_confidence: prediction.score.toFixed(2)
+                    ai_confidence: confPct,
+                    track_id: trackId,
+                    full_frame: prediction.fullSnapshot ? true : false
                 },
                 mission_id: this.ctx.state.currentMissionId || null
             });
 
             if (res.success) {
-                this.ctx.state.missions.push({
-                    id: res.data?.id || `auto-${Date.now()}`,
-                    title: prediction.class.toUpperCase(),
-                    type: category,
-                    lat: location.lat, lng: location.lng,
-                    altitude: 0, metadata: { description }
-                });
-                this.ctx.renderMarkers();
-                return { type: '📦 OBJETO', name: prediction.class.toUpperCase() };
+                this._addMarker(res.data?.id, nombre, category, location);
+                return { type: '📦 OBJETO', name: nombre };
             }
             return null;
         }
+    }
+
+    /** Helper: add captured entity to 3D marker scene */
+    _addMarker(id, title, type, location) {
+        this.ctx.state.missions.push({
+            id: id || `auto-${Date.now()}`,
+            title, type,
+            lat: location.lat, lng: location.lng,
+            altitude: 0
+        });
+        this.ctx.renderMarkers();
     }
 
     /**
@@ -296,7 +320,62 @@ export class ARDataController {
         }
     }
 
-    // Helper for Manual Mark
+    /**
+     * Quick Capture — 1-tap instant capture via CaptureQueue.
+     * No network calls, no awaits. Enqueues for background processing.
+     */
+    quickCapture(target = null) {
+        if (!this.ctx.state.lastLocation) {
+            this.ctx.ui.showToast("Esperando GPS...", 2000);
+            return { success: false };
+        }
+
+        const snapshot = this.ctx.arEngine.captureFrame();
+        const heading = (this.ctx.gpsEngine?.filteredHeading || this.ctx.gpsEngine?.heading || 0) + (this.ctx.arEngine?.headingOffset || 0);
+        const { lat, lng } = this.ctx.state.lastLocation;
+
+        const now = new Date();
+        const timeLabel = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const objectClass = target?.class || 'unknown';
+        const confidence = target?.score || 0;
+
+        const type = objectClass === 'person' ? 'persona'
+            : ['bench', 'fire_hydrant', 'stop_sign', 'traffic_light', 'building', 'tent'].includes(objectClass) ? 'poi'
+            : 'object';
+
+        const name = type === 'persona' ? `Persona ${timeLabel}`
+            : target ? `${objectClass.toUpperCase()} ${timeLabel}`
+            : `CAPTURA-${timeLabel}`;
+
+        // INSTANT enqueue — zero network calls
+        captureQueue.enqueue({
+            type,
+            name,
+            class_name: objectClass,
+            confidence,
+            bbox: target?.bbox || null,
+            track_id: target?.track_id || null,
+            image_base64: snapshot || '',
+            location: { lat, lng },
+            heading,
+            mission_id: this.ctx.state.currentMissionId || null,
+            metadata: { created_by: 'QUICK_CAPTURE' }
+        });
+
+        // Add placeholder marker locally
+        this.ctx.state.missions.push({
+            id: 'pending-' + Date.now(),
+            title: name,
+            type: objectClass,
+            lat, lng,
+            description: `En cola — ${objectClass} ${(confidence * 100).toFixed(0)}%`,
+            source: 'quick_capture'
+        });
+
+        this.ctx.renderMarkers();
+        return { success: true, name, confidence, snapshot };
+    }
+
     async createManualMarker(title, desc, snapshot) {
         if(!this.ctx.state.lastLocation) return this.ctx.ui.showToast("Esperando GPS...", 2000);
         
@@ -474,6 +553,30 @@ export class ARDataController {
     /**
      * Get current GPS coordinates (helper)
      */
+    /**
+     * Generate CLIP embedding and store it in the database (background, non-blocking)
+     */
+    async _generateEmbedding(image_base64, table, recordId) {
+        try {
+            const cleanBase64 = image_base64.replace(/^data:image\/\w+;base64,/, '');
+            const res = await fetch('/api/generate-embedding', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image_base64: cleanBase64 })
+            });
+            const data = await res.json();
+            if (data?.embedding) {
+                await supabase
+                    .from(table)
+                    .update({ embedding: data.embedding })
+                    .eq('id', recordId);
+                console.log(`[Embedding] Generated for ${table}/${recordId}`);
+            }
+        } catch (e) {
+            console.warn(`[Embedding] Failed for ${table}/${recordId}:`, e.message);
+        }
+    }
+
     async _getGPSCoords() {
         // Try AR engine location first
         if (this.ctx.state.lastLocation) {
@@ -493,31 +596,43 @@ export class ARDataController {
     /**
      * Create a Point of Interest (POI)
      */
-    async createPOI({ categoria_id, nombre, zona, nivel_riesgo, estado, descripcion }) {
+    async createPOI({ categoria_id, nombre, zona, nivel_riesgo, estado, descripcion, image_base64 = null }) {
         this.ctx.ui.showToast("Registrando POI...", 0);
         try {
             const coords = await this._getGPSCoords();
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("Sin autenticación");
 
+            const insertData = {
+                user_id: user.id,
+                mission_id: this.ctx.state.currentMissionId || null,
+                categoria_id: categoria_id || null,
+                nombre: nombre,
+                zona: zona || null,
+                nivel_riesgo: nivel_riesgo || 'medio',
+                estado: estado || 'activo',
+                descripcion: descripcion || null,
+                lat: coords?.lat || null,
+                lng: coords?.lng || null
+            };
+
+            if (image_base64) {
+                insertData.image_url = image_base64;
+            }
+
             const { data, error } = await supabase
                 .from('puntos_interes')
-                .insert({
-                    user_id: user.id,
-                    mission_id: this.ctx.state.currentMissionId || null,
-                    categoria_id: categoria_id || null,
-                    nombre: nombre,
-                    zona: zona || null,
-                    nivel_riesgo: nivel_riesgo || 'medio',
-                    estado: estado || 'activo',
-                    descripcion: descripcion || null,
-                    lat: coords?.lat || null,
-                    lng: coords?.lng || null
-                })
+                .insert(insertData)
                 .select()
                 .single();
 
             if (error) throw error;
+
+            // Generate CLIP embedding for re-identification (background)
+            if (image_base64 && data?.id) {
+                this._generateEmbedding(image_base64, 'puntos_interes', data.id);
+            }
+
             this.ctx.ui.showToast(`✅ POI "${nombre}" registrado`, 3000);
             return data;
         } catch (e) {
@@ -530,29 +645,42 @@ export class ARDataController {
     /**
      * Create a Person record
      */
-    async createPersona({ nombre, alias, contexto, notas }) {
+    async createPersona({ nombre, alias, contexto, notas, image_base64 = null }) {
         this.ctx.ui.showToast("Registrando persona...", 0);
         try {
             const coords = await this._getGPSCoords();
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("Sin autenticación");
 
+            const insertData = {
+                user_id: user.id,
+                mission_id: this.ctx.state.currentMissionId || null,
+                nombre: nombre,
+                alias: alias || null,
+                contexto: contexto || 'desconocido',
+                notas: notas || null,
+                lat: coords?.lat || null,
+                lng: coords?.lng || null
+            };
+
+            // Store image as URL (base64 in image_url field)
+            if (image_base64) {
+                insertData.image_url = image_base64;
+            }
+
             const { data, error } = await supabase
                 .from('personas_encontradas')
-                .insert({
-                    user_id: user.id,
-                    mission_id: this.ctx.state.currentMissionId || null,
-                    nombre: nombre,
-                    alias: alias || null,
-                    contexto: contexto || 'desconocido',
-                    notas: notas || null,
-                    lat: coords?.lat || null,
-                    lng: coords?.lng || null
-                })
+                .insert(insertData)
                 .select()
                 .single();
 
             if (error) throw error;
+
+            // Generate CLIP embedding for re-identification (background, non-blocking)
+            if (image_base64 && data?.id) {
+                this._generateEmbedding(image_base64, 'personas_encontradas', data.id);
+            }
+
             this.ctx.ui.showToast(`✅ Persona "${nombre}" registrada`, 3000);
             return data;
         } catch (e) {

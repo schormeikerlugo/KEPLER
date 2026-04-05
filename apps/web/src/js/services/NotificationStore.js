@@ -89,7 +89,8 @@ export class NotificationStore {
                 type: n.type,
                 timestamp: n.created_at,
                 date: n.created_at.split('T')[0],
-                read: n.read
+                read: n.read,
+                context: n.context || null
             }));
 
             // Update local cache
@@ -128,13 +129,16 @@ export class NotificationStore {
         // Sync to Supabase if online
         if (this.isOnline && this.userId) {
             try {
+                const insertData = {
+                    user_id: this.userId,
+                    message: message,
+                    type: type
+                };
+                if (context) insertData.context = context;
+
                 const { data, error } = await supabase
                     .from('user_notifications')
-                    .insert({
-                        user_id: this.userId,
-                        message: message,
-                        type: type
-                    })
+                    .insert(insertData)
                     .select()
                     .single();
 

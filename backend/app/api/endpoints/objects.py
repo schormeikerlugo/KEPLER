@@ -312,7 +312,7 @@ async def create_object(req: ObjectCreateRequest, user = Depends(get_current_use
 
 class MatchVisualRequest(BaseModel):
     image_base64: str
-    entity_type: str  # 'persona' or 'poi'
+    entity_type: str  # 'persona', 'poi', or 'generic' (objetos_exploracion)
     threshold: Optional[float] = 0.80
 
 

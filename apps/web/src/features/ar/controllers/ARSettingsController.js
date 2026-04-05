@@ -254,7 +254,7 @@ export class ARSettingsController {
             });
         }
 
-        // 3.5 Sentinel Toggle
+        // 3.5 Sentinel Toggle (unified: detection + auto-save)
         this.dom.btnSentinel = document.getElementById('btn-sentinel-toggle');
         if (this.dom.btnSentinel) {
             this.dom.btnSentinel.addEventListener('click', () => {
@@ -264,34 +264,14 @@ export class ARSettingsController {
                     this.dom.btnSentinel.classList.remove('active');
                     this.dom.btnSentinel.textContent = "OFF";
                     this.context.sentinel.setEnabled(false);
+                    this.context.dataController.setAutoSaveEnabled(false);
+                    this.context.ui.showToast("Centinela DESACTIVADO", 2000);
                 } else {
                     this.dom.btnSentinel.classList.add('active');
-                    this.dom.btnSentinel.textContent = "ACTIVADO";
+                    this.dom.btnSentinel.textContent = "ACTIVO";
                     this.context.sentinel.setEnabled(true);
-                }
-            });
-        }
-
-        // 3.6 Auto-Save Toggle (NEW)
-        this.dom.btnAutoSave = document.getElementById('btn-autosave-toggle');
-        if (this.dom.btnAutoSave) {
-            this.dom.btnAutoSave.addEventListener('click', () => {
-                const isActive = this.dom.btnAutoSave.classList.contains('active');
-
-                if (isActive) {
-                    this.dom.btnAutoSave.classList.remove('active');
-                    this.dom.btnAutoSave.textContent = "OFF";
-                    if (this.context.dataController) {
-                        this.context.dataController.setAutoSaveEnabled(false);
-                    }
-                    this.context.ui.showToast("Auto-Guardar DESACTIVADO", 2000);
-                } else {
-                    this.dom.btnAutoSave.classList.add('active');
-                    this.dom.btnAutoSave.textContent = "ACTIVO";
-                    if (this.context.dataController) {
-                        this.context.dataController.setAutoSaveEnabled(true);
-                    }
-                    this.context.ui.showToast("Auto-Guardar ACTIVADO", 2000);
+                    this.context.dataController.setAutoSaveEnabled(true);
+                    this.context.ui.showToast("Centinela ACTIVADO — Vigilancia + Auto-Captura", 2000);
                 }
             });
         }

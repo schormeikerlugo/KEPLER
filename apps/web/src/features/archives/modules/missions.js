@@ -23,7 +23,12 @@ export class MissionsManager {
         this.renderMissions();
 
         if (this.missions.length > 0) {
-            await this.selectMission(this.missions[0].id);
+            // On mobile: don't auto-select, let user pick
+            if (window.innerWidth <= 768) {
+                this.dom.headerTitle.textContent = 'Selecciona una Mision';
+            } else {
+                await this.selectMission(this.missions[0].id);
+            }
         } else {
             await this.selectOrphaned();
         }
@@ -138,6 +143,12 @@ export class MissionsManager {
 
         this.activeMissionId = id;
         this.renderMissions();
+
+        // Mobile: switch to content screen
+        const main = document.querySelector('.archives-main');
+        if (main && window.innerWidth <= 768) {
+            main.classList.add('show-content');
+        }
 
         const mission = this.missions.find(m => m.id === id);
         const isOrphaned = id === 'orphaned';

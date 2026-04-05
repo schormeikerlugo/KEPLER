@@ -108,8 +108,51 @@ export class ARController {
         this.ui.animateHUDEntry();
         this.isRunning = true;
         this.loop();
+
+        // ═══ HUD AUTO-HIDE: hide after 10s, show on tap for 10s ═══
+        this._hudVisible = true;
+        this._hudTimer = null;
+        const scheduleHide = () => {
+            clearTimeout(this._hudTimer);
+            this._hudTimer = setTimeout(() => this._setHUDVisible(false), 10000);
+        };
+        scheduleHide();
+
+        // Tap anywhere on the AR view to toggle HUD
+        const arView = document.getElementById('ar-view-space');
+        if (arView) {
+            arView.style.pointerEvents = 'auto';
+            arView.addEventListener('click', (e) => {
+                // Don't trigger on buttons/modals
+                if (e.target.closest('button, .modal-overlay, .action-hub, .settings-modal-overlay')) return;
+                if (!this._hudVisible) {
+                    this._setHUDVisible(true);
+                    scheduleHide();
+                }
+            });
+        }
     }
-    
+
+    _setHUDVisible(visible) {
+        this._hudVisible = visible;
+        const uiLayer = document.querySelector('.ar-ui-layer');
+        if (!uiLayer) return;
+
+        if (visible) {
+            uiLayer.classList.remove('hud-hidden');
+            // Resume detection if it was in rest mode (and sentinel is not active)
+            if (this.aiEngine.currentFPSMode === 'rest') {
+                this.aiEngine.setFPSMode('explore');
+            }
+        } else {
+            uiLayer.classList.add('hud-hidden');
+            // Drop to rest mode only if sentinel is not active
+            if (!this.sentinel?.isEnabled) {
+                this.aiEngine.setFPSMode('rest');
+            }
+        }
+    }
+
     bindEvents() {
         // GPS Updates
         this.gpsEngine.onPositionUpdate = (pos) => {
@@ -130,14 +173,20 @@ export class ARController {
             // Full Render via UI Controller
             this.ui.renderDetectionBoxes(predictions, this.arEngine.video);
 
-            // Sentinel Logic
-            if(this.sentinel) {
-                 this.sentinel.processPredictions(predictions);
+            // Sentinel Logic (single entry point — no duplicate auto-save)
+            if (this.sentinel) {
+                this.sentinel.processPredictions(predictions);
             }
 
-            // Sentinel Auto-Save (when enabled)
-            if(target && this.dataController) {
-                this.dataController.handleAutoSave(target);
+            // Auto-switch to focus mode when target detected, back to explore when lost
+            if (target && target.score > 0.5 && this.aiEngine.currentFPSMode !== 'focus') {
+                this.aiEngine.setFPSMode('focus');
+                clearTimeout(this._focusTimeout);
+            } else if (!target && this.aiEngine.currentFPSMode === 'focus') {
+                clearTimeout(this._focusTimeout);
+                this._focusTimeout = setTimeout(() => {
+                    if (!this.aiEngine.currentTarget) this.aiEngine.setFPSMode('explore');
+                }, 2000);
             }
 
             // Target Lock Logic (Keep simple visual logic here for now)
@@ -153,6 +202,61 @@ export class ARController {
                 targetLock.style.display = 'none';
             }
         };
+
+        // ═══ QUICK CAPTURE BUTTON ═══
+        this.captureCount = 0;
+        const btnCapture = document.getElementById('btn-quick-capture');
+        if (btnCapture) {
+            btnCapture.addEventListener('click', () => {
+                btnCapture.disabled = true;
+
+                // Get current YOLO target if available
+                const target = this.aiEngine.currentTarget || null;
+
+                const result = this.dataController.quickCapture(target);
+
+                if (result.success) {
+                    // Flash effect
+                    const flash = document.getElementById('capture-flash');
+                    if (flash) {
+                        flash.classList.add('active');
+                        setTimeout(() => flash.classList.remove('active'), 250);
+                    }
+
+                    // Update counter
+                    this.captureCount++;
+                    const counter = document.getElementById('capture-counter');
+                    const counterNum = document.getElementById('capture-counter-num');
+                    if (counter) counter.style.display = 'flex';
+                    if (counterNum) counterNum.textContent = this.captureCount;
+
+                    // Show thumbnail preview
+                    const preview = document.getElementById('last-capture-preview');
+                    const previewImg = document.getElementById('last-capture-img');
+                    const previewLabel = document.getElementById('last-capture-label');
+                    if (preview && result.snapshot) {
+                        previewImg.src = result.snapshot;
+                        previewLabel.textContent = `${result.name} ${(result.confidence * 100).toFixed(0)}%`;
+                        preview.style.display = 'flex';
+                        preview.classList.remove('fade-out');
+                        clearTimeout(this._previewTimeout);
+                        this._previewTimeout = setTimeout(() => {
+                            preview.classList.add('fade-out');
+                            setTimeout(() => { preview.style.display = 'none'; preview.classList.remove('fade-out'); }, 500);
+                        }, 3000);
+                    }
+
+                    // Toast with re-ID info
+                    if (result.reIdMatch) {
+                        this.ui.showToast(`Re-ID: "${result.reIdMatch.nombre}" ${(result.reIdMatch.similarity * 100).toFixed(0)}% match`, 3000);
+                    } else {
+                        this.ui.showToast(`Capturado: ${result.name} ${(result.confidence * 100).toFixed(0)}%`, 1500);
+                    }
+                }
+
+                setTimeout(() => { btnCapture.disabled = false; }, 500);
+            });
+        }
 
         // Action Buttons
         const btnScan = document.getElementById('btn-scan');
@@ -290,17 +394,41 @@ export class ARController {
                     e.stopPropagation();
                     actionHub.style.display = 'none';
                     const action = btn.dataset.action;
+                    const target = this.aiEngine?.currentTarget;
+                    const timeLabel = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                    const missionZona = localStorage.getItem('kepler_mission_route_name') || sessionStorage.getItem('kepler_clima')?.location_name || '';
+
+                    if (action === 'sentinel') {
+                        // Toggle sentinel from hub
+                        const isActive = this.sentinel.isEnabled;
+                        this.sentinel.setEnabled(!isActive);
+                        this.dataController.setAutoSaveEnabled(!isActive);
+                        const hubBtn = document.getElementById('btn-sentinel-hub');
+                        if (hubBtn) hubBtn.classList.toggle('active', !isActive);
+                        // Keep hub open to show state
+                        return;
+                    }
+
                     if (action === 'marker') {
                         this.pendingSnapshot = this.arEngine.captureFrame();
                         markModal.style.display = 'flex';
-                        document.getElementById('inp-mark-title').value = '';
+                        // Auto-fill from YOLO target
+                        document.getElementById('inp-mark-title').value = target ? target.class.toUpperCase() : `Punto ${timeLabel}`;
+                        document.getElementById('inp-mark-desc').value = target ? `Deteccion automatica — ${(target.score * 100).toFixed(0)}% confianza` : '';
                     } else if (action === 'poi') {
                         poiModal.style.display = 'flex';
                         this._loadPOICategoriesUI();
+                        // Auto-fill POI fields
+                        document.getElementById('inp-poi-nombre').value = target ? target.class.toUpperCase() : '';
+                        document.getElementById('inp-poi-zona').value = missionZona;
                     } else if (action === 'persona') {
                         personaModal.style.display = 'flex';
+                        // Auto-fill persona
+                        document.getElementById('inp-persona-nombre').value = `Persona ${timeLabel}`;
                     } else if (action === 'ruta') {
                         rutaModal.style.display = 'flex';
+                        // Auto-fill ruta
+                        document.getElementById('inp-ruta-nombre').value = `Ruta ${missionZona || 'Exploración'} ${timeLabel}`;
                     }
                 });
             });

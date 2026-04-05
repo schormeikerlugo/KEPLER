@@ -29,6 +29,10 @@
             <!-- Main Content Panel -->
             <main class="content-panel">
                 <div class="content-header">
+                    <button class="mobile-back-missions" id="btn-back-missions" style="display:none;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+                        Misiones
+                    </button>
                     <h2 class="content-title" id="current-mission-title">Selecciona una Misión</h2>
                     <div class="action-buttons">
                         <button class="btn-action finish" id="btn-finish-mission" style="display:none;">Finalizar</button>
@@ -69,6 +73,11 @@
 
                 <!-- Tab: Personas -->
                 <div class="tab-panel" id="panel-personas">
+                    <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+                        <button class="btn-action finish" id="btn-open-comparator" style="font-size:0.78rem; padding:6px 14px;">
+                            🔍 Comparador
+                        </button>
+                    </div>
                     <div class="personas-grid" id="personas-grid">
                         <div class="empty-state">
                             <div class="empty-state-icon">👤</div>
@@ -156,6 +165,70 @@
                 <div class="modal-actions">
                     <button class="btn-modal delete" id="btn-delete-obj">Eliminar</button>
                     <button class="btn-modal save" id="btn-save-obj">Guardar Cambios</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Persona Identity Modal -->
+    <div class="modal-overlay" id="persona-identity-modal" style="display:none;">
+        <button class="close-modal" id="btn-close-persona-modal">&times;</button>
+        <div class="modal-body" style="grid-template-columns: 280px 1fr;">
+            <div class="modal-img-container">
+                <img src="" alt="Persona" class="modal-img" id="persona-modal-img">
+                <div class="persona-similar-matches" id="persona-similar-matches">
+                    <span class="matches-title">Coincidencias visuales</span>
+                    <div class="matches-list" id="persona-matches-list"></div>
+                </div>
+            </div>
+            <div class="modal-form" id="persona-identity-form">
+                <h3 class="modal-title">Identidad de Persona</h3>
+
+                <div class="form-group">
+                    <label>Nombre / Identidad</label>
+                    <input type="text" class="form-input" id="inp-persona-id-nombre" placeholder="Nombre real o identificador...">
+                </div>
+
+                <div class="form-group">
+                    <label>Alias</label>
+                    <input type="text" class="form-input" id="inp-persona-id-alias" placeholder="Apodo o referencia...">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Contexto</label>
+                        <select class="form-select" id="select-persona-id-contexto">
+                            <option value="desconocido">Desconocido</option>
+                            <option value="civil">Civil</option>
+                            <option value="autoridad">Autoridad</option>
+                            <option value="contacto">Contacto</option>
+                            <option value="amenaza">Amenaza</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Hostilidad</label>
+                        <select class="form-select" id="select-persona-id-hostilidad">
+                            <option value="desconocido">Desconocido</option>
+                            <option value="aliado">Aliado</option>
+                            <option value="neutral">Neutral</option>
+                            <option value="hostil">Hostil</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Rasgos Fisicos</label>
+                    <textarea class="form-textarea" id="inp-persona-id-rasgos" placeholder="Cabello, altura, vestimenta, marcas..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Notas</label>
+                    <textarea class="form-textarea" id="inp-persona-id-notas" placeholder="Observaciones..."></textarea>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn-modal delete" id="btn-delete-persona">Eliminar</button>
+                    <button class="btn-modal save" id="btn-save-persona">Guardar Identidad</button>
                 </div>
             </div>
         </div>

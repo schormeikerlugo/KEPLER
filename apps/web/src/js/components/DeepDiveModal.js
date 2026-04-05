@@ -92,7 +92,55 @@ class DeepDiveModal {
             return;
         }
 
-        // Show skeleton, hide footer
+        // If notification has error logs, show them immediately (no AI needed)
+        const ctx = notification.context || {};
+        const hasErrorLogs = ctx.errorLogs?.length > 0;
+
+        if (hasErrorLogs) {
+            const logLines = ctx.errorLogs.map(line => {
+                if (/error|failed|exception/i.test(line)) return `<span class="log-error">${line}</span>`;
+                if (/warning|timeout/i.test(line)) return `<span class="log-warn">${line}</span>`;
+                return `<span class="log-info">${line}</span>`;
+            }).join('\n');
+
+            body.innerHTML = `
+                <div class="deep-dive-section cause">
+                    <div class="deep-dive-section-title">Log del Backend</div>
+                    <pre class="deep-dive-terminal">${logLines}</pre>
+                </div>
+                <div class="deep-dive-section info">
+                    <div class="deep-dive-section-title">Datos del Batch</div>
+                    <div class="deep-dive-section-body">
+                        <strong>Procesadas:</strong> ${ctx.processed ?? 0}<br>
+                        <strong>Errores:</strong> ${ctx.failed ?? 0}<br>
+                        <strong>En cola:</strong> ${ctx.remaining ?? 0}<br>
+                        <strong>Re-IDs:</strong> ${ctx.reIds ?? 0}
+                    </div>
+                </div>
+                <div class="deep-dive-loading-text">Consultando a Mistral para diagnostico...</div>
+            `;
+            footer.style.display = 'flex';
+
+            // Still ask AI for diagnosis in background
+            try {
+                const prompt = this.buildPrompt(notification);
+                const result = await api.analyze(prompt.message, prompt.context);
+                if (result?.response) {
+                    this.cache.set(notification.id, result.response);
+                    // Prepend the terminal log, then AI analysis
+                    body.innerHTML = `
+                        <div class="deep-dive-section cause">
+                            <div class="deep-dive-section-title">Log del Backend</div>
+                            <pre class="deep-dive-terminal">${logLines}</pre>
+                        </div>
+                        ${this.renderAnalysis(result.response)}
+                    `;
+                }
+            } catch (_) { /* AI optional for error display */ }
+            return;
+        }
+
+        // Normal flow: skeleton → AI analysis
         body.innerHTML = `
             <div class="deep-dive-skeleton">
                 <div class="skeleton-block"></div>
@@ -103,7 +151,6 @@ class DeepDiveModal {
         `;
         footer.style.display = 'none';
 
-        // Call AI (direct Ollama, no LangChain agent)
         try {
             const prompt = this.buildPrompt(notification);
             const result = await api.analyze(prompt.message, prompt.context);
@@ -140,6 +187,7 @@ class DeepDiveModal {
         if (/ruta.*cargada|edici[oó]n/i.test(msg)) return 'route_loaded';
         if (/guardado localmente|pendiente.*sincronizaci/i.test(msg)) return 'object_queued';
         if (/registrado correctamente|objeto.*registrado/i.test(msg)) return 'object_created';
+        if (/captura.*procesada|en cola/i.test(msg)) return 'capture_queue';
         if (/sincronizando|sincronizaci[oó]n/i.test(msg)) return 'sync_progress';
         if (/sin conexi[oó]n|offline|📴/i.test(msg)) return 'offline';
         if (/conexi[oó]n restaurada|online|📶/i.test(msg)) return 'online';
@@ -170,6 +218,7 @@ class DeepDiveModal {
         else if (source === 'routes' && ctx.action === 'delete') category = 'route_deleted';
         else if (source === 'routes' && ctx.action === 'load') category = 'route_loaded';
         else if (source === 'routes') category = 'route_error';
+        else if (source === 'capture_queue') category = 'capture_queue';
         else if (source === 'sync' && ctx.action === 'create') category = 'object_created';
         else if (source === 'sync' && ctx.action === 'queued') category = 'object_queued';
         else if (source === 'sync' && ctx.action === 'sync_result') category = 'sync_result';
@@ -356,6 +405,55 @@ MENSAJE: "${msg}"
 HORA: ${timeStr}`;
             },
 
+            capture_queue: () => {
+                const errorLogs = ctx.errorLogs?.length ? ctx.errorLogs.join('\n') : '';
+                if (errorLogs || ctx.failed > 0) {
+                    return `Hubo errores al procesar capturas. Genera un DIAGNOSTICO TECNICO:
+
+## Estado del Procesamiento
+- Procesadas exitosamente: ${ctx.processed ?? 0}
+- Con error: ${ctx.failed ?? 0}
+- Pendientes: ${ctx.remaining ?? 0}
+
+## Log de Errores
+\`\`\`
+${errorLogs || 'Sin detalles de error disponibles'}
+\`\`\`
+
+## Diagnostico
+Analiza cada error del log. Posibles causas:
+- "DB not available": Supabase no esta corriendo o las credenciales son invalidas
+- "Embedding error": El modelo CLIP no cargo (verificar GPU/CUDA)
+- "HTTP 422": Datos invalidos en el request (campo faltante o tipo incorrecto)
+- "HTTP 500": Error interno del backend (revisar logs de uvicorn)
+- "network": El backend no esta accesible (verificar que el servidor esta corriendo)
+
+## Como Resolverlo
+Lista pasos concretos para cada error encontrado.
+
+MENSAJE: "${msg}"
+HORA: ${timeStr}`;
+                }
+
+                return `Se procesaron capturas de la cola. Genera un REPORTE DE PROCESAMIENTO:
+
+## Capturas Procesadas
+Resume cuantas capturas se procesaron exitosamente del total en cola.
+
+## Re-Identificaciones
+Si alguna captura coincidio con un registro existente (Re-ID), detalla que entidades fueron reconocidas.
+
+## Estado de la Cola
+${ctx.remaining ? `Quedan ${ctx.remaining} capturas pendientes.` : 'Cola vacia. Todas las capturas procesadas.'}
+
+DATOS:
+- Procesadas: ${ctx.processed ?? '?'}
+- Errores: ${ctx.failed ?? 0}
+- Pendientes: ${ctx.remaining ?? 0}
+- Hora: ${timeStr}
+- Mensaje: "${msg}"`;
+            },
+
             sync_result: () => {
                 const failedItems = ctx.failedItems?.join(', ') || '';
                 return `Ciclo de sincronizacion completado. Genera un REPORTE:
@@ -527,6 +625,20 @@ NOTIFICACION:
     }
 
     markdownToHtml(text) {
+        // Handle code blocks (terminal style)
+        text = text.replace(/```[\w]*\n?([\s\S]*?)```/g, (match, code) => {
+            const lines = code.trim().split('\n').map(line => {
+                // Color errors red, warnings yellow
+                if (/error|failed|exception|traceback/i.test(line)) {
+                    return `<span class="log-error">${line}</span>`;
+                } else if (/warning|warn|timeout|retry/i.test(line)) {
+                    return `<span class="log-warn">${line}</span>`;
+                }
+                return `<span class="log-info">${line}</span>`;
+            }).join('\n');
+            return `<pre class="deep-dive-terminal">${lines}</pre>`;
+        });
+
         // Handle markdown tables
         text = text.replace(/^\|(.+)\|\n\|[-| :]+\|\n((?:\|.+\|\n?)*)/gm, (match, header, body) => {
             const ths = header.split('|').map(h => h.trim()).filter(Boolean).map(h => `<th>${h}</th>`).join('');

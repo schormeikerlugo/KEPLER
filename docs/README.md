@@ -16,7 +16,10 @@
 
 | Documento | Descripción |
 |---|---|
-| [dashboard.md](frontend/dashboard.md) | Dashboard completo: header, módulos, tablas, sidebar, responsive |
+| [dashboard.md](frontend/dashboard.md) | Dashboard: SPA router, Quick Launch, modales unificados, notificaciones |
+| [ar.md](frontend/ar.md) | AR Explorer: YOLO + ByteTrack, Quick Capture, Sentinel, CaptureQueue, Re-ID CLIP |
+| [archives.md](frontend/archives.md) | Archivos: misiones, objetos, personas, comparador visual, responsive mobile |
+| [notifications.md](frontend/notifications.md) | Notificaciones: Deep-Dive IA, 18 prompts, terminal de logs, CaptureQueue |
 | [profile.md](frontend/profile.md) | Página de perfil, avatares, Mixed Content fix |
 | [session-guard.md](frontend/session-guard.md) | Auto-logout por inactividad (15 min) y cierre de app |
 | [auth-y-servicios.md](frontend/auth-y-servicios.md) | Auth, ProfileService, Header, geolocalización GPS/IP |

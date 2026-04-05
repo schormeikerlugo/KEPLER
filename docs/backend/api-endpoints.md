@@ -26,6 +26,7 @@ El Backend de KEPLER es un servicio construido en **Python** con **FastAPI**, di
 | `/api/taxonomia` | `taxonomia.py` | Clasificación y taxonomía de objetos |
 | `/api` | `inference.py` | Inferencia de modelos (YOLOv26, etc.) |
 | `/api/explorer` | `explorer_stats.py` | Algoritmo de Resistencia y Desgaste |
+| `/api/captures` | `captures.py` | Procesamiento batch de capturas (CLIP + Re-ID + insert) |
 | `/api/utils` | `utils.py` | Utilidades: proxy de tiles, avatar, PMTiles, geolocalización |
 | `/health` | `main.py` | Health check del backend (sin auth) |
 
@@ -67,6 +68,20 @@ El Backend de KEPLER es un servicio construido en **Python** con **FastAPI**, di
 - Body: `{ message: string, context: string }`.
 - Retorna: `{ response: string, success: boolean }`.
 - Usado por `DeepDiveModal.js` para generar análisis on-demand al clickear notificaciones.
+
+### Procesamiento de Capturas (`/api/captures`)
+- **POST** `/process` — Procesar una captura individual (CLIP embedding → Re-ID → insert).
+- **POST** `/batch` — Procesar batch de capturas en una sola request (hasta 5).
+- Pipeline: imagen → CLIP ViT-B/32 (50ms GPU) → pgvector cosine similarity → Supabase insert.
+- Re-ID automático: si match > 78%, etiqueta con nombre existente.
+- Usado por `CaptureQueue.js` desde el frontend (cada 800ms).
+- Tablas destino: `personas_encontradas`, `puntos_interes`, `objetos_exploracion` (según `type`).
+
+### WebSocket YOLO + ByteTrack (`/api/ws/detect`)
+- **WebSocket** — Streaming de frames para detección en tiempo real.
+- Usa `model.track(persist=True)` para asignar `track_id` persistente entre frames (ByteTrack).
+- Cada predicción incluye: `{ class, score, bbox, track_id }`.
+- Input: JPEG base64 640x640. Output: JSON con predicciones.
 
 ### Misiones (`/api/missions`)
 - **POST** `/start` — Inicia misión. Acepta `ruta_planificada_id` opcional para vincular ruta planificada.

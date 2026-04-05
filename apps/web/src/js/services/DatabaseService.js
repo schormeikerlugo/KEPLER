@@ -11,10 +11,26 @@ export class DatabaseService {
     async startMission(title = "Nueva Misión", location = "Desconocido", descripcionIA = null, opts = {}) {
         try {
             // Use API to Start Mission on Backend
+            // Auto-fill clima from cached weather data
+            let clima = {};
+            try {
+                const cachedWeather = sessionStorage.getItem('kepler_weather');
+                if (cachedWeather) {
+                    const w = JSON.parse(cachedWeather);
+                    clima = {
+                        temperatura_c: w.temperatura_c,
+                        lluvia_mm: w.lluvia_mm,
+                        viento_kmh: w.viento_kmh,
+                        categoria: sessionStorage.getItem('kepler_clima') || 'desconocido',
+                        location_name: w.location_name
+                    };
+                }
+            } catch (_) { /* use empty */ }
+
             const res = await api.startMission({
                 titulo: title,
                 zona: location,
-                clima: {},
+                clima,
                 descripcion_ia: descripcionIA,
                 tipo_terreno: opts.tipo_terreno || null,
                 objetivo: opts.objetivo || null,

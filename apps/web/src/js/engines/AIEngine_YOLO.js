@@ -15,12 +15,21 @@ export class AIEngine {
 
         // Config - Optimized for WebSocket streaming
         this.inputSize = 640;
-        this.inferenceInterval = 100; // ~10 FPS Target 
+        this.inferenceInterval = 333; // Start in explore mode (~3 FPS)
         this.lastInferenceTime = 0;
 
-        // WebSocket Connection
+        // Dynamic FPS modes
+        this.FPS_MODES = {
+            explore: 333,   // ~3 FPS — walking, low battery usage
+            focus: 100,     // ~10 FPS — target lock, active scanning
+            rest: 0         // Paused — HUD hidden, no detection
+        };
+        this.currentFPSMode = 'explore';
+
+        // WebSocket Connection — auto-detect protocol and host
         this.ws = null;
-        this.backendUrl = 'ws://localhost:8000/api/ws/detect';
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        this.backendUrl = `${wsProtocol}//${window.location.host}/api/ws/detect`;
 
         // Offscreen canvas for extracting frames
         this.canvas = document.createElement('canvas');
@@ -92,6 +101,7 @@ export class AIEngine {
 
                     if (this.onDetectionUpdate) {
                         const target = this.findCentralTarget(this.predictions);
+                        this.currentTarget = target; // Store for quick capture access
                         this.onDetectionUpdate({ predictions: this.predictions, target });
                     }
                 } else {
@@ -180,6 +190,24 @@ export class AIEngine {
 
     setPaused(bool) {
         this.isPaused = bool;
+    }
+
+    /**
+     * Set FPS mode dynamically to optimize resource usage.
+     * @param {'explore'|'focus'|'rest'} mode
+     */
+    setFPSMode(mode) {
+        if (!this.FPS_MODES[mode] && this.FPS_MODES[mode] !== 0) return;
+        this.currentFPSMode = mode;
+        this.inferenceInterval = this.FPS_MODES[mode];
+
+        if (mode === 'rest') {
+            this.isPaused = true;
+        } else if (this.isPaused && mode !== 'rest') {
+            this.isPaused = false;
+        }
+
+        console.log(`[AI] FPS mode: ${mode} (${this.inferenceInterval}ms interval)`);
     }
 
     stop() {

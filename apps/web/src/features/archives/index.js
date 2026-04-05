@@ -15,6 +15,7 @@ import { PersonasGrid } from './modules/personas-grid.js';
 import { RutasGrid } from './modules/rutas-grid.js';
 import { TelemetryPanel } from './modules/telemetry-panel.js';
 import { ModalSystem } from '../../js/components/ModalSystem.js';
+import { IdentityComparator } from './modules/identity-comparator.js';
 
 class ArchivesController {
     constructor(container) {
@@ -69,6 +70,7 @@ class ArchivesController {
         this.rutasGrid = new RutasGrid(this);
         this.telemetryPanel = new TelemetryPanel(this);
         this.modalSystem = new ModalSystem();
+        this.identityComparator = new IdentityComparator(this);
 
         this.init();
     }
@@ -124,6 +126,15 @@ class ArchivesController {
     }
 
     bindEvents() {
+        // Mobile: back to missions list
+        const btnBackMissions = document.getElementById('btn-back-missions');
+        if (btnBackMissions) {
+            btnBackMissions.addEventListener('click', () => {
+                const main = document.querySelector('.archives-main');
+                if (main) main.classList.remove('show-content');
+            });
+        }
+
         // Modal close
         this.dom.btnCloseModal.addEventListener('click', () => this.objectModal.closeModal());
 
@@ -157,6 +168,11 @@ class ArchivesController {
 
         // Taxonomy filter events
         this.taxonomyFilters.bindFilterEvents();
+
+        // Identity Comparator
+        document.getElementById('btn-open-comparator')?.addEventListener('click', () => {
+            this.identityComparator.open();
+        });
     }
 
     bindTabs() {

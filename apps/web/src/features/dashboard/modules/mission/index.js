@@ -87,6 +87,14 @@ function setupRouteSelector() {
                 zoneInput.value = route.nombre || `Lat: ${first.lat?.toFixed(4)}, Lng: ${first.lng?.toFixed(4)}`;
             }
         }
+
+        // Auto-generate objective from route data
+        const objetivoInput = document.getElementById('inp-mission-objetivo');
+        if (objetivoInput && !objetivoInput.value) {
+            const dist = route.distancia_total ? `${(route.distancia_total / 1000).toFixed(1)} km` : '';
+            const terrain = route.tipo_terreno || '';
+            objetivoInput.value = `Exploración de "${route.nombre}"${terrain ? ` — ${terrain}` : ''}${dist ? ` · ${dist}` : ''}`;
+        }
     });
 }
 
@@ -105,17 +113,8 @@ export function initMission() {
         if (!missionModal) return;
         missionModal.style.display = 'flex';
 
-        // Load routes into selector each time modal opens (fresh data)
+        // Load routes into selector (parallel, non-blocking)
         loadRoutesIntoSelector();
-
-        // Restore Saved Selections
-        // AI Mode is implicitly 'local'
-        const savedModelVersion = localStorage.getItem('kepler_ai_model_version') || 'auto';
-
-        const modelVerSelect = document.getElementById('select-ai-model-version');
-
-        if (modelVerSelect) modelVerSelect.value = savedModelVersion;
-
 
         const titleInput = document.getElementById('inp-dash-mission-title');
         const zoneInput = document.getElementById('inp-dash-mission-zone');
@@ -124,103 +123,168 @@ export function initMission() {
         const loadingText = document.getElementById('mission-loading-text');
         const helper = document.getElementById('zone-description-helper');
         const confirmBtn = document.getElementById('btn-confirm-start-mission');
-
-        // Show loading bar
-        if (loadingBar) loadingBar.style.display = 'block';
-        if (loadingProgress) loadingProgress.style.width = '10%';
-        if (loadingText) loadingText.textContent = '⏳ Preparando misión...';
+        const terrenoSelect = document.getElementById('select-mission-terreno');
+        const dificultadSelect = document.getElementById('select-mission-dificultad');
+        const objetivoInput = document.getElementById('inp-mission-objetivo');
 
         // 1. Auto-generate mission name
         const now = new Date();
         const missionName = `MISION-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
         if (titleInput) titleInput.value = missionName;
 
-        // Logic pipeline
-        const pipeline = async () => {
-            try {
-                // Check Secure Context for GPS
-                if (!window.isSecureContext && window.location.hostname !== 'localhost') {
-                    throw new Error('GPS requires HTTPS');
-                }
+        // Show loading bar
+        if (loadingBar) loadingBar.style.display = 'block';
+        if (loadingProgress) loadingProgress.style.width = '10%';
+        if (loadingText) loadingText.textContent = '⏳ Preparando misión...';
 
-                if (loadingProgress) loadingProgress.style.width = '30%';
+        // ═══ QUICK LAUNCH PIPELINE ═══
+        // Strategy: use cached coords immediately, GPS refines in background, enable button ASAP
+
+        const pipeline = async () => {
+            let latitude = null, longitude = null;
+
+            // Phase 1: Get coords (cached → instant, GPS → background)
+            const cachedLat = sessionStorage.getItem('kepler_lat');
+            const cachedLng = sessionStorage.getItem('kepler_lng');
+
+            if (cachedLat && cachedLng) {
+                latitude = parseFloat(cachedLat);
+                longitude = parseFloat(cachedLng);
+                console.log(`[Mission] Using cached coords: ${latitude}, ${longitude}`);
+                if (loadingProgress) loadingProgress.style.width = '40%';
+                if (loadingText) loadingText.textContent = '🤖 Analizando zona...';
+            }
+
+            // Start GPS in background (updates coords if available, doesn't block)
+            const gpsPromise = new Promise((resolve) => {
+                if (!navigator.geolocation || (!window.isSecureContext && window.location.hostname !== 'localhost')) {
+                    resolve(null);
+                    return;
+                }
+                const timeout = setTimeout(() => resolve(null), 10000);
+                navigator.geolocation.getCurrentPosition(
+                    (p) => { clearTimeout(timeout); resolve(p.coords); },
+                    () => { clearTimeout(timeout); resolve(null); },
+                    { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
+                );
+            });
+
+            // If no cached coords, wait for GPS
+            if (!latitude || !longitude) {
+                if (loadingProgress) loadingProgress.style.width = '20%';
                 if (loadingText) loadingText.textContent = '📍 Detectando ubicación GPS...';
 
-                // 2. Get GPS location (Increased Timeout: 15s for mobile compatibility)
-                const pos = await new Promise((resolve, reject) => {
-                    const timeout = setTimeout(() => reject(new Error('GPS timeout')), 15000);
-                    if (!navigator.geolocation) return reject(new Error('No Geolocation support'));
-
-                    navigator.geolocation.getCurrentPosition(
-                        (p) => { clearTimeout(timeout); resolve(p); },
-                        (e) => { clearTimeout(timeout); reject(e); },
-                        { enableHighAccuracy: false, timeout: 12000, maximumAge: 60000 } // Low accuracy for speed
-                    );
-                });
-
-                const { latitude, longitude } = pos.coords;
-                console.log(`[Mission] GPS: ${latitude}, ${longitude}`);
-
-                if (loadingProgress) loadingProgress.style.width = '60%';
-                if (loadingText) loadingText.textContent = '🤖 Generando descripción...';
-
-                // 3. Call backend (Timeout: 8s)
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 8000);
-
-                const response = await fetch('/api/missions/describe-zone', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ latitude, longitude }),
-                    signal: controller.signal
-                });
-                clearTimeout(timeoutId);
-
-                const data = await response.json();
-
-                if (data.success) {
-                    if (zoneInput) zoneInput.value = data.location_name;
-                    if (helper) {
-                        helper.textContent = `📍 ${data.description}`;
-                        helper.style.display = 'block';
-                    }
-                } else {
-                    if (zoneInput) zoneInput.value = `Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(4)}`;
+                const gpsCoords = await gpsPromise;
+                if (gpsCoords) {
+                    latitude = gpsCoords.latitude;
+                    longitude = gpsCoords.longitude;
+                    sessionStorage.setItem('kepler_lat', latitude);
+                    sessionStorage.setItem('kepler_lng', longitude);
                 }
+            }
 
-            } catch (err) {
-                console.warn('[Mission] Setup warning:', err.message);
-                if (zoneInput && !zoneInput.value) zoneInput.value = 'Ubicación Desconocida (Manual)';
-
-                if (helper) {
-                    let msg = '⚠️ Misión manual activa.';
-                    if (err.message.includes('GPS requires HTTPS')) msg = '⚠️ GPS requiere HTTPS. Usando modo manual.';
-                    else if (err.message.includes('GPS timeout')) msg = '⚠️ GPS tardó demasiado. Usando modo manual.';
-                    else if (err.message.includes('NetworkError')) msg = '⚠️ Sin conexión a servidor IA. Usando modo manual.';
-                    else if (err.name === 'AbortError') msg = '⚠️ IA tardó demasiado. Usando modo manual.';
-
-                    helper.textContent = msg;
-                    helper.style.display = 'block';
-                    helper.style.color = '#ffaa00';
-                }
-            } finally {
-                // 4. ALWAYS Enable DESPEGAR button
-                if (loadingProgress) loadingProgress.style.width = '100%';
-                if (loadingText) loadingText.textContent = '✅ Listo para despegar';
-
+            // Phase 2: Enable DESPEGAR immediately if we have coords
+            if (latitude && longitude) {
+                // Enable button early — user can launch while IA works in background
                 if (confirmBtn) {
                     confirmBtn.disabled = false;
                     confirmBtn.classList.add('ready');
                     confirmBtn.textContent = 'DESPEGAR 🚀';
                 }
-
-                setTimeout(() => {
-                    if (loadingBar) loadingBar.style.display = 'none';
-                }, 1000);
+                if (zoneInput && !zoneInput.value) {
+                    zoneInput.value = `Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(4)}`;
+                }
             }
+
+            // Phase 3: Call describe-zone for auto-fill (non-blocking)
+            if (latitude && longitude) {
+                if (loadingProgress) loadingProgress.style.width = '60%';
+                if (loadingText) loadingText.textContent = '🤖 Analizando zona...';
+
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+                    const response = await fetch('/api/missions/describe-zone', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ latitude, longitude }),
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
+                    const data = await response.json();
+
+                    if (data.success) {
+                        // Auto-fill zona
+                        if (zoneInput) zoneInput.value = data.location_name;
+                        zoneInput.dataset.gpsSet = 'true';
+
+                        // Auto-fill description
+                        if (helper) {
+                            helper.textContent = `📍 ${data.description}`;
+                            helper.style.display = 'block';
+                            helper.style.color = '';
+                        }
+
+                        // Auto-fill terreno (if user hasn't changed it and no route selected)
+                        const routeSelect = document.getElementById('select-mission-route');
+                        if (data.terrain_type && terrenoSelect && !routeSelect?.value) {
+                            const match = [...terrenoSelect.options].find(o => o.value === data.terrain_type);
+                            if (match) terrenoSelect.value = data.terrain_type;
+                        }
+
+                        // Auto-fill dificultad
+                        if (data.difficulty && dificultadSelect) {
+                            const match = [...dificultadSelect.options].find(o => o.value === data.difficulty);
+                            if (match) dificultadSelect.value = data.difficulty;
+                        }
+                    }
+                } catch (err) {
+                    console.warn('[Mission] describe-zone failed:', err.message);
+                    if (helper) {
+                        helper.textContent = '⚠️ IA no disponible. Campos editables manualmente.';
+                        helper.style.display = 'block';
+                        helper.style.color = '#ffaa00';
+                    }
+                }
+            } else {
+                // No coords at all — manual mode
+                if (zoneInput && !zoneInput.value) zoneInput.value = 'Ubicación Desconocida (Manual)';
+                if (helper) {
+                    helper.textContent = '⚠️ GPS no disponible. Misión en modo manual.';
+                    helper.style.display = 'block';
+                    helper.style.color = '#ffaa00';
+                }
+            }
+
+            // Phase 4: Update GPS coords in background if fresh ones arrived
+            if (!cachedLat) {
+                // We already waited for GPS above
+            } else {
+                // We used cache — check if GPS gives fresher coords
+                gpsPromise.then(gpsCoords => {
+                    if (gpsCoords) {
+                        sessionStorage.setItem('kepler_lat', gpsCoords.latitude);
+                        sessionStorage.setItem('kepler_lng', gpsCoords.longitude);
+                    }
+                });
+            }
+
+            // Phase 5: Finalize UI
+            if (loadingProgress) loadingProgress.style.width = '100%';
+            if (loadingText) loadingText.textContent = '✅ Listo para despegar';
+
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.classList.add('ready');
+                confirmBtn.textContent = 'DESPEGAR 🚀';
+            }
+
+            setTimeout(() => {
+                if (loadingBar) loadingBar.style.display = 'none';
+            }, 800);
         };
 
-        // Run pipeline but don't block UI indefinitely
         pipeline();
     };
 

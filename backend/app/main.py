@@ -43,6 +43,10 @@ app.include_router(explorer_stats.router, prefix="/api/explorer", tags=["explore
 app.include_router(ai_report.router, prefix="/api/ai", tags=["ai-report"])
 app.include_router(routes.router, prefix="/api/routes", tags=["routes"])
 
+# Capture processing (heavy work: CLIP + enrichment + insert)
+from app.api.endpoints import captures
+app.include_router(captures.router, prefix="/api/captures", tags=["captures"])
+
 # Utility/Proxy routes (no auth required for tiles)
 from app.api.endpoints import utils
 app.include_router(utils.router, prefix="/api/utils", tags=["utils"])

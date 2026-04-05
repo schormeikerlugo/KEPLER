@@ -42,30 +42,47 @@ async def describe_zone(req: ZoneDescribeRequest):
         full_location = f"{location_name}, {country}" if country else location_name
 
         description = "Zona de exploración activa."
+        terrain_type = "urbano"
+        difficulty = "moderada"
+
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
                 ollama_url = "http://localhost:11434/api/generate"
-                prompt = f"""Eres el asistente de un explorador de campo. Genera una descripción útil para exploración de esta ubicación:
+                prompt = f"""Eres el asistente de un explorador de campo. Analiza esta ubicación y responde en EXACTAMENTE este formato (sin cambiar las etiquetas):
+
+DESCRIPCION: [2-3 oraciones sobre clima, terreno y fauna/flora típica de {full_location}. Español, tono profesional.]
+TERRENO: [una sola palabra de esta lista: urbano, montaña, bosque, costero, desierto, subterraneo, rural, fluvial]
+DIFICULTAD: [una sola palabra de esta lista: facil, moderada, dificil, extrema]
 
 Ubicación: {full_location}
-
-Escribe 2-3 oraciones naturales incluyendo:
-- Tipo de clima (cálido, húmedo, seco, templado, etc.)
-- Tipo de terreno o suelo probable
-- Fauna o flora típica de esta región que el explorador podría encontrar
-
-Usa SOLO la ubicación proporcionada. Sé específico para {full_location}. Escribe en español, tono profesional de expedición.
-
-Respuesta (solo la descripción):"""
+Respuesta:"""
                 ollama_response = await client.post(ollama_url, json={
                     "model": "mistral:7b",
                     "prompt": prompt,
                     "stream": False,
-                    "options": {"temperature": 0.6}
+                    "options": {"temperature": 0.5}
                 })
                 if ollama_response.status_code == 200:
-                    ollama_data = ollama_response.json()
-                    description = ollama_data.get("response", description).strip()
+                    raw = ollama_response.json().get("response", "").strip()
+
+                    # Parse structured response
+                    for line in raw.split('\n'):
+                        line = line.strip()
+                        if line.upper().startswith('DESCRIPCION:'):
+                            description = line.split(':', 1)[1].strip()
+                        elif line.upper().startswith('TERRENO:'):
+                            val = line.split(':', 1)[1].strip().lower().replace('ñ', 'ñ')
+                            valid = ['urbano', 'montaña', 'bosque', 'costero', 'desierto', 'subterraneo', 'rural', 'fluvial']
+                            terrain_type = val if val in valid else 'urbano'
+                        elif line.upper().startswith('DIFICULTAD:'):
+                            val = line.split(':', 1)[1].strip().lower()
+                            valid = ['facil', 'moderada', 'dificil', 'extrema']
+                            difficulty = val if val in valid else 'moderada'
+
+                    # Fallback: if parsing failed, use raw as description
+                    if description == "Zona de exploración activa." and len(raw) > 20:
+                        description = raw.split('\n')[0].strip()
+
         except Exception as e:
             print(f"[Ollama] Error: {e}")
             description = f"Zona de exploración en {full_location}. Condiciones desconocidas."
@@ -73,7 +90,10 @@ Respuesta (solo la descripción):"""
         return {
             "success": True,
             "location_name": full_location,
-            "description": description
+            "description": description,
+            "terrain_type": terrain_type,
+            "difficulty": difficulty,
+            "coords": {"lat": req.latitude, "lng": req.longitude}
         }
     except Exception as e:
         print(f"[describe-zone] Error: {e}")

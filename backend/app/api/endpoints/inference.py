@@ -108,6 +108,47 @@ def process_image_with_yolo(image: Image.Image, confidence: float = 0.25) -> Lis
             
     return predictions
 
+
+def process_image_with_tracking(image: Image.Image, confidence: float = 0.25) -> List[Dict[str, Any]]:
+    """Process image with YOLO tracking (ByteTrack) for persistent object IDs across frames"""
+    model = get_model()
+    if not model:
+        raise ValueError("YOLO model not loaded")
+
+    img_cv = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+
+    # Use track() instead of predict() — persists IDs across frames
+    results = model.track(img_cv, conf=confidence, verbose=False, persist=True)
+
+    predictions = []
+    for r in results:
+        boxes = r.boxes
+        for box in boxes:
+            x1, y1, x2, y2 = box.xyxy[0].tolist()
+            conf = float(box.conf[0])
+            cls_id = int(box.cls[0])
+            cls_name = model.names[cls_id]
+
+            w = x2 - x1
+            h = y2 - y1
+            x = x1
+            y = y1
+
+            pred = {
+                "class": cls_name,
+                "score": round(conf, 3),
+                "bbox": [round(x, 2), round(y, 2), round(w, 2), round(h, 2)]
+            }
+
+            # ByteTrack assigns persistent track IDs
+            if box.id is not None:
+                pred["track_id"] = int(box.id[0])
+
+            predictions.append(pred)
+
+    return predictions
+
+
 @router.websocket("/ws/detect")
 async def websocket_detect(websocket: WebSocket):
     """
@@ -135,8 +176,8 @@ async def websocket_detect(websocket: WebSocket):
                 image_bytes = base64.b64decode(data)
                 image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
                 
-                # Perform detection (fast native execution)
-                predictions = process_image_with_yolo(image, confidence=0.25)
+                # Perform detection with tracking (ByteTrack for persistent IDs)
+                predictions = process_image_with_tracking(image, confidence=0.25)
                 
                 # Send results back
                 await websocket.send_json({

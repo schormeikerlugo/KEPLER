@@ -286,6 +286,14 @@ async function fetchExplorerStats() {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
 
+        // Cache weather data for mission auto-fill
+        if (data.weather) {
+            sessionStorage.setItem('kepler_weather', JSON.stringify(data.weather));
+        }
+        if (data.clima_actual) {
+            sessionStorage.setItem('kepler_clima', data.clima_actual);
+        }
+
         return data;
     } catch (e) {
         console.error('[Sidebar] Explorer stats fetch error:', e);

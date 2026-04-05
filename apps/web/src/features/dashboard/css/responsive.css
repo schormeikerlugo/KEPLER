@@ -50,9 +50,46 @@
         min-height: 100vh;
     }
 
-    .cards-row {
-        grid-template-columns: 1fr;
+    /* Fix 1: Header — logo left, hamburger right */
+    .dash-header-left {
+        flex: 1;
+        justify-content: space-between;
     }
+
+    /* Fix 3: Cards rows — full width, one per row */
+    .cards-row {
+        grid-template-columns: 1fr !important;
+    }
+
+    #row-misiones {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Fix 2 + 4: Reorder content in mobile single column */
+    /* dash-body becomes single column at 1100px, here we reorder children */
+    .dash-content {
+        display: contents; /* Flatten so children participate in parent grid order */
+    }
+
+    .dash-sidebar {
+        display: contents; /* Flatten sidebar too */
+    }
+
+    .dash-body {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .telemetry-section { order: 1; }
+    .sidebar-tips { order: 2; }
+    .alerts-section { order: 3; }
+    .sidebar-profile { order: 4; }
+    #row-misiones { order: 5; }
+    .card-objetos { order: 6; }
+    .cards-row:not(#row-misiones) { order: 7; }
+    .sidebar-news { order: 8; }
+    .sidebar-route-intelligence { order: 10; }
 
     .telemetry-bar {
         gap: 8px;

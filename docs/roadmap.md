@@ -24,17 +24,32 @@ La topología ideal requiere dos roles:
 *   **Viabilidad [ALTA]:** React Native soporta componentes C++ de alta respuesta a través de JSI (JavaScript Interface).
 
 #### Fase 2A — Web UX Unificada (COMPLETADA)
-*   **SPA Router:** Navegación sin recargas de página mediante `window.kepler.navigate()` con `pushState` + transiciones fade (150ms). Soporte para botones atrás/adelante e intercepción de `<a>` clicks.
-*   **Rutas SPA:** `/`, `/ar`, `/login`, `/taxonomia`, `/ia`, `/profile`, `/archives` — todas renderizan en `#app` sin recargar.
-*   **Archives integrado al SPA:** Refactorizado de página HTML standalone a módulo con `render(container)`.
-*   **Transiciones de sección:** Mapa Táctico usa fade + scale al alternar con el dashboard.
-*   **Selector de Ruta en Misión:** Al iniciar misión se puede seleccionar una ruta guardada. Auto-rellena terreno, zona y coords. Los waypoints se guardan en `localStorage` para AR.
-*   **Modales unificados:** Todos los modales usan las mismas animaciones `modal-enter`/`modal-exit` y backdrop consistente (`blur(8px) rgba(0,0,0,0.85)`).
-*   **Notificaciones refactorizadas:** Panel Bitácora con overlay full-height, backdrop blur, summary chips con contadores por tipo, cierre con Escape/click-outside.
-*   **Sistema de estado corregido:** Health check usa `/health` (sin auth), elimina falsos negativos en Backend/DB.
-*   **Proxy de geolocalización:** Endpoint `/api/utils/geolocate` evita CORS/rate-limit de ipapi.co. Cadena: GPS → cache → proxy backend.
+*   **SPA Router:** Navegación sin recargas via `window.kepler.navigate()` con transiciones fade (150ms).
+*   **Rutas SPA:** `/`, `/ar`, `/login`, `/taxonomia`, `/ia`, `/profile`, `/archives`.
+*   **Modales unificados:** Animaciones `modal-enter`/`modal-exit` y backdrop consistente.
+*   **Notificaciones con IA:** 18 prompts especializados, Deep-Dive Modal, terminal de logs, notificaciones silenciosas en AR.
+*   **Quick Launch de misiones:** Auto-fill de terreno/dificultad via Mistral, coords cacheadas, clima real, botón habilitado < 3s.
+*   **Sistema de estado corregido:** Health check via `/health`, proxy geolocalización `/api/utils/geolocate`.
 
-#### Fase 2B — Mobile Field Unit (Siguiente Paso)
+#### Fase 2C — AR Explorer Optimizado (COMPLETADA)
+*   **Quick Capture (⊕):** Captura instantánea 1-tap sin formularios. Enqueue a CaptureQueue (0ms latencia).
+*   **CaptureQueue:** Cola persistente en localStorage. Batch processing cada 800ms via `/api/captures/batch`. Sobrevive fin de misión.
+*   **Sentinel refactorizado:** Cooldown por individuo (track_id ByteTrack), captura todas las personas del frame simultáneamente, crop individual via bbox.
+*   **FPS dinámico:** Exploración 3FPS, Enfoque 10FPS (target lock), Reposo 0FPS (HUD oculto).
+*   **ByteTrack:** `model.track(persist=True)` asigna IDs persistentes entre frames.
+*   **Re-ID CLIP:** Verificación visual en Quick Capture y Sentinel para todas las entidades (persona/poi/generic).
+*   **HUD auto-hide:** Se oculta tras 10s, tap para mostrar. Botón ⊕ y counter siempre visibles.
+*   **UI compacta:** Botones solo-icono (48px), Sentinel en hub principal.
+*   **Imágenes en personas/POIs:** Sentinel guarda crop + embedding CLIP para cada entidad.
+*   **Comparador Visual:** Herramienta dedicada para vincular identidades lado a lado con fotos.
+*   **WebSocket móvil:** URL dinámica `wss://${host}` + Vite proxy con `ws:true`.
+
+#### Fase 2D — Archivos Responsive (COMPLETADA)
+*   **Mobile 3 pantallas:** Misiones → Contenido → Detalle (bottom-sheet).
+*   **Personas horizontal:** Cards en row con avatar 56px + info.
+*   **Modal de identidad:** Nombre, alias, contexto, hostilidad, rasgos físicos, coincidencias CLIP.
+
+#### Fase 2E — Mobile Field Unit (Siguiente Paso)
 *   **Plan de Acción (Roadmap Técnico):**
     1.  Abandonar Expo Go (ya que no soporta código nativo profundo sin compilar en la nube). Migrar el proyecto a **EAS (Expo Application Services)** para compilar binarios APK (Android) / IPA (iOS) reales.
     2.  Integrar `react-native-vision-camera`. Es la librería más potente del mercado moderno.
