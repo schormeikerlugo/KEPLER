@@ -2,15 +2,15 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Install dependencies first (caching)
-COPY package*.json ./
-RUN npm install
+# Copy lock file for deterministic installs
+COPY package.json package-lock.json ./
 
-# Copy source (though volume mount usually overrides this in dev)
+# Install all dependencies with exact versions
+RUN npm ci
+
+# Copy source
 COPY . .
 
-# Expose Vite port
 EXPOSE 5173
 
-# Start dev server
-CMD ["npm", "run", "dev", "--", "--host"]
+CMD ["npm", "run", "dev"]

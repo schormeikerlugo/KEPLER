@@ -1,0 +1,51 @@
+/**
+ * KEPLER Design System — Base
+ * Mobile-first resets, shared keyframes, scrollbar utilities.
+ * Scoped to k- prefix to avoid conflicts with existing CSS.
+ */
+
+/* ── Scoped Box-sizing ── */
+[class^="k-"],
+[class*=" k-"] {
+    box-sizing: border-box;
+}
+
+[class^="k-"] *,
+[class*=" k-"] * {
+    box-sizing: inherit;
+}
+
+/* ── Scrollbar Utilities (replaces 6 duplicate definitions) ── */
+.k-scroll-hide {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+.k-scroll-hide::-webkit-scrollbar { display: none; }
+
+.k-scroll-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(63, 168, 255, 0.2) transparent;
+}
+.k-scroll-thin::-webkit-scrollbar { width: 5px; }
+.k-scroll-thin::-webkit-scrollbar-thumb { background: rgba(63, 168, 255, 0.2); border-radius: 3px; }
+
+/* ── Shared Keyframes (replaces 3+ duplicate definitions) ── */
+@keyframes k-modal-enter {
+    from { opacity: 0; transform: translateY(16px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes k-modal-exit {
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to   { opacity: 0; transform: translateY(10px) scale(0.98); }
+}
+
+@keyframes k-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+@keyframes k-slide-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}

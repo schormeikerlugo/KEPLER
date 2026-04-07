@@ -23,6 +23,7 @@
 | [profile.md](frontend/profile.md) | Página de perfil, avatares, Mixed Content fix |
 | [session-guard.md](frontend/session-guard.md) | Auto-logout por inactividad (15 min) y cierre de app |
 | [auth-y-servicios.md](frontend/auth-y-servicios.md) | Auth, ProfileService, Header, geolocalización GPS/IP |
+| [design-system.md](frontend/design-system.md) | Design System: tokens, modal system, cards, forms, buttons, utilities |
 
 ## Base de Datos y Servicios
 
@@ -35,6 +36,7 @@
 | Documento | Descripción |
 |---|---|
 | [guia-inicio.md](guia-inicio.md) | Guía de inicio rápido del proyecto |
+| [deploy.md](deploy.md) | Deploy portable, Docker profiles, setup en PC nueva |
 | [realtime.md](realtime.md) | Sistema de notificaciones en tiempo real |
 | [loading-system.md](loading-system.md) | Sistema de carga, Model Preloader, caché |
 | [ia.md](ia.md) | Integración con IA (Ollama, LangChain, CLIP) |
@@ -56,3 +58,9 @@
 | [web/map.md](web/map.md) | Mapa en la app web |
 | [features/CHANGELOG_UNIFIED.md](features/CHANGELOG_UNIFIED.md) | Changelog unificado |
 | [features/SYNC_MATRIX.md](features/SYNC_MATRIX.md) | Matriz de sincronización |
+
+## Sesiones de Desarrollo (`docs/sessions/`)
+
+| Documento | Descripción |
+|---|---|
+| [2026-04-04-session.md](sessions/2026-04-04-session.md) | SPA Router, AR Quick Capture, CaptureQueue, ByteTrack, Notificaciones IA, Comparador Visual, Mobile responsive |

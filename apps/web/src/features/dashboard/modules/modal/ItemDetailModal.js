@@ -60,7 +60,7 @@ class ItemDetailModal {
         this.saveBtn.style.display = 'none';
         this.deleteBtn.style.display = 'none';
         
-        // Show modal immediately
+        // Show modal
         this.modal.style.display = 'flex';
 
         // Fetch Data

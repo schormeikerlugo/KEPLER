@@ -1,0 +1,72 @@
+/**
+ * KEPLER Design System — Extended Tokens
+ * Fills gaps in the original tokens.css without modifying it.
+ * Import AFTER tokens.css to extend the variable set.
+ */
+
+:root {
+    /* ── Breakpoints (documented, used in media queries) ── */
+    /* @media (min-width: 480px)  → sm  */
+    /* @media (min-width: 768px)  → md  */
+    /* @media (min-width: 1024px) → lg  */
+    /* @media (min-width: 1280px) → xl  */
+
+    /* ── Backdrop Blur Scale (replaces 11 hardcoded values) ── */
+    --blur-xs:  blur(4px);
+    --blur-sm:  blur(8px);
+    --blur-md:  blur(16px);
+    --blur-lg:  blur(24px);
+    --blur-xl:  blur(50px);
+
+    /* ── Overlay Backgrounds ── */
+    --overlay-light:  rgba(0, 0, 0, 0.5);
+    --overlay-medium: rgba(0, 0, 0, 0.7);
+    --overlay-heavy:  rgba(0, 0, 0, 0.85);
+
+    /* ── Border Colors (holographic + neutral) ── */
+    --border-holo:        rgba(63, 168, 255, 0.4);
+    --border-holo-strong: rgba(63, 168, 255, 0.8);
+    --border-holo-subtle: rgba(63, 168, 255, 0.15);
+    --border-subtle:      rgba(255, 255, 255, 0.06);
+    --border-muted:       rgba(255, 255, 255, 0.1);
+    --border-light:       rgba(255, 255, 255, 0.15);
+
+    /* ── Surface Colors (inputs, hovers, active states) ── */
+    --surface-base:   rgba(255, 255, 255, 0.02);
+    --surface-input:  rgba(255, 255, 255, 0.04);
+    --surface-hover:  rgba(255, 255, 255, 0.06);
+    --surface-active: rgba(63, 168, 255, 0.1);
+    --surface-card:   #111111;
+    --surface-modal:  rgba(8, 10, 16, 0.92);
+
+    /* ── Z-Index Scale (replaces 32 random values) ── */
+    --z-base:       1;
+    --z-raised:     10;
+    --z-sticky:     50;
+    --z-dropdown:   100;
+    --z-fixed:      200;
+    --z-overlay:    500;
+    --z-modal-bg:   1000;
+    --z-modal:      1100;
+    --z-popover:    1200;
+    --z-notification: 5000;
+    --z-toast:      10000;
+    --z-system:     20000;
+
+    /* ── Modal Tokens ── */
+    --modal-radius:         14px;
+    --modal-padding:        24px;
+    --modal-padding-mobile: 16px;
+    --modal-max-height:     88vh;
+    --modal-backdrop:       var(--overlay-heavy);
+    --modal-backdrop-blur:  var(--blur-sm);
+
+    /* ── Extra Radius ── */
+    --radius-2xl: 20px;
+
+    /* ── Semantic Action Colors ── */
+    --color-link:    rgba(63, 168, 255, 0.9);
+    --color-danger:  #ff4444;
+    --color-confirm: #00d4aa;
+    --color-warn:    #ffbb33;
+}

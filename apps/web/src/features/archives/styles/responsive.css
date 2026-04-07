@@ -136,42 +136,90 @@
         height: 48px;
     }
 
-    /* Modals — full screen on mobile */
+    /* ═══ Modals — centered, vertical flow ═══ */
     .modal-overlay {
-        align-items: flex-end !important;
+        padding: 16px;
+        box-sizing: border-box;
     }
 
     .modal-body {
-        grid-template-columns: 1fr !important;
-        max-height: 95vh;
-        max-width: 100%;
-        border-radius: 16px 16px 0 0;
+        display: flex;
+        flex-direction: column;
+        max-height: 88vh;
+        width: auto;
+        max-width: none;
+        border-radius: 14px;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
     }
 
-    .modal-img-container {
-        height: 180px;
-        margin: 14px;
-        flex-shrink: 0;
+    /* Close button stays top-right */
+    .close-modal {
+        top: 12px;
+        right: 14px;
     }
 
+    /* Image centered, good visible size */
+    .modal-img-container {
+        width: calc(100% - 24px);
+        height: 220px;
+        margin: 12px auto;
+        flex-shrink: 0;
+        order: 1;
+    }
+
+    .modal-img {
+        height: 100%;
+        width: 100%;
+        object-fit: cover;
+        border-radius: 10px;
+    }
+
+    /* Form below image */
     .modal-form {
         padding: 16px;
         overflow-y: visible;
+        order: 2;
+    }
+
+    .modal-title {
+        font-size: 1rem;
+    }
+
+    .form-input, .form-select, .form-textarea {
+        font-size: 0.85rem;
     }
 
     .form-row {
         grid-template-columns: 1fr;
     }
 
-    /* Persona identity modal — full mobile */
+    .modal-actions {
+        flex-direction: row;
+    }
+
+    .btn-modal {
+        padding: 10px 14px;
+        font-size: 0.8rem;
+    }
+
+    /* ── Persona identity modal ── */
     #persona-identity-modal .modal-body {
-        grid-template-columns: 1fr !important;
+        display: flex;
+        flex-direction: column;
     }
 
     #persona-identity-modal .modal-img-container {
-        height: 140px;
+        height: 200px;
+    }
+
+    #persona-identity-modal .persona-similar-matches {
+        max-height: 100px;
+        overflow-y: auto;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
     }
 
     body.modal-open {

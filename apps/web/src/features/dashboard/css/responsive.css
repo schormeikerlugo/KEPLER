@@ -1,6 +1,5 @@
 /**
  * Dashboard Responsive Styles
- * Breakpoints for the new 2-column layout
  */
 
 /* Large screens (narrow sidebar) */
@@ -42,82 +41,32 @@
     }
 }
 
-/* Mobile */
+/* ═══════════════════════════════════════
+   MOBILE (< 768px)
+   ═══════════════════════════════════════ */
 @media (max-width: 768px) {
+
+    /* ── Container — prevent horizontal overflow ── */
     .dashboard-container {
-        padding: 15px;
+        padding: 12px;
         height: auto;
         min-height: 100vh;
+        overflow-x: hidden;
+        max-width: 100vw;
     }
 
-    /* Fix 1: Header — logo left, hamburger right */
+    /* ── Header: logo left, hamburger right ── */
+    .dash-header {
+        padding: 12px 16px;
+        height: auto;
+        margin-bottom: 12px;
+    }
+
     .dash-header-left {
         flex: 1;
         justify-content: space-between;
     }
 
-    /* Fix 3: Cards rows — full width, one per row */
-    .cards-row {
-        grid-template-columns: 1fr !important;
-    }
-
-    #row-misiones {
-        grid-template-columns: 1fr !important;
-    }
-
-    /* Fix 2 + 4: Reorder content in mobile single column */
-    /* dash-body becomes single column at 1100px, here we reorder children */
-    .dash-content {
-        display: contents; /* Flatten so children participate in parent grid order */
-    }
-
-    .dash-sidebar {
-        display: contents; /* Flatten sidebar too */
-    }
-
-    .dash-body {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-    }
-
-    .telemetry-section { order: 1; }
-    .sidebar-tips { order: 2; }
-    .alerts-section { order: 3; }
-    .sidebar-profile { order: 4; }
-    #row-misiones { order: 5; }
-    .card-objetos { order: 6; }
-    .cards-row:not(#row-misiones) { order: 7; }
-    .sidebar-news { order: 8; }
-    .sidebar-route-intelligence { order: 10; }
-
-    .telemetry-bar {
-        gap: 8px;
-    }
-
-    .telem-indicator {
-        min-width: 60px;
-        padding: 12px 10px;
-    }
-
-    .telem-value {
-        font-size: 1.1rem;
-    }
-
-    .telem-label {
-        font-size: 0.6rem;
-    }
-
-    .dash-table {
-        font-size: 0.78rem;
-    }
-
-    .dash-table thead th,
-    .dash-table tbody td {
-        padding: 8px 6px;
-    }
-
-    /* Mobile header layout */
     .mobile-menu-toggle {
         display: flex;
     }
@@ -126,12 +75,184 @@
         display: none !important;
     }
 
-    /* Hide chat panel, show FAB */
+    /* ── Flatten layout for reordering ── */
+    .dash-body {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        max-width: 100%;
+        overflow: hidden;
+    }
+
+    .dash-content {
+        display: contents;
+    }
+
+    .dash-sidebar {
+        display: contents;
+    }
+
+    /* ── ORDER: Telemetry → Tips → Alerts → Profile → Data cards → News → Routes ── */
+    .telemetry-section       { order: 1; }
+    .sidebar-tips             { order: 2; }
+    .alerts-section           { order: 3; }
+    .sidebar-profile          { order: 4; }
+    #row-misiones             { order: 5; }
+    .card-objetos             { order: 6; }
+    .cards-row:not(#row-misiones) { order: 7; }
+    .sidebar-news             { order: 8; }
+    .sidebar-route-intelligence { order: 9; }
+
+    /* ── Cards: full width, tighter spacing ── */
+    .cards-row {
+        grid-template-columns: 1fr !important;
+        gap: 12px;
+    }
+
+    #row-misiones {
+        grid-template-columns: 1fr !important;
+    }
+
+    .dash-card {
+        padding: 16px;
+        border-radius: 12px;
+        overflow: hidden;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .card-header-row {
+        margin-bottom: 10px;
+    }
+
+    .card-title {
+        font-size: 1rem;
+    }
+
+    /* ── Sidebar cards: remove min-width, full width ── */
+    .sidebar-card {
+        min-width: 0 !important;
+        flex: none;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+
+    /* ── Telemetry: grid 4x2 for 8 indicators ── */
+    .telemetry-section {
+        max-width: 100%;
+        overflow: hidden;
+    }
+
+    .telemetry-bar {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+        max-width: 100%;
+    }
+
+    .telem-indicator {
+        min-width: 0;
+        padding: 10px 6px;
+        border-radius: 10px;
+    }
+
+    .telem-value {
+        font-size: 1rem;
+    }
+
+    .telem-label {
+        font-size: 0.55rem;
+        letter-spacing: 0.5px;
+    }
+
+    .section-title {
+        font-size: 1rem;
+        margin-bottom: 10px;
+    }
+
+    /* ── Tables: scroll inside card, no overflow outside ── */
+    .card-table-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .dash-table {
+        font-size: 0.75rem;
+        min-width: 420px;
+    }
+
+    .dash-table thead th {
+        padding: 6px 8px;
+        font-size: 0.68rem;
+    }
+
+    .dash-table tbody td {
+        padding: 8px;
+    }
+
+    /* ── Objetos layout ── */
+    .objetos-layout {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .objetos-chart-wrapper {
+        max-width: 100%;
+    }
+
+    /* ── Hide chat panel, show FAB ── */
     .dash-ai-chat {
         display: none;
     }
 
     .chat-fab {
         display: flex;
+    }
+}
+
+/* ═══════════════════════════════════════
+   SMALL PHONES (< 480px)
+   ═══════════════════════════════════════ */
+@media (max-width: 480px) {
+    .dashboard-container {
+        padding: 8px;
+    }
+
+    /* Telemetry: 4 columns still, even tighter */
+    .telemetry-bar {
+        gap: 4px;
+    }
+
+    .telem-indicator {
+        padding: 8px 4px;
+    }
+
+    .telem-value {
+        font-size: 0.9rem;
+    }
+
+    .telem-label {
+        font-size: 0.5rem;
+    }
+
+    /* Cards even tighter */
+    .dash-card {
+        padding: 12px;
+    }
+
+    .dash-table {
+        min-width: 380px;
+        font-size: 0.7rem;
+    }
+
+    .card-title {
+        font-size: 0.9rem;
+    }
+
+    .btn-view-all-modal {
+        font-size: 0.68rem;
+        padding: 4px 8px;
     }
 }

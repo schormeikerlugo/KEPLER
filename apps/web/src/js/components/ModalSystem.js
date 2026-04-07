@@ -40,6 +40,25 @@ export class ModalSystem {
                 .sys-modal-content.closing {
                     animation: sys-modal-out 0.2s ease-in forwards;
                 }
+
+                @media (max-width: 768px) {
+                    .sys-modal-overlay {
+                        padding: 16px;
+                        box-sizing: border-box;
+                    }
+                    .system-modal-body.sys-modal-content {
+                        width: auto;
+                        max-width: none;
+                        padding: 24px;
+                        border-radius: 14px;
+                    }
+                    .system-modal-title {
+                        font-size: 1.1rem !important;
+                    }
+                    .system-modal-msg {
+                        font-size: 0.88rem !important;
+                    }
+                }
             </style>
         `;
 

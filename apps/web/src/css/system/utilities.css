@@ -1,0 +1,90 @@
+/**
+ * KEPLER Design System — Utilities
+ * Single-purpose helper classes for common patterns.
+ */
+
+/* ── Layout ── */
+.k-flex         { display: flex; }
+.k-flex-col     { flex-direction: column; }
+.k-flex-row     { flex-direction: row; }
+.k-flex-center  { align-items: center; justify-content: center; }
+.k-flex-between { justify-content: space-between; }
+.k-flex-1       { flex: 1; }
+.k-flex-shrink-0 { flex-shrink: 0; }
+
+.k-gap-xs { gap: var(--spacing-xs); }
+.k-gap-sm { gap: var(--spacing-sm); }
+.k-gap-md { gap: var(--spacing-md); }
+.k-gap-lg { gap: var(--spacing-lg); }
+
+/* ── Glass Effect (replaces 8+ inline definitions) ── */
+.k-glass {
+    background: rgba(10, 14, 20, 0.75);
+    backdrop-filter: var(--blur-md);
+    -webkit-backdrop-filter: var(--blur-md);
+    border: 1px solid var(--border-subtle);
+}
+
+.k-glass--strong {
+    background: rgba(10, 14, 20, 0.92);
+    backdrop-filter: var(--blur-lg);
+    -webkit-backdrop-filter: var(--blur-lg);
+}
+
+/* ── Text ── */
+.k-text-muted   { color: rgba(255, 255, 255, 0.45); }
+.k-text-subtle  { color: rgba(255, 255, 255, 0.65); }
+.k-text-bright  { color: #fff; }
+.k-text-holo    { color: var(--color-link); }
+.k-text-danger  { color: var(--color-danger); }
+.k-text-sm      { font-size: 0.78rem; }
+.k-text-xs      { font-size: 0.68rem; }
+.k-text-upper   { text-transform: uppercase; letter-spacing: 0.5px; }
+.k-text-mono    { font-family: var(--font-mono); }
+.k-text-jura    { font-family: var(--font-jura); }
+
+.k-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ── Spacing ── */
+.k-p-sm  { padding: var(--spacing-sm); }
+.k-p-md  { padding: var(--spacing-md); }
+.k-p-lg  { padding: var(--spacing-lg); }
+.k-m-0   { margin: 0; }
+
+/* ── Z-Index Layers ── */
+.k-z-base         { z-index: var(--z-base); }
+.k-z-raised       { z-index: var(--z-raised); }
+.k-z-sticky       { z-index: var(--z-sticky); }
+.k-z-dropdown     { z-index: var(--z-dropdown); }
+.k-z-overlay      { z-index: var(--z-overlay); }
+.k-z-modal        { z-index: var(--z-modal); }
+.k-z-notification { z-index: var(--z-notification); }
+.k-z-toast        { z-index: var(--z-toast); }
+.k-z-system       { z-index: var(--z-system); }
+
+/* ── Visibility ── */
+.k-hidden     { display: none; }
+.k-invisible  { visibility: hidden; }
+
+.k-sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ── Overflow ── */
+.k-overflow-hidden  { overflow: hidden; }
+.k-overflow-x-auto  { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.k-overflow-y-auto  { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+/* ── Width ── */
+.k-w-full { width: 100%; }
+.k-max-w-full { max-width: 100%; }

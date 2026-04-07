@@ -390,8 +390,8 @@
 <div class="history-modal" id="mission-modal" style="display:none; align-items:center; justify-content:center;">
   <div class="history-content">
     <div class="history-header">
-      <h3>🚀 INICIAR MISIÓN</h3>
-      <button id="btn-close-mission" class="btn-close-history">×</button>
+      <h3>🚀 INICIAR MISION</h3>
+      <button id="btn-close-mission" class="btn-close-history">&times;</button>
     </div>
     <div class="mission-form">
       <!-- Loading Bar -->
@@ -399,27 +399,24 @@
         <div class="mission-loading-track">
           <div id="mission-loading-progress" class="mission-loading-fill"></div>
         </div>
-        <span id="mission-loading-text" class="mission-loading-text">⏳ Detectando ubicación...</span>
+        <span id="mission-loading-text" class="mission-loading-text">Detectando ubicacion...</span>
       </div>
-      <!-- Mission Name -->
       <div class="mission-field">
-        <label class="mission-field-label">Nombre de Misión</label>
-        <input type="text" id="inp-dash-mission-title" class="mission-input" placeholder="Se genera automáticamente...">
-        <span class="mission-field-hint">📝 Editable — personaliza el nombre de tu exploración</span>
+        <label class="mission-field-label">Nombre de Mision</label>
+        <input type="text" id="inp-dash-mission-title" class="mission-input" placeholder="Se genera automaticamente...">
+        <span class="mission-field-hint">Editable — personaliza el nombre de tu exploracion</span>
       </div>
-      <!-- Zone -->
       <div class="mission-field">
-        <label class="mission-field-label">📍 Zona</label>
-        <input type="text" id="inp-dash-mission-zone" class="mission-input" placeholder="Se detecta por GPS o escríbela manualmente...">
+        <label class="mission-field-label">Zona</label>
+        <input type="text" id="inp-dash-mission-zone" class="mission-input" placeholder="Se detecta por GPS o escribela manualmente...">
         <span id="zone-description-helper" class="mission-field-hint ai-hint"></span>
       </div>
-      <!-- Route Selector -->
       <div class="mission-field">
-        <label class="mission-field-label">🗺️ Ruta Planificada</label>
+        <label class="mission-field-label">Ruta Planificada</label>
         <select id="select-mission-route" class="mission-select">
-          <option value="">— Sin ruta (exploración libre) —</option>
+          <option value="">— Sin ruta (exploracion libre) —</option>
         </select>
-        <span id="route-selector-hint" class="mission-field-hint">Selecciona una ruta guardada para guiar tu misión con waypoints</span>
+        <span id="route-selector-hint" class="mission-field-hint">Selecciona una ruta guardada para guiar tu mision</span>
         <div id="route-preview-info" class="route-preview-info" style="display:none;">
           <span id="route-preview-distance" class="route-preview-stat"></span>
           <span id="route-preview-waypoints" class="route-preview-stat"></span>
@@ -427,48 +424,43 @@
         </div>
       </div>
       <div class="mission-divider"></div>
-      <!-- AI Engine (locked) -->
       <div class="mission-field">
         <label class="mission-field-label">Motor de IA</label>
         <select id="select-ai-model-version" class="mission-select locked" disabled>
-          <option value="v26_backend">🔥 YOLOv26 — Local Python Core</option>
+          <option value="v26_backend">YOLOv26 — Local Python Core</option>
         </select>
-        <span class="mission-field-hint">🔒 Motor fijo — más opciones próximamente</span>
+        <span class="mission-field-hint">Motor fijo — mas opciones proximamente</span>
       </div>
       <div class="mission-divider"></div>
-      <!-- Terrain Type -->
       <div class="mission-field">
-        <label class="mission-field-label">🏔️ Tipo de Terreno</label>
+        <label class="mission-field-label">Tipo de Terreno</label>
         <select id="select-mission-terreno" class="mission-select">
-          <option value="urbano">🏙️ Urbano</option>
-          <option value="montaña">⛰️ Montaña</option>
-          <option value="bosque">🌲 Bosque / Selva</option>
-          <option value="costero">🏖️ Costero / Playa</option>
-          <option value="desierto">🏜️ Desierto / Árido</option>
-          <option value="subterraneo">🕳️ Subterráneo / Cueva</option>
-          <option value="rural">🌾 Rural / Campo</option>
-          <option value="fluvial">🌊 Fluvial / Lacustre</option>
+          <option value="urbano">Urbano</option>
+          <option value="montaña">Montana</option>
+          <option value="bosque">Bosque / Selva</option>
+          <option value="costero">Costero / Playa</option>
+          <option value="desierto">Desierto / Arido</option>
+          <option value="subterraneo">Subterraneo / Cueva</option>
+          <option value="rural">Rural / Campo</option>
+          <option value="fluvial">Fluvial / Lacustre</option>
         </select>
       </div>
-      <!-- Objective -->
       <div class="mission-field">
-        <label class="mission-field-label">🎯 Objetivo</label>
-        <input type="text" id="inp-mission-objetivo" class="mission-input" placeholder="Ej: Reconocimiento zona norte, Mapeo de recursos...">
+        <label class="mission-field-label">Objetivo</label>
+        <input type="text" id="inp-mission-objetivo" class="mission-input" placeholder="Ej: Reconocimiento zona norte...">
       </div>
-      <!-- Difficulty -->
       <div class="mission-field">
-        <label class="mission-field-label">⚡ Dificultad Estimada</label>
+        <label class="mission-field-label">Dificultad Estimada</label>
         <select id="select-mission-dificultad" class="mission-select">
-          <option value="facil">🟢 Fácil</option>
-          <option value="moderada" selected>🟡 Moderada</option>
-          <option value="dificil">🔴 Difícil</option>
-          <option value="extrema">⛔ Extrema</option>
+          <option value="facil">Facil</option>
+          <option value="moderada" selected>Moderada</option>
+          <option value="dificil">Dificil</option>
+          <option value="extrema">Extrema</option>
         </select>
       </div>
       <div class="mission-divider"></div>
-      <!-- Launch Button -->
       <button id="btn-confirm-start-mission" class="mission-btn-launch" disabled>
-        ⏳ PREPARANDO...
+        PREPARANDO...
       </button>
     </div>
   </div>
@@ -479,7 +471,7 @@
   <div class="history-content">
     <div class="history-header">
       <h3>Historial de Conversaciones</h3>
-      <button id="btn-close-history" class="btn-close-history">×</button>
+      <button id="btn-close-history" class="btn-close-history">&times;</button>
     </div>
     <div class="history-list" id="history-list"></div>
   </div>
@@ -490,103 +482,67 @@
 <!-- ========================================= -->
 <div class="detail-modal-overlay" id="item-detail-modal">
   <div class="detail-modal-content" id="item-detail-content">
-    
     <div class="detail-body split-layout">
-      
-      <!-- Left Column: Visuals -->
       <div class="detail-col-visual">
-         <!-- El contenedor ahora será alto y ocupará toda la altura, con borde cyan brillante -->
         <div class="detail-image-wrapper">
           <div class="detail-image-placeholder">No Image Available</div>
           <img id="detail-image" src="" alt="Element Image" />
         </div>
-        
-        <!-- El canvas del Radar quedará oculto o embebido abajo de la imagen si se necesita -->
         <div class="detail-chart-wrapper" id="detail-chart-wrapper">
           <canvas id="detailRadarChart"></canvas>
         </div>
       </div>
-
-      <!-- Right Column: Data & Edit Form -->
       <div class="detail-col-data">
-        
-        <!-- Header movido adentro de la columna derecha como en el diseño -->
         <div class="detail-header-inner">
           <h3 id="detail-modal-title">EDITAR REGISTRO</h3>
-          <button id="btn-close-detail" class="btn-close-detail">×</button>
+          <button id="btn-close-detail" class="btn-close-detail">&times;</button>
         </div>
-
-        <div class="detail-form-scroll" id="detail-form">
-          <!-- Fields injected by JS (Similar a mission-form) -->
-        </div>
-
-        <!-- Footer movido adentro de la columna derecha abajo -->
+        <div class="detail-form-scroll" id="detail-form"></div>
         <div class="detail-footer-inner">
           <button id="btn-delete-detail" class="btn-detail btn-danger">ELIMINAR</button>
           <button id="btn-save-detail" class="btn-detail btn-primary">GUARDAR CAMBIOS</button>
         </div>
-
       </div>
-
     </div>
-    
   </div>
 </div>
+
 <!-- ========================================= -->
 <!-- MODULE FULL VIEW MODAL (Expandable)       -->
 <!-- ========================================= -->
 <div class="full-view-modal-overlay" id="module-full-view-modal">
   <div class="full-view-modal-content">
-    
     <header class="full-view-header">
       <div class="full-view-title-group">
         <span class="full-view-icon" id="full-view-icon">📦</span>
-        <h2 class="full-view-title" id="full-view-title">Exploración de datos</h2>
+        <h2 class="full-view-title" id="full-view-title">Exploracion de datos</h2>
       </div>
-      <button class="full-view-close" id="btn-close-full-view">×</button>
+      <button class="full-view-close" id="btn-close-full-view">&times;</button>
     </header>
-
     <div class="full-view-body">
-      
-      <!-- Main Content (Table + Filters) -->
       <main class="full-view-main">
         <div class="full-view-filters" id="full-view-filters">
           <input type="text" class="filter-input" placeholder="Filtrar por nombre..." id="filter-search">
-          <!-- Contextual filters will be injected here -->
         </div>
-
         <div class="full-view-table-container">
           <table class="full-view-table" id="full-view-table">
-            <thead id="full-view-thead">
-              <!-- Injected by JS -->
-            </thead>
-            <tbody id="full-view-tbody">
-              <!-- Injected by JS -->
-            </tbody>
+            <thead id="full-view-thead"></thead>
+            <tbody id="full-view-tbody"></tbody>
           </table>
         </div>
       </main>
-
-      <!-- Sidebar (Charts + Stats) -->
       <aside class="full-view-sidebar">
-        
         <div class="sidebar-section">
-          <h4 class="sidebar-section-title">Resumen Estratégico</h4>
+          <h4 class="sidebar-section-title">Resumen Estrategico</h4>
           <div class="chart-card">
             <canvas id="fullViewChart" width="300" height="250"></canvas>
           </div>
         </div>
-
         <div class="sidebar-section">
-          <h4 class="sidebar-section-title">Estadísticas Clave</h4>
-          <div class="stat-grid" id="full-view-stats">
-            <!-- Injected by JS -->
-          </div>
+          <h4 class="sidebar-section-title">Estadisticas Clave</h4>
+          <div class="stat-grid" id="full-view-stats"></div>
         </div>
-
       </aside>
-
     </div>
-    
   </div>
 </div>

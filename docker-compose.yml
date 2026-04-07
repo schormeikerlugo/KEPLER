@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # ===========================================
   # BASE DE DATOS - PostgreSQL + PostGIS
@@ -220,35 +218,77 @@ services:
         aliases:
           - realtime
 
-  # BACKEND - FastAPI
+  # ===========================================
+  # BACKEND - FastAPI (perfil: portable)
+  # En dev local se usa venv directamente
   # ===========================================
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: mars-sight-backend
+    profiles: ["portable"]
     environment:
       DATABASE_URL: postgresql://postgres:mars2025@postgres:5432/postgres
-      OLLAMA_URL: http://ollama:11434
+      OLLAMA_URL: http://host.docker.internal:11434
+      OLLAMA_HOST: http://host.docker.internal:11434
       SUPABASE_URL: http://kong:8000
-      SUPABASE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NjcwMjI1NzUsImV4cCI6NDkyMDYyMjU3NX0.8yY4_OYHapxiZaukJAoXrBxAGJSPV3MUualCsfOz36Q
+      SUPABASE_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NjcwMjI1NzUsImV4cCI6NDkyMDYyMjU3NX0.8yY4_OYHapxiZaukJAoXrBxAGJSPV3MUualCsfOz36Q
+      SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzY3MDIyNTc1LCJleHAiOjQ5MjA2MjI1NzV9.ar9_aoOo-Cd7VVibO00kL0qCTa3lGh0IRmoFPmstrq8
     ports:
-      - "8001:8000"
+      - "8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
-    volumes:
-      - ./backend:/app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - mars-network
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
 
   # ===========================================
-  # OLLAMA - Local AI
+  # BACKEND GPU - FastAPI con CUDA (perfil: portable-gpu)
+  # Para PCs con NVIDIA GPU
+  # ===========================================
+  backend-gpu:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.gpu
+    container_name: mars-sight-backend
+    profiles: ["portable-gpu"]
+    environment:
+      DATABASE_URL: postgresql://postgres:mars2025@postgres:5432/postgres
+      OLLAMA_URL: http://host.docker.internal:11434
+      OLLAMA_HOST: http://host.docker.internal:11434
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NjcwMjI1NzUsImV4cCI6NDkyMDYyMjU3NX0.8yY4_OYHapxiZaukJAoXrBxAGJSPV3MUualCsfOz36Q
+      SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzY3MDIyNTc1LCJleHAiOjQ5MjA2MjI1NzV9.ar9_aoOo-Cd7VVibO00kL0qCTa3lGh0IRmoFPmstrq8
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - mars-network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+  # ===========================================
+  # OLLAMA - Local AI (perfil: portable)
+  # En dev local Ollama corre nativo con GPU
   # ===========================================
   ollama:
     image: ollama/ollama:latest
     container_name: mars-sight-ollama
+    profiles: ["portable-ollama"]
     ports:
       - "11434:11434"
     volumes:
@@ -257,18 +297,19 @@ services:
       - mars-network
 
   # ===========================================
-  # FRONTEND (opcional)
+  # FRONTEND (perfil: portable)
+  # En dev local se usa Vite directamente
   # ===========================================
   frontend:
     build:
       context: ./apps/web
       dockerfile: Dockerfile.dev
     container_name: mars-sight-frontend
+    profiles: ["portable"]
     ports:
       - "5180:5173"
-    volumes:
-      - ./apps/web:/app
-      - /app/node_modules
+    depends_on:
+      - kong
     networks:
       - mars-network
     environment:
