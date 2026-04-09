@@ -116,24 +116,44 @@ KEPLER no depende de la nube para funcionar. Su arquitectura está diseñada par
 ## 📸 Galería del Sistema
 
 <div align="center">
-  <img src="capture/1.png" width="100%" alt="Captura 1">
+  <img src="capture/1.png" width="100%" alt="Vista Principal del Centro de Control">
   <p><em>Vista Principal del Centro de Control</em></p>
   
   <br>
 
-  <img src="capture/2.png" width="100%" alt="Captura 2">
-  <p><em>Interfaz de Análisis de Misión</em></p>
-
-  <br>
-
-  <div style="display: flex; justify-content: center; gap: 2%; margin-top: 20px;">
-    <div style="width: 49%;">
-      <img src="capture/3.png" width="100%" alt="Captura 3">
-      <p><em>Visualización Móvil</em></p>
+  <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 2%; margin-top: 20px;">
+    <div style="width: 49%; margin-bottom: 15px;">
+      <img src="capture/2.png" width="100%" alt="Captura 2">
     </div>
-    <div style="width: 49%;">
-      <img src="capture/4.png" width="100%" alt="Captura 4">
-      <p><em>Interfaz AR</em></p>
+    <div style="width: 49%; margin-bottom: 15px;">
+      <img src="capture/3.png" width="100%" alt="Captura 3">
+    </div>
+    <div style="width: 49%; margin-bottom: 15px;">
+      <img src="capture/5.png" width="100%" alt="Captura 5">
+    </div>
+    <div style="width: 49%; margin-bottom: 15px;">
+      <img src="capture/6.png" width="100%" alt="Captura 6">
+    </div>
+    <div style="width: 49%; margin-bottom: 15px;">
+      <img src="capture/7.png" width="100%" alt="Captura 7">
+    </div>
+    <div style="width: 49%; margin-bottom: 15px;">
+      <img src="capture/8.png" width="100%" alt="Captura 8">
+    </div>
+    <div style="width: 49%; margin-bottom: 15px;">
+      <img src="capture/9.png" width="100%" alt="Captura 9">
+    </div>
+    <div style="width: 49%; margin-bottom: 15px;">
+      <img src="capture/10.png" width="100%" alt="Captura 10">
+    </div>
+    <div style="width: 49%; margin-bottom: 15px;">
+      <img src="capture/11.png" width="100%" alt="Captura 11">
+    </div>
+    <div style="width: 49%; margin-bottom: 15px;">
+      <img src="capture/13.png" width="100%" alt="Captura 13">
+    </div>
+    <div style="width: 49%; margin-bottom: 15px;">
+      <img src="capture/14.png" width="100%" alt="Captura 14">
     </div>
   </div>
 </div>
