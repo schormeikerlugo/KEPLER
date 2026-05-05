@@ -1,5 +1,12 @@
 -- Migration: Add 'generic' entity type to match_entity_by_embedding
 -- Allows re-identification of objetos_exploracion (not just personas/POIs)
+--
+-- NOTE: `nombre` columns in personas_encontradas / puntos_interes /
+-- objetos_exploracion are declared as `varchar(200)` (or similar). We cast
+-- to TEXT explicitly so the RETURNS TABLE signature matches and Postgres
+-- doesn't raise:
+--   "structure of query does not match function result type ...
+--    Returned type character varying(200) does not match expected type text"
 
 CREATE OR REPLACE FUNCTION match_entity_by_embedding(
     query_embedding vector(512),
@@ -17,7 +24,7 @@ AS $$
 BEGIN
     IF entity_type = 'persona' THEN
         RETURN QUERY
-        SELECT pe.id, pe.nombre,
+        SELECT pe.id, pe.nombre::text,
                1 - (pe.embedding <=> query_embedding) AS similarity
         FROM public.personas_encontradas pe
         WHERE pe.embedding IS NOT NULL
@@ -26,7 +33,7 @@ BEGIN
         LIMIT match_count;
     ELSIF entity_type = 'poi' THEN
         RETURN QUERY
-        SELECT pi.id, pi.nombre,
+        SELECT pi.id, pi.nombre::text,
                1 - (pi.embedding <=> query_embedding) AS similarity
         FROM public.puntos_interes pi
         WHERE pi.embedding IS NOT NULL
@@ -35,7 +42,7 @@ BEGIN
         LIMIT match_count;
     ELSIF entity_type = 'generic' THEN
         RETURN QUERY
-        SELECT oe.id, oe.nombre,
+        SELECT oe.id, oe.nombre::text,
                1 - (oe.embedding <=> query_embedding) AS similarity
         FROM public.objetos_exploracion oe
         WHERE oe.embedding IS NOT NULL

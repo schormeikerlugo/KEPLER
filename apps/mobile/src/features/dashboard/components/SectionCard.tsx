@@ -1,25 +1,21 @@
 /**
  * SectionCard Component
- * Generic section card for POIs, Minerals, Objects
+ * Generic section card with onPress support and "VER TODO" button
  */
 
 import React, { ReactNode } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { styles } from '../styles';
 
 interface SectionCardProps {
     icon: ReactNode;
     title: string;
     count: number;
+    onPress?: () => void;
     children?: ReactNode;
 }
 
-export function SectionCard({
-    icon,
-    title,
-    count,
-    children,
-}: SectionCardProps) {
+export function SectionCard({ icon, title, count, onPress, children }: SectionCardProps) {
     return (
         <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
@@ -32,7 +28,12 @@ export function SectionCard({
                 </View>
             </View>
             <View style={styles.sectionDivider} />
-            {children || <Text style={styles.noDataText}>No data available</Text>}
+            {children || <Text style={styles.noDataText}>Sin datos disponibles</Text>}
+            {onPress && (
+                <TouchableOpacity style={styles.viewAllButton} onPress={onPress}>
+                    <Text style={styles.viewAllText}>VER TODO ›</Text>
+                </TouchableOpacity>
+            )}
         </View>
     );
 }

@@ -3,7 +3,8 @@
  * @module features/ar/hooks
  */
 
-// Re-export all AR-specific hooks
-// Add exports as hooks are created:
-// export { useCamera } from './useCamera';
-// export { useDetection } from './useDetection';
+export { useYoloDetection } from './useYoloDetection';
+export { useCameraStream } from './useCameraStream';
+export { useMobileCaptureQueue } from './useMobileCaptureQueue';
+export { useARCamera } from './useARCamera';
+export type { CapturedFrame, CameraStreamStatus, CameraRefLike } from './cameraTypes';

@@ -7,25 +7,67 @@
  * @module services/api
  */
 
-import { API_BASE_URL, API_TIMEOUT } from '../constants/config';
+import { API_TIMEOUT } from '../constants/config';
 import { supabase } from './supabase';
+import { configService } from './configService';
 
 // =============================================================================
 // TYPES
 // =============================================================================
 
 /**
- * Telemetry data from sensors
+ * Telemetry data — environmental real + biometric coherent.
+ * Field names mirror the backend (`/api/realtime-telemetry`).
  */
 export interface TelemetryData {
-    /** Temperature in Celsius */
-    temperature: number;
-    /** Oxygen level percentage */
-    oxygen: number;
-    /** Heart rate in beats per minute */
+    // Environmental (real, Open-Meteo)
+    temperature: number;            // °C
+    apparent_temperature?: number;
+    humidity: number;               // %
+    wind_speed_kmh?: number;
+    wind_gusts_kmh?: number;
+    wind_direction?: number;        // 0-359
+    pressure_hpa?: number;
+    uv_index?: number;
+    visibility_km?: number;
+    cloud_cover?: number;
+    rain_mm?: number;
+    weather_category?: string;
+    location_name?: string | null;
+
+    // Air quality (real, Open-Meteo AQ → mapped to "oxygen")
+    oxygen: number;                 // aire_pct (0-100, higher = better)
+    air_quality_aqi?: number;
+    pm2_5?: number;
+    pm10?: number;
+    air_category?: string;
+
+    // Biometric (coherent simulated)
     bpm: number;
-    /** Radiation level */
     radiation: number;
+    suitTemp: number;
+    suit_pressure?: number;
+
+    // Local-only (filled in by hook, not from API)
+    battery: number;                // device battery %
+    battery_charging?: boolean;
+    link: number;                   // network downlink %
+    link_type?: string;             // 4g/3g/wifi…
+
+    // Meta
+    data_sources?: {
+        weather?: string;
+        air?: string;
+        biometric?: string;
+    };
+    timestamp?: string;
+}
+
+/** Coords + speed input for the telemetry call */
+export interface TelemetryQuery {
+    lat?: number;
+    lng?: number;
+    speed_mps?: number;
 }
 
 /**
@@ -130,10 +172,17 @@ async function fetchWithTimeout(
  * const telemetry = await api.getTelemetry();
  */
 class ApiService {
-    private baseUrl: string;
+    /**
+     * Resolve the live backend URL each call. The user can change it from
+     * Settings without re-instantiating anything.
+     */
+    private async getBaseUrl(): Promise<string> {
+        return configService.getBackendUrl();
+    }
 
-    constructor() {
-        this.baseUrl = API_BASE_URL;
+    /** Public accessor for ad-hoc fetches outside this class. */
+    async resolveBaseUrl(): Promise<string> {
+        return this.getBaseUrl();
     }
 
     /**
@@ -164,25 +213,64 @@ class ApiService {
     // ---------------------------------------------------------------------------
 
     /**
-     * Fetch current telemetry data from sensors
-     * Falls back to mock data if backend unavailable
-     * 
-     * @returns Promise<TelemetryData>
+     * Fetch current telemetry from `/api/realtime-telemetry`.
+     * Pass GPS coords for real weather/air; speed for coherent BPM.
+     * Falls back to mock data if backend unavailable.
      */
-    async getTelemetry(): Promise<TelemetryData> {
+    async getTelemetry(query: TelemetryQuery = {}): Promise<TelemetryData> {
         try {
-            // Telemetry endpoint might be protected now
-            const response = await this.fetchWithAuth(`${this.baseUrl}/api/telemetry`, {
-                method: 'GET',
-            });
-            // ... same logic
+            const baseUrl = await this.getBaseUrl();
+            const params = new URLSearchParams();
+            if (typeof query.lat === 'number' && typeof query.lng === 'number') {
+                params.set('lat', String(query.lat));
+                params.set('lng', String(query.lng));
+            }
+            if (typeof query.speed_mps === 'number' && query.speed_mps >= 0) {
+                params.set('speed_mps', String(query.speed_mps));
+            }
+            const qs = params.toString();
+            const url = `${baseUrl}/api/realtime-telemetry${qs ? `?${qs}` : ''}`;
+            const response = await fetchWithTimeout(url, { method: 'GET' });
+
             if (response.ok) {
                 const data = await response.json();
+                const mock = this.getMockTelemetry();
                 return {
-                    temperature: data.temperature ?? this.getMockTelemetry().temperature,
-                    oxygen: data.oxygen ?? this.getMockTelemetry().oxygen,
-                    bpm: data.bpm ?? this.getMockTelemetry().bpm,
-                    radiation: data.radiation ?? this.getMockTelemetry().radiation,
+                    // Environmental
+                    temperature: data.temperature ?? mock.temperature,
+                    apparent_temperature: data.apparent_temperature,
+                    humidity: data.humidity ?? mock.humidity,
+                    wind_speed_kmh: data.wind_speed_kmh,
+                    wind_gusts_kmh: data.wind_gusts_kmh,
+                    wind_direction: data.wind_direction,
+                    pressure_hpa: data.pressure_hpa,
+                    uv_index: data.uv_index,
+                    visibility_km: data.visibility_km,
+                    cloud_cover: data.cloud_cover,
+                    rain_mm: data.rain_mm,
+                    weather_category: data.weather_category,
+                    location_name: data.location_name,
+
+                    // Air
+                    oxygen: data.oxygen_level ?? mock.oxygen,
+                    air_quality_aqi: data.air_quality_aqi,
+                    pm2_5: data.pm2_5,
+                    pm10: data.pm10,
+                    air_category: data.air_category,
+
+                    // Biometric
+                    bpm: data.heart_rate ?? mock.bpm,
+                    radiation: data.radiation ?? mock.radiation,
+                    suitTemp: data.suit_temperature ?? mock.suitTemp,
+                    suit_pressure: data.suit_pressure,
+
+                    // Local placeholders (filled by hook)
+                    battery: mock.battery,
+                    link: mock.link,
+
+                    // Meta
+                    data_sources: data.data_sources,
+                    timestamp: data.timestamp,
                 };
             }
             return this.getMockTelemetry();
@@ -203,10 +291,11 @@ class ApiService {
      */
     async getSystemStatus(): Promise<SystemStatus> {
         try {
-            console.log('[API] Checking backend at:', `${this.baseUrl}/health`);
+            const baseUrl = await this.getBaseUrl();
+            console.log('[API] Checking backend at:', `${baseUrl}/health`);
 
             const response = await fetchWithTimeout(
-                `${this.baseUrl}/health`,
+                `${baseUrl}/health`,
                 { method: 'GET' },
                 3000
             );
@@ -238,8 +327,9 @@ class ApiService {
      */
     async getMissions(): Promise<Mission[]> {
         try {
-            console.log('[API] Fetching missions from:', `${this.baseUrl}/api/missions/list`);
-            const response = await this.fetchWithAuth(`${this.baseUrl}/api/missions/list`, {
+            const baseUrl = await this.getBaseUrl();
+            console.log('[API] Fetching missions from:', `${baseUrl}/api/missions/list`);
+            const response = await this.fetchWithAuth(`${baseUrl}/api/missions/list`, {
                 method: 'GET',
             });
 
@@ -275,7 +365,8 @@ class ApiService {
             if (!mission) throw new Error('Mission not found locally');
 
             // 2. Get objects
-            const responseObj = await this.fetchWithAuth(`${this.baseUrl}/api/missions/${id}/objects`, {
+            const baseUrl = await this.getBaseUrl();
+            const responseObj = await this.fetchWithAuth(`${baseUrl}/api/missions/${id}/objects`, {
                 method: 'GET'
             });
 
@@ -310,9 +401,10 @@ class ApiService {
      */
     async updateMission(id: string, updates: Partial<Mission> & { title?: string; location?: string; description?: string }): Promise<boolean> {
         try {
+            const baseUrl = await this.getBaseUrl();
             // Handle status change (End Mission)
             if (updates.status === 'COMPLETADA') {
-                const response = await this.fetchWithAuth(`${this.baseUrl}/api/missions/end`, {
+                const response = await this.fetchWithAuth(`${baseUrl}/api/missions/end`, {
                     method: 'POST',
                     body: JSON.stringify({ mission_id: id }),
                 });
@@ -326,7 +418,7 @@ class ApiService {
                 descripcion_ia: updates.description,
             };
 
-            const response = await this.fetchWithAuth(`${this.baseUrl}/api/missions/${id}`, {
+            const response = await this.fetchWithAuth(`${baseUrl}/api/missions/${id}`, {
                 method: 'PUT',
                 body: JSON.stringify(body),
             });
@@ -349,6 +441,7 @@ class ApiService {
         genero?: string;
     }): Promise<boolean> {
         try {
+            const baseUrl = await this.getBaseUrl();
             const body = {
                 nombre: updates.nombre, // Backend expects 'nombre'
                 descripcion: updates.description, // Backend 'descripcion'
@@ -357,7 +450,7 @@ class ApiService {
                 genero: updates.genero,
             };
 
-            const response = await this.fetchWithAuth(`${this.baseUrl}/api/objects/${id}`, {
+            const response = await this.fetchWithAuth(`${baseUrl}/api/objects/${id}`, {
                 method: 'PUT',
                 body: JSON.stringify(body),
             });
@@ -374,7 +467,8 @@ class ApiService {
      */
     async deleteMission(id: string): Promise<boolean> {
         try {
-            const response = await this.fetchWithAuth(`${this.baseUrl}/api/missions/delete/${id}`, {
+            const baseUrl = await this.getBaseUrl();
+            const response = await this.fetchWithAuth(`${baseUrl}/api/missions/delete/${id}`, {
                 method: 'DELETE',
             });
             return response.ok;
@@ -389,27 +483,32 @@ class ApiService {
     // ---------------------------------------------------------------------------
 
     async getCategories(): Promise<Category[]> {
-        const res = await this.fetchWithAuth(`${this.baseUrl}/api/taxonomia/categorias`);
+        const baseUrl = await this.getBaseUrl();
+        const res = await this.fetchWithAuth(`${baseUrl}/api/taxonomia/categorias`);
         return res.ok ? await res.json() : [];
     }
 
     async getSubcategories(categoryId: string): Promise<Subcategory[]> {
-        const res = await this.fetchWithAuth(`${this.baseUrl}/api/taxonomia/subcategorias/${categoryId}`);
+        const baseUrl = await this.getBaseUrl();
+        const res = await this.fetchWithAuth(`${baseUrl}/api/taxonomia/subcategorias/${categoryId}`);
         return res.ok ? await res.json() : [];
     }
 
     async getTags(): Promise<Tag[]> {
-        const res = await this.fetchWithAuth(`${this.baseUrl}/api/taxonomia/etiquetas`);
+        const baseUrl = await this.getBaseUrl();
+        const res = await this.fetchWithAuth(`${baseUrl}/api/taxonomia/etiquetas`);
         return res.ok ? await res.json() : [];
     }
 
     async getObjectTaxonomy(objectId: string): Promise<{ categoria_id?: string; subcategoria_id?: string; etiquetas: Tag[] }> {
-        const res = await this.fetchWithAuth(`${this.baseUrl}/api/taxonomia/objetos/${objectId}/taxonomia`);
+        const baseUrl = await this.getBaseUrl();
+        const res = await this.fetchWithAuth(`${baseUrl}/api/taxonomia/objetos/${objectId}/taxonomia`);
         return res.ok ? await res.json() : { etiquetas: [] };
     }
 
     async assignTaxonomy(objectId: string, assignment: TaxonomyAssignment): Promise<boolean> {
-        const res = await this.fetchWithAuth(`${this.baseUrl}/api/taxonomia/objetos/${objectId}/asignar`, {
+        const baseUrl = await this.getBaseUrl();
+        const res = await this.fetchWithAuth(`${baseUrl}/api/taxonomia/objetos/${objectId}/asignar`, {
             method: 'POST',
             body: JSON.stringify(assignment)
         });
@@ -426,7 +525,8 @@ class ApiService {
      */
     async testConnection(): Promise<boolean> {
         try {
-            const response = await fetchWithTimeout(`${this.baseUrl}/health`, {}, 3000);
+            const baseUrl = await this.getBaseUrl();
+            const response = await fetchWithTimeout(`${baseUrl}/health`, {}, 3000);
             return response.ok;
         } catch {
             return false;
@@ -460,6 +560,10 @@ class ApiService {
             oxygen: 98 + Math.random() * 2,
             bpm: 58 + Math.floor(Math.random() * 10),
             radiation: 0.03 + Math.random() * 0.01,
+            battery: 85 + Math.floor(Math.random() * 15),
+            link: 70 + Math.floor(Math.random() * 30),
+            suitTemp: 21 + Math.random() * 3,
+            humidity: 40 + Math.floor(Math.random() * 20),
         };
     }
 

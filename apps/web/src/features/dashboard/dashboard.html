@@ -62,37 +62,40 @@
       <section class="telemetry-section">
         <h2 class="section-title">Telemetría</h2>
         <div class="telemetry-bar" id="telemetry-bar">
-          <div class="telem-indicator" id="telem-temp">
-            <span class="telem-value">20°C</span>
+          <div class="telem-indicator" id="telem-temp" title="Temperatura ambiente real (Open-Meteo)">
+            <span class="telem-source-dot"></span>
+            <span class="telem-value">--°C</span>
             <span class="telem-label">TEMP</span>
           </div>
-          <div class="telem-indicator" id="telem-o2">
-            <span class="telem-value">96%</span>
-            <span class="telem-label">O2</span>
+          <div class="telem-indicator" id="telem-o2" title="Calidad del aire (AQI Open-Meteo)">
+            <span class="telem-source-dot"></span>
+            <span class="telem-value">--%</span>
+            <span class="telem-label">AIRE</span>
           </div>
-          <div class="telem-indicator" id="telem-bpm">
-            <span class="telem-value">75</span>
+          <div class="telem-indicator" id="telem-bpm" title="BPM coherente con velocidad GPS">
+            <span class="telem-source-dot"></span>
+            <span class="telem-value">--</span>
             <span class="telem-label">BPM</span>
           </div>
-          <div class="telem-indicator" id="telem-rad">
-            <span class="telem-value">0.011</span>
+          <div class="telem-indicator" id="telem-rad" title="Radiación coherente con índice UV">
+            <span class="telem-source-dot"></span>
+            <span class="telem-value">--</span>
             <span class="telem-label">RAD</span>
           </div>
-          <div class="telem-indicator" id="telem-batt">
-            <span class="telem-value">100%</span>
+          <div class="telem-indicator" id="telem-batt" title="Batería real del dispositivo">
+            <span class="telem-source-dot"></span>
+            <span class="telem-value">--%</span>
             <span class="telem-label">BATT</span>
           </div>
-          <div class="telem-indicator" id="telem-link">
-            <span class="telem-value">98%</span>
+          <div class="telem-indicator" id="telem-link" title="Calidad de conexión real (Network API)">
+            <span class="telem-source-dot"></span>
+            <span class="telem-value">--%</span>
             <span class="telem-label">LINK</span>
           </div>
-          <div class="telem-indicator" id="telem-temp-s">
-            <span class="telem-value">20°C</span>
-            <span class="telem-label">TEMP S.</span>
-          </div>
-          <div class="telem-indicator" id="telem-humidity">
-            <span class="telem-value">20°C</span>
-            <span class="telem-label">TEMP</span>
+          <div class="telem-indicator" id="telem-humidity" title="Humedad relativa real (Open-Meteo)">
+            <span class="telem-source-dot"></span>
+            <span class="telem-value">--%</span>
+            <span class="telem-label">HUMEDAD</span>
           </div>
         </div>
       </section>

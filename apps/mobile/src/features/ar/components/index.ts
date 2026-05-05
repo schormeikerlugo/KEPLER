@@ -1,9 +1,9 @@
 /**
  * AR Feature - Components Barrel
- * @module features/ar/components
  */
 
-// Re-export all AR-specific components
-// Add exports as components are created:
-// export { DetectionOverlay } from './DetectionOverlay';
-// export { CaptureButton } from './CaptureButton';
+export { DetectionOverlay } from './DetectionOverlay';
+export { CaptureButton } from './CaptureButton';
+export { SentinelButton } from './SentinelButton';
+export { StatusBadge } from './StatusBadge';
+export { CaptureCounter } from './CaptureCounter';

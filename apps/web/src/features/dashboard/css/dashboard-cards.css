@@ -339,20 +339,32 @@
 }
 
 .telemetry-bar {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
     gap: 12px;
-    flex-wrap: wrap;
+}
+
+@media (max-width: 1100px) {
+    .telemetry-bar {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .telemetry-bar {
+        grid-template-columns: repeat(3, 1fr);
+    }
 }
 
 .telem-indicator {
+    position: relative;
     background: #111;
     border-radius: 14px;
     padding: 16px 20px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    min-width: 80px;
-    flex: 1;
+    min-width: 0;
 }
 
 .telem-value {
@@ -368,6 +380,51 @@
     letter-spacing: 1.5px;
     text-transform: uppercase;
     font-weight: 500;
+}
+
+/* ── Data-source state dot (top-right of each indicator) ── */
+.telem-source-dot {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #444;
+    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+    transition: background 0.3s, box-shadow 0.3s;
+}
+
+.telem-indicator[data-source-state="real"] .telem-source-dot {
+    background: #00d4aa;
+    box-shadow: 0 0 6px rgba(0, 212, 170, 0.7);
+}
+
+.telem-indicator[data-source-state="coherent"] .telem-source-dot {
+    background: #ffbb33;
+    box-shadow: 0 0 6px rgba(255, 187, 51, 0.55);
+}
+
+.telem-indicator[data-source-state="simulated"] .telem-source-dot {
+    background: #ff4444;
+    box-shadow: 0 0 6px rgba(255, 68, 68, 0.55);
+}
+
+.telem-indicator[data-source-state="unknown"] .telem-source-dot {
+    background: #555;
+}
+
+/* AQI semantic tint on the AIRE indicator value */
+.telem-indicator[data-air-category="buena"] .telem-value { color: #00d4aa; }
+.telem-indicator[data-air-category="aceptable"] .telem-value { color: #9bd66b; }
+.telem-indicator[data-air-category="moderada"] .telem-value { color: #ffbb33; }
+.telem-indicator[data-air-category="pobre"] .telem-value { color: #ff8844; }
+.telem-indicator[data-air-category="muy_pobre"] .telem-value,
+.telem-indicator[data-air-category="extrema"] .telem-value { color: #ff4444; }
+
+/* Charging indicator pulse on BATT when charging=1 */
+.telem-indicator[data-charging="1"] .telem-value {
+    text-shadow: 0 0 8px rgba(0, 212, 170, 0.55);
 }
 
 /* ── Alerts Section ── */

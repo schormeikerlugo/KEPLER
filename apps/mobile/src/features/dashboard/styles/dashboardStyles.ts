@@ -343,6 +343,38 @@ export const styles = StyleSheet.create({
         color: DASHBOARD_COLORS.textPrimary,
         fontWeight: '500',
     },
+    missionDate: {
+        fontSize: 10,
+        color: DASHBOARD_COLORS.textMuted,
+        marginTop: 2,
+    },
+
+    // Status Badge
+    statusBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 6,
+    },
+    statusBadgeText: {
+        fontSize: 9,
+        fontWeight: '700',
+        letterSpacing: 0.5,
+    },
+
+    // View All Button
+    viewAllButton: {
+        marginTop: 12,
+        paddingVertical: 10,
+        alignItems: 'center',
+        borderTopWidth: 1,
+        borderTopColor: DASHBOARD_COLORS.divider,
+    },
+    viewAllText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: DASHBOARD_COLORS.accent,
+        letterSpacing: 1,
+    },
 
     // Chat FAB (Bottom Right)
     chatFab: {

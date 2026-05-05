@@ -157,9 +157,20 @@ export const api = {
     },
 
     // --- TELEMETRY ---
-    async getTelemetry() {
+    async getTelemetry(opts = {}) {
+        // opts: { lat, lng, speed_mps }
         try {
-            const res = await fetch(`${API_BASE}/realtime-telemetry`);
+            const params = new URLSearchParams();
+            if (typeof opts.lat === 'number' && typeof opts.lng === 'number') {
+                params.set('lat', opts.lat);
+                params.set('lng', opts.lng);
+            }
+            if (typeof opts.speed_mps === 'number' && opts.speed_mps >= 0) {
+                params.set('speed_mps', opts.speed_mps);
+            }
+            const qs = params.toString();
+            const url = `${API_BASE}/realtime-telemetry${qs ? `?${qs}` : ''}`;
+            const res = await fetch(url);
             return await res.json();
         } catch (err) {
             console.warn("Telemetry offline, using simulation");

@@ -85,8 +85,16 @@ def _process_single(capture: CaptureRequest, user_id: str, supabase) -> dict:
     description = f"{capture.class_name or capture.type} detectado. {conf_pct}% confianza."
 
     try:
-        # Store original base64 for image display (use cleaned version for DB)
-        image_for_db = capture.image_base64 if capture.image_base64 and len(capture.image_base64) > 100 else None
+        # Store base64 for image display.
+        # The web client sends `data:image/jpeg;base64,...` already, but the
+        # mobile client strips the prefix before queueing (so the backend's
+        # CLIP path doesn't double-handle it). Re-prepend the prefix here so
+        # the saved value is a valid <img>/<Image> URI on both web and RN.
+        raw = capture.image_base64 if capture.image_base64 and len(capture.image_base64) > 100 else None
+        if raw and not raw.startswith('data:'):
+            image_for_db = f'data:image/jpeg;base64,{raw}'
+        else:
+            image_for_db = raw
 
         if capture.type == 'persona':
             insert_data = {
@@ -176,7 +184,9 @@ async def process_batch(req: BatchCaptureRequest, user=Depends(get_current_user)
     for capture in req.captures:
         result = _process_single(capture, user.id, supabase)
         results.append(result)
-        if result.get("re_id", {}).get("matched"):
+        # `result['re_id']` may be None when there was no match — guard explicitly
+        re_id_block = result.get("re_id") or {}
+        if re_id_block.get("matched"):
             re_ids += 1
 
     success_count = sum(1 for r in results if r.get("success"))

@@ -16,16 +16,42 @@ OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
 
 
 class WeatherResult:
-    """Structured weather result with KEPLER classification."""
+    """Structured weather result with KEPLER classification + extended sensors."""
 
-    def __init__(self, temperatura: float, lluvia: float, viento: float,
-                 categoria: str, multiplicador: float, location_name: str = "Zona Desconocida"):
+    def __init__(
+        self,
+        temperatura: float,
+        lluvia: float,
+        viento: float,
+        categoria: str,
+        multiplicador: float,
+        location_name: str = "Zona Desconocida",
+        # Extended fields (Open-Meteo current)
+        humedad: float = 0.0,
+        sensacion_termica: float = 0.0,
+        presion_hpa: float = 1013.0,
+        uv_index: float = 0.0,
+        visibilidad_m: float = 10000.0,
+        wind_gusts: float = 0.0,
+        wind_direction: float = 0.0,
+        cloud_cover: float = 0.0,
+        dew_point: float = 0.0,
+    ):
         self.temperatura = temperatura
         self.lluvia = lluvia
         self.viento = viento
         self.categoria = categoria
         self.multiplicador = multiplicador
         self.location_name = location_name
+        self.humedad = humedad
+        self.sensacion_termica = sensacion_termica
+        self.presion_hpa = presion_hpa
+        self.uv_index = uv_index
+        self.visibilidad_m = visibilidad_m
+        self.wind_gusts = wind_gusts
+        self.wind_direction = wind_direction
+        self.cloud_cover = cloud_cover
+        self.dew_point = dew_point
 
     def to_dict(self):
         return {
@@ -35,6 +61,15 @@ class WeatherResult:
             "categoria": self.categoria,
             "multiplicador": self.multiplicador,
             "location_name": self.location_name,
+            "humedad_pct": self.humedad,
+            "sensacion_termica_c": self.sensacion_termica,
+            "presion_hpa": self.presion_hpa,
+            "uv_index": self.uv_index,
+            "visibilidad_m": self.visibilidad_m,
+            "wind_gusts_kmh": self.wind_gusts,
+            "wind_direction": self.wind_direction,
+            "cloud_cover_pct": self.cloud_cover,
+            "dew_point_c": self.dew_point,
         }
 
 
@@ -85,11 +120,15 @@ async def get_weather(lat: float, lng: float) -> Optional[WeatherResult]:
         location_name = "Zona Desconocida"
 
         async with httpx.AsyncClient(timeout=10.0) as client:
-            # 1. Fetch Weather
+            # 1. Fetch Weather (extended current params)
             params_weather = {
                 "latitude": lat,
                 "longitude": lng,
-                "current": "temperature_2m,rain,wind_speed_10m",
+                "current": (
+                    "temperature_2m,relative_humidity_2m,apparent_temperature,"
+                    "rain,wind_speed_10m,wind_gusts_10m,wind_direction_10m,"
+                    "pressure_msl,cloud_cover,dew_point_2m,visibility,uv_index"
+                ),
                 "timezone": "auto",
             }
             response_weather = await client.get(OPEN_METEO_URL, params=params_weather)
@@ -111,9 +150,9 @@ async def get_weather(lat: float, lng: float) -> Optional[WeatherResult]:
                 print(f"[WeatherService] Geocoding skipped/failed: {e}")
 
         current = data.get("current", {})
-        temp = current.get("temperature_2m", 25.0)
-        rain = current.get("rain", 0.0)
-        wind = current.get("wind_speed_10m", 0.0)
+        temp = current.get("temperature_2m") or 25.0
+        rain = current.get("rain") or 0.0
+        wind = current.get("wind_speed_10m") or 0.0
 
         categoria, multiplicador = _classify_weather(temp, rain, wind)
 
@@ -123,7 +162,16 @@ async def get_weather(lat: float, lng: float) -> Optional[WeatherResult]:
             viento=wind,
             categoria=categoria,
             multiplicador=multiplicador,
-            location_name=location_name
+            location_name=location_name,
+            humedad=current.get("relative_humidity_2m") or 0.0,
+            sensacion_termica=current.get("apparent_temperature") or temp,
+            presion_hpa=current.get("pressure_msl") or 1013.0,
+            uv_index=current.get("uv_index") or 0.0,
+            visibilidad_m=current.get("visibility") or 10000.0,
+            wind_gusts=current.get("wind_gusts_10m") or wind,
+            wind_direction=current.get("wind_direction_10m") or 0.0,
+            cloud_cover=current.get("cloud_cover") or 0.0,
+            dew_point=current.get("dew_point_2m") or 0.0,
         )
 
         # Cache the result

@@ -1,70 +1,61 @@
 /**
- * KEPLER Mobile - AR Camera Screen
- * Camera view with holographic UI overlay
+ * ARCameraScreen — Real-time YOLO detection + Quick Capture + Sentinel.
+ *
+ * This is the wiring layer:
+ *   • <CameraView> from expo-camera (full-screen, back camera)
+ *   • <DetectionOverlay> draws bboxes on top
+ *   • Top bar: close button, mission badge, engine status
+ *   • Bottom bar: AI toggle · Quick Capture (⊕) · Sentinel toggle
+ *
+ * All business logic lives in `useARCamera`. This component only renders
+ * state and dispatches user intents.
  */
-import React, { useState, useRef } from 'react';
+
+import React, { useRef, useState } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     TouchableOpacity,
-    Alert,
-    Animated,
+    LayoutChangeEvent,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import * as Haptics from 'expo-haptics';
-import { colors, spacing, radius } from '../theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export default function ARCameraScreen({ navigation, route }: any) {
+import { useARCamera } from '../features/ar/hooks';
+import {
+    DetectionOverlay,
+    CaptureButton,
+    SentinelButton,
+    StatusBadge,
+    CaptureCounter,
+} from '../features/ar/components';
+
+interface Props {
+    navigation: any;
+    route: { params?: { missionId?: string } };
+}
+
+export default function ARCameraScreen({ navigation, route }: Props) {
+    const insets = useSafeAreaInsets();
     const [permission, requestPermission] = useCameraPermissions();
-    const [isDetecting, setIsDetecting] = useState(false);
-    const [detections, setDetections] = useState<any[]>([]);
-    const [scanAnim] = useState(new Animated.Value(0));
     const cameraRef = useRef<CameraView>(null);
+    const [viewSize, setViewSize] = useState({ width: 0, height: 0 });
 
-    const startScanAnimation = () => {
-        scanAnim.setValue(0);
-        Animated.loop(
-            Animated.timing(scanAnim, {
-                toValue: 1,
-                duration: 2000,
-                useNativeDriver: true,
-            })
-        ).start();
+    const missionId = route.params?.missionId ?? null;
+
+    const ar = useARCamera({
+        cameraRef,
+        missionId,
+        enabled: permission?.granted === true,
+    });
+
+    const onCameraLayout = (e: LayoutChangeEvent) => {
+        const { width, height } = e.nativeEvent.layout;
+        setViewSize({ width, height });
     };
 
-    const captureAndAnalyze = async () => {
-        if (!cameraRef.current) return;
-
-        setIsDetecting(true);
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-        startScanAnimation();
-
-        try {
-            const photo = await cameraRef.current.takePictureAsync({
-                quality: 0.7,
-                base64: true,
-            });
-
-            // Simulate detection
-            setTimeout(() => {
-                setDetections([
-                    { class: 'OBJETO', confidence: 0.94, bbox: [80, 200, 180, 180] },
-                ]);
-                setIsDetecting(false);
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                Alert.alert('✅ ANÁLISIS COMPLETO', 'Objeto detectado y catalogado');
-            }, 1500);
-        } catch (error) {
-            setIsDetecting(false);
-            Alert.alert('ERROR', 'No se pudo capturar');
-        }
-    };
-
-    const closeMission = () => {
-        navigation.goBack();
-    };
-
+    // ─── Permission gates ──────────────────────────────────────
     if (!permission) {
         return (
             <View style={styles.permissionContainer}>
@@ -79,329 +70,362 @@ export default function ARCameraScreen({ navigation, route }: any) {
                 <Text style={styles.permissionIcon}>📷</Text>
                 <Text style={styles.permissionTitle}>ACCESO A CÁMARA</Text>
                 <Text style={styles.permissionText}>
-                    KEPLER necesita acceso a la cámara para detección AR
+                    KEPLER necesita acceso a la cámara para detección en AR.
                 </Text>
-                <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
+                <TouchableOpacity
+                    style={styles.permissionButton}
+                    onPress={requestPermission}
+                >
                     <Text style={styles.permissionButtonText}>PERMITIR</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 16 }}>
+                    <Text style={styles.permissionLink}>Cancelar</Text>
                 </TouchableOpacity>
             </View>
         );
     }
 
-    const scanTranslateY = scanAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [-100, 600],
-    });
-
+    // ─── Render ────────────────────────────────────────────────
     return (
         <View style={styles.container}>
-            <CameraView ref={cameraRef} style={styles.camera} facing="back">
-                {/* Corner brackets */}
+            <CameraView
+                ref={cameraRef}
+                style={styles.camera}
+                facing="back"
+                onLayout={onCameraLayout}
+            >
+                {/* Bounding boxes from YOLO */}
+                <DetectionOverlay
+                    predictions={ar.predictions}
+                    frameSize={ar.frameSize}
+                    viewSize={viewSize}
+                    targetTrackId={ar.target?.track_id ?? null}
+                />
+
+                {/* Corner brackets (decorative) */}
                 <View style={[styles.corner, styles.cornerTopLeft]} />
                 <View style={[styles.corner, styles.cornerTopRight]} />
                 <View style={[styles.corner, styles.cornerBottomLeft]} />
                 <View style={[styles.corner, styles.cornerBottomRight]} />
 
-                {/* Scan line animation */}
-                {isDetecting && (
-                    <Animated.View
-                        style={[
-                            styles.scanLine,
-                            { transform: [{ translateY: scanTranslateY }] },
-                        ]}
+                {/* ─── Top bar ─── */}
+                <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
+                    <TouchableOpacity
+                        onPress={() => navigation.goBack()}
+                        style={styles.closeButton}
+                    >
+                        <Text style={styles.closeButtonText}>✕</Text>
+                    </TouchableOpacity>
+
+                    <View style={styles.titleBlock}>
+                        <Text style={styles.title}>MODO AR</Text>
+                        {missionId ? (
+                            <Text style={styles.subtitle}>
+                                MISIÓN · {missionId.slice(0, 8).toUpperCase()}
+                            </Text>
+                        ) : (
+                            <Text style={styles.subtitle}>SIN MISIÓN ACTIVA</Text>
+                        )}
+                    </View>
+
+                    <StatusBadge
+                        status={ar.engineStatus}
+                        info={ar.autoPaused ? 'BAT BAJA' : undefined}
                     />
+                </View>
+
+                {/* ─── Counter (always visible, just below top bar) ─── */}
+                <View style={[styles.counterRow, { top: insets.top + 76 }]}>
+                    <CaptureCounter
+                        summary={ar.queueSummary}
+                        onRetryFailed={ar.retryFailed}
+                    />
+                </View>
+
+                {/* ─── Bottom controls ─── */}
+                <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 24 }]}>
+                    {/* Left: AI toggle */}
+                    <TouchableOpacity
+                        style={[
+                            styles.smallButton,
+                            ar.aiOn && !ar.autoPaused && styles.smallButtonActive,
+                        ]}
+                        onPress={() => ar.setAiOn(!ar.aiOn)}
+                    >
+                        <Text style={styles.smallButtonIcon}>🤖</Text>
+                        <Text style={styles.smallButtonLabel}>IA</Text>
+                    </TouchableOpacity>
+
+                    {/* Center: Quick Capture */}
+                    <CaptureButton
+                        onPress={ar.quickCapture}
+                        disabled={ar.autoPaused}
+                    />
+
+                    {/* Right: Sentinel */}
+                    <SentinelButton
+                        active={ar.sentinelActive}
+                        secondsRemaining={ar.sentinelSecondsLeft}
+                        onPress={ar.toggleSentinel}
+                        disabled={ar.autoPaused || ar.engineStatus !== 'ready'}
+                    />
+                </View>
+
+                {/* ─── Diagnostics strip (small, only when AI on) ─── */}
+                {ar.aiOn && !ar.autoPaused && (
+                    <View
+                        style={[
+                            styles.diagStrip,
+                            { bottom: insets.bottom + 130 },
+                        ]}
+                    >
+                        <Text style={styles.diagText}>
+                            FPS · {ar.frameCount} frames
+                            {ar.droppedCount > 0 ? ` · ${ar.droppedCount} drops` : ''}
+                            {' · '}DET {ar.predictions.length}
+                            {ar.target ? ` · LOCK ${Math.round(ar.target.score * 100)}%` : ''}
+                        </Text>
+                    </View>
                 )}
 
-                {/* Detection Overlays */}
-                {detections.map((det, index) => (
-                    <View
-                        key={index}
-                        style={[
-                            styles.detectionBox,
-                            {
-                                left: det.bbox[0],
-                                top: det.bbox[1],
-                                width: det.bbox[2],
-                                height: det.bbox[3],
-                            },
-                        ]}
-                    >
-                        <View style={styles.detectionLabelContainer}>
-                            <Text style={styles.detectionLabel}>
-                                {det.class} • {Math.round(det.confidence * 100)}%
+                {/* ─── Empty hint: YOLO is running but sees nothing ─── */}
+                {ar.aiOn &&
+                    !ar.autoPaused &&
+                    ar.engineStatus === 'ready' &&
+                    ar.predictions.length === 0 &&
+                    ar.frameCount > 10 && (
+                        <View
+                            style={[
+                                styles.emptyHint,
+                                { bottom: insets.bottom + 165 },
+                            ]}
+                        >
+                            <Text style={styles.emptyHintText}>
+                                YOLO sin detecciones · apunta a personas, sillas,
+                                botellas, libros, monitores, tazas u otros objetos
+                                cotidianos (clases COCO)
                             </Text>
                         </View>
-                    </View>
-                ))}
+                    )}
 
-                {/* Header */}
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={closeMission} style={styles.closeButton}>
-                        <Text style={styles.closeText}>✕</Text>
-                    </TouchableOpacity>
-                    <View style={styles.titleContainer}>
-                        <Text style={styles.headerTitle}>MODO AR</Text>
-                        <Text style={styles.headerSubtitle}>DETECCIÓN EN TIEMPO REAL</Text>
-                    </View>
-                    <View style={styles.statusBadge}>
-                        <View style={[styles.statusDot, isDetecting && styles.statusDotActive]} />
-                        <Text style={styles.statusText}>
-                            {isDetecting ? 'ANALIZANDO' : 'LISTO'}
+                {/* ─── Auto-paused banner ─── */}
+                {ar.autoPaused && (
+                    <View style={styles.pausedBanner}>
+                        <Text style={styles.pausedText}>
+                            ⚠ IA EN PAUSA · BATERÍA &lt; 20%
                         </Text>
                     </View>
-                </View>
-
-                {/* Bottom Controls */}
-                <View style={styles.controls}>
-                    <View style={styles.infoPanel}>
-                        <Text style={styles.infoText}>
-                            {isDetecting ? '⏳ Procesando imagen...' : '📷 Toca para analizar'}
-                        </Text>
-                    </View>
-
-                    <TouchableOpacity
-                        style={[styles.captureButton, isDetecting && styles.captureButtonActive]}
-                        onPress={captureAndAnalyze}
-                        disabled={isDetecting}
-                        activeOpacity={0.8}
-                    >
-                        <View style={[styles.captureButtonInner, isDetecting && styles.captureButtonInnerActive]}>
-                            <Text style={styles.captureIcon}>{isDetecting ? '⏳' : '📷'}</Text>
-                        </View>
-                    </TouchableOpacity>
-                </View>
+                )}
             </CameraView>
         </View>
     );
 }
 
+// =============================================================================
+// STYLES
+// =============================================================================
+
+const CYAN = '#3fa8ff';
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: colors.bgPrimary,
-    },
-    camera: {
-        flex: 1,
-    },
+    container: { flex: 1, backgroundColor: '#000' },
+    camera: { flex: 1 },
+
+    // Permission gate
     permissionContainer: {
         flex: 1,
-        backgroundColor: colors.bgPrimary,
-        justifyContent: 'center',
+        backgroundColor: '#000',
         alignItems: 'center',
-        padding: spacing.xl,
+        justifyContent: 'center',
+        padding: 32,
     },
-    permissionIcon: {
-        fontSize: 60,
-        marginBottom: spacing.lg,
-    },
+    permissionIcon: { fontSize: 64, marginBottom: 24 },
     permissionTitle: {
+        color: '#fff',
         fontSize: 18,
-        fontWeight: 'bold',
-        color: colors.textPrimary,
-        letterSpacing: 2,
-        marginBottom: spacing.sm,
+        letterSpacing: 4,
+        marginBottom: 12,
+        fontWeight: '300',
     },
     permissionText: {
-        color: colors.textSecondary,
-        fontSize: 14,
+        color: '#888',
         textAlign: 'center',
-        marginBottom: spacing.lg,
+        fontSize: 14,
+        lineHeight: 20,
     },
     permissionButton: {
-        backgroundColor: colors.cyan,
-        paddingHorizontal: spacing.xl,
-        paddingVertical: spacing.md,
-        borderRadius: radius.lg,
+        marginTop: 32,
+        backgroundColor: CYAN,
+        paddingHorizontal: 40,
+        paddingVertical: 14,
+        borderRadius: 12,
     },
     permissionButtonText: {
-        color: colors.bgPrimary,
-        fontWeight: 'bold',
-        letterSpacing: 1,
+        color: '#000',
+        fontWeight: '700',
+        letterSpacing: 2,
     },
+    permissionLink: {
+        color: '#888',
+        textDecorationLine: 'underline',
+    },
+
     // Corner brackets
     corner: {
         position: 'absolute',
-        width: 40,
-        height: 40,
-        borderColor: colors.cyan,
+        width: 30,
+        height: 30,
+        borderColor: CYAN,
     },
     cornerTopLeft: {
         top: 100,
-        left: 30,
+        left: 16,
         borderTopWidth: 2,
         borderLeftWidth: 2,
     },
     cornerTopRight: {
         top: 100,
-        right: 30,
+        right: 16,
         borderTopWidth: 2,
         borderRightWidth: 2,
     },
     cornerBottomLeft: {
-        bottom: 200,
-        left: 30,
+        bottom: 180,
+        left: 16,
         borderBottomWidth: 2,
         borderLeftWidth: 2,
     },
     cornerBottomRight: {
-        bottom: 200,
-        right: 30,
+        bottom: 180,
+        right: 16,
         borderBottomWidth: 2,
         borderRightWidth: 2,
     },
-    // Scan line
-    scanLine: {
-        position: 'absolute',
-        left: 30,
-        right: 30,
-        height: 2,
-        backgroundColor: colors.cyan,
-        shadowColor: colors.cyan,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 1,
-        shadowRadius: 10,
-    },
-    // Header
-    header: {
-        position: 'absolute',
-        top: 60,
-        left: 0,
-        right: 0,
+
+    // Top bar
+    topBar: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: spacing.lg,
+        paddingHorizontal: 16,
+        paddingBottom: 8,
+        gap: 10,
     },
     closeButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: 'rgba(0,0,0,0.6)',
-        justifyContent: 'center',
-        alignItems: 'center',
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
         borderWidth: 1,
-        borderColor: colors.border,
-    },
-    closeText: {
-        color: colors.textPrimary,
-        fontSize: 20,
-        fontWeight: 'bold',
-    },
-    titleContainer: {
+        borderColor: 'rgba(255, 255, 255, 0.15)',
         alignItems: 'center',
+        justifyContent: 'center',
     },
-    headerTitle: {
-        color: colors.cyan,
-        fontSize: 14,
-        fontWeight: 'bold',
-        letterSpacing: 3,
+    closeButtonText: {
+        color: '#fff',
+        fontSize: 18,
+        fontWeight: '300',
+        lineHeight: 20,
     },
-    headerSubtitle: {
-        color: colors.textMuted,
-        fontSize: 8,
-        letterSpacing: 1,
+    titleBlock: { flex: 1 },
+    title: {
+        color: '#fff',
+        fontSize: 13,
+        letterSpacing: 4,
+        fontWeight: '600',
+    },
+    subtitle: {
+        color: '#888',
+        fontSize: 9,
+        letterSpacing: 2,
         marginTop: 2,
     },
-    statusBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(0,0,0,0.6)',
-        paddingHorizontal: spacing.sm,
-        paddingVertical: spacing.xs,
-        borderRadius: radius.full,
-        borderWidth: 1,
-        borderColor: colors.border,
-    },
-    statusDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: colors.success,
-        marginRight: spacing.xs,
-    },
-    statusDotActive: {
-        backgroundColor: colors.warning,
-    },
-    statusText: {
-        color: colors.textPrimary,
-        fontSize: 9,
-        fontWeight: 'bold',
-        letterSpacing: 1,
-    },
-    // Controls
-    controls: {
+
+    // Counter row
+    counterRow: {
         position: 'absolute',
-        bottom: 50,
+        right: 16,
+    },
+
+    // Bottom bar
+    bottomBar: {
+        position: 'absolute',
         left: 0,
         right: 0,
+        bottom: 0,
+        paddingHorizontal: 32,
+        flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
     },
-    infoPanel: {
-        backgroundColor: 'rgba(0,0,0,0.6)',
-        paddingHorizontal: spacing.lg,
-        paddingVertical: spacing.sm,
-        borderRadius: radius.full,
-        marginBottom: spacing.lg,
-        borderWidth: 1,
-        borderColor: colors.border,
-    },
-    infoText: {
-        color: colors.textSecondary,
-        fontSize: 12,
-    },
-    captureButton: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: 'rgba(63, 168, 255, 0.2)',
+    smallButton: {
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        borderWidth: 1.5,
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+        alignItems: 'center',
         justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 2,
-        borderColor: colors.cyan,
     },
-    captureButtonActive: {
-        borderColor: colors.warning,
+    smallButtonActive: {
+        borderColor: CYAN,
+        backgroundColor: 'rgba(63, 168, 255, 0.18)',
     },
-    captureButtonInner: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        backgroundColor: colors.cyan,
-        justifyContent: 'center',
-        alignItems: 'center',
-        shadowColor: colors.cyan,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.8,
-        shadowRadius: 15,
-        elevation: 10,
+    smallButtonIcon: { fontSize: 18 },
+    smallButtonLabel: {
+        color: '#fff',
+        fontSize: 8,
+        letterSpacing: 1.2,
+        marginTop: 2,
+        fontWeight: '600',
     },
-    captureButtonInnerActive: {
-        backgroundColor: colors.warning,
-    },
-    captureIcon: {
-        fontSize: 28,
-    },
-    // Detection box
-    detectionBox: {
+
+    // Diagnostics
+    diagStrip: {
         position: 'absolute',
-        borderWidth: 2,
-        borderColor: colors.cyan,
-        backgroundColor: 'rgba(63, 168, 255, 0.1)',
-        borderRadius: radius.sm,
+        alignSelf: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 8,
     },
-    detectionLabelContainer: {
-        position: 'absolute',
-        top: -28,
-        left: 0,
-        backgroundColor: colors.cyan,
-        paddingHorizontal: spacing.sm,
-        paddingVertical: 2,
-        borderRadius: radius.sm,
-    },
-    detectionLabel: {
-        color: colors.bgPrimary,
+    diagText: {
+        color: '#888',
         fontSize: 10,
-        fontWeight: 'bold',
-        letterSpacing: 1,
+        letterSpacing: 1.5,
+    },
+
+    // Empty-detections hint
+    emptyHint: {
+        position: 'absolute',
+        alignSelf: 'center',
+        maxWidth: '85%',
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        borderColor: 'rgba(63, 168, 255, 0.35)',
+        borderWidth: 1,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 10,
+    },
+    emptyHintText: {
+        color: '#9bd6ff',
+        fontSize: 11,
+        textAlign: 'center',
+        lineHeight: 14,
+    },
+
+    // Paused banner
+    pausedBanner: {
+        position: 'absolute',
+        top: '40%',
+        alignSelf: 'center',
+        backgroundColor: 'rgba(255, 68, 68, 0.85)',
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 10,
+    },
+    pausedText: {
+        color: '#fff',
+        fontWeight: '700',
+        letterSpacing: 2,
     },
 });

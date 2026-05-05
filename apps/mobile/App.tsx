@@ -17,6 +17,10 @@ import LoginScreen from './src/screens/LoginScreen';
 import ARCameraScreen from './src/screens/ARCameraScreen';
 import MissionDetailScreen from './src/screens/MissionDetailScreen';
 import ObjectDetailScreen from './src/screens/ObjectDetailScreen';
+import ChatScreen from './src/screens/ChatScreen';
+import RoutesScreen from './src/screens/RoutesScreen';
+import TaxonomyScreen from './src/screens/TaxonomyScreen';
+import { ServerSettingsScreen } from './src/features/settings';
 import { MissionObject } from './src/features/archives/types';
 
 // Types
@@ -26,9 +30,13 @@ export type RootStackParamList = {
   Map: undefined;
   Archives: undefined;
   Profile: undefined;
+  Chat: undefined;
+  Routes: undefined;
+  Taxonomy: undefined;
   MissionDetail: { missionId: string };
   ObjectDetail: { object: MissionObject };
   ARCamera: { missionId?: string };
+  ServerSettings: undefined;
 };
 
 import { supabase } from './src/services/supabase';
@@ -72,8 +80,12 @@ export default function App() {
             <Stack.Screen name="Map" component={MapScreen} />
             <Stack.Screen name="Archives" component={ArchivesScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="Chat" component={ChatScreen} />
+            <Stack.Screen name="Routes" component={RoutesScreen} />
+            <Stack.Screen name="Taxonomy" component={TaxonomyScreen} />
             <Stack.Screen name="MissionDetail" component={MissionDetailScreen} />
             <Stack.Screen name="ObjectDetail" component={ObjectDetailScreen} />
+            <Stack.Screen name="ServerSettings" component={ServerSettingsScreen} />
             <Stack.Screen
               name="ARCamera"
               component={ARCameraScreen}

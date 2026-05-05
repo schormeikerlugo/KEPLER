@@ -316,9 +316,13 @@ services:
       - VITE_SUPABASE_URL=http://localhost:54321
       - VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzY3MDIyNTc1LCJleHAiOjQ5MjA2MjI1NzV9.ar9_aoOo-Cd7VVibO00kL0qCTa3lGh0IRmoFPmstrq8
 
-# Volumes are now bind mounts in .docker-data/
+# Volumes are now bind mounts in .docker-data/ (except for postgres and storage which are restored to legacy volumes)
 
-
+volumes:
+  kepler_postgres_data:
+    external: true
+  kepler_storage_data:
+    external: true
 networks:
   mars-network:
     driver: bridge

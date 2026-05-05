@@ -31,6 +31,10 @@ export function useTelemetry(autoRefresh = true, interval = REFRESH_INTERVAL) {
         oxygen: 99,
         bpm: 60,
         radiation: 0.033,
+        battery: 95,
+        link: 80,
+        suitTemp: 22,
+        humidity: 45,
     });
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);

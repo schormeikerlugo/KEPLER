@@ -41,6 +41,12 @@ interface HeaderProps {
     onStatusPress?: () => void;
     /** Current screen name for active state */
     currentScreen?: string;
+    /** Callback to open MissionStartModal from dashboard */
+    onMissionStart?: () => void;
+    /** Callback to open BitacoraScreen */
+    onBitacoraPress?: () => void;
+    /** Unread notification count for badge */
+    notificationCount?: number;
 }
 
 // =============================================================================
@@ -57,11 +63,14 @@ interface MenuItem {
 }
 
 const MENU_ITEMS: MenuItem[] = [
-    { id: 'mission', icon: '🚀', label: 'Iniciar Misión', screen: 'ARCamera' }, // Updated to ARCamera
+    { id: 'mission', icon: '🚀', label: 'Iniciar Misión' },
     { id: 'archives', icon: '📦', label: 'Archivos', screen: 'Archives' },
-    { id: 'taxonomy', icon: '🏷️', label: 'Taxonomía', screen: 'Taxonomy' }, // Placeholders
-    { id: 'notifications', icon: '🔔', label: 'Notificaciones', screen: 'Notifications', badge: 3 },
     { id: 'map', icon: '🗺️', label: 'Mapa', screen: 'Map' },
+    { id: 'chat', icon: '🤖', label: 'Chat IA', screen: 'Chat' },
+    { id: 'routes', icon: '🧭', label: 'Rutas', screen: 'Routes' },
+    { id: 'taxonomy', icon: '🏷️', label: 'Taxonomía', screen: 'Taxonomy' },
+    { id: 'notifications', icon: '🔔', label: 'Notificaciones' },
+    { id: 'server', icon: '⚙️', label: 'Servidor', screen: 'ServerSettings' },
 ];
 
 // =============================================================================
@@ -76,21 +85,40 @@ export default function Header({
     isOnline = false,
     onStatusPress,
     currentScreen = 'Main',
+    onMissionStart,
+    onBitacoraPress,
+    notificationCount = 0,
 }: HeaderProps) {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const insets = useSafeAreaInsets();
     const menu = useSharedMenu();
     const { profile } = useUserProfile();
 
+    const handleMenuItemPress = (item: MenuItem) => {
+        menu.closeMenu();
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+        // Special actions
+        if (item.id === 'mission') {
+            onMissionStart?.();
+            return;
+        }
+        if (item.id === 'notifications') {
+            onBitacoraPress?.();
+            return;
+        }
+
+        // Navigate to screen
+        if (item.screen) {
+            (navigation as any).navigate(item.screen);
+        }
+    };
+
+    // Keep old handleNavigate for profile
     const handleNavigate = (screen: string) => {
         menu.closeMenu();
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        // @ts-ignore - Dynamic navigation
-        if (screen === 'Notifications' || screen === 'Taxonomy') {
-            menu.showToast('Funcionalidad disponible próximamente');
-        } else {
-            (navigation as any).navigate(screen);
-        }
+        (navigation as any).navigate(screen);
     };
 
     const handleLogout = () => {
@@ -197,23 +225,26 @@ export default function Header({
 
                     {/* Menu Items (Cards) */}
                     <View style={styles.cardsContainer}>
-                        {MENU_ITEMS.map((item) => (
-                            <TouchableOpacity
-                                key={item.id}
-                                style={styles.menuCard}
-                                onPress={() => item.screen && handleNavigate(item.screen)}
-                            >
-                                <View style={styles.cardContent}>
-                                    <Text style={styles.cardIcon}>{item.icon}</Text>
-                                    <Text style={styles.cardLabel}>{item.label}</Text>
-                                </View>
-                                {item.badge && (
-                                    <View style={styles.badge}>
-                                        <Text style={styles.badgeText}>{item.badge}</Text>
+                        {MENU_ITEMS.map((item) => {
+                            const badgeCount = item.id === 'notifications' ? notificationCount : item.badge;
+                            return (
+                                <TouchableOpacity
+                                    key={item.id}
+                                    style={styles.menuCard}
+                                    onPress={() => handleMenuItemPress(item)}
+                                >
+                                    <View style={styles.cardContent}>
+                                        <Text style={styles.cardIcon}>{item.icon}</Text>
+                                        <Text style={styles.cardLabel}>{item.label}</Text>
                                     </View>
-                                )}
-                            </TouchableOpacity>
-                        ))}
+                                    {badgeCount != null && badgeCount > 0 && (
+                                        <View style={styles.badge}>
+                                            <Text style={styles.badgeText}>{badgeCount}</Text>
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
+                            );
+                        })}
                     </View>
                 </ScrollView>
 
