@@ -1,0 +1,21 @@
+[package]
+name = "kepler-proto"
+description = "Protocolo en vivo de KEPLER (Protobuf sobre WebSocket)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+prost.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+
+[build-dependencies]
+prost-build.workspace = true
+protox.workspace = true
+
+[lints]
+workspace = true

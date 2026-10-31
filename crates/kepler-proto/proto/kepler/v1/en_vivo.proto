@@ -1,0 +1,225 @@
+// KEPLER — protocolo en vivo (WebSocket binario, un mensaje Envoltura por frame)
+//
+// Conexión: wss://<servidor>/v1/en-vivo con el JWT de la sesión en la cabecera
+// Authorization. El primer mensaje del cliente es Hola; el servidor responde
+// Bienvenida o Error y cierra.
+//
+// Convenciones:
+//   * UUID como 16 bytes (big-endian, RFC 9562).
+//   * Tiempos como milisegundos Unix (int64).
+//   * Cajas de detección normalizadas a [0, 1] respecto al fotograma.
+//   * Cambios incompatibles => paquete kepler.v2; nunca reutilizar números de campo.
+
+syntax = "proto3";
+
+package kepler.v1;
+
+message Envoltura {
+  // Número creciente por conexión y sentido; Ack lo referencia.
+  uint64 secuencia = 1;
+  int64 enviado_ms = 2;
+
+  oneof contenido {
+    Hola hola = 10;
+    Bienvenida bienvenida = 11;
+    MuestraGps gps = 12;
+    EstadoDispositivo dispositivo = 13;
+    Fotograma fotograma = 14;
+    Detecciones detecciones = 15;
+    CapturaProcesada captura = 16;
+    EventoMision mision = 17;
+    Ack ack = 18;
+    Error error = 19;
+    Ping ping = 20;
+    Pong pong = 21;
+    Suscripcion suscripcion = 22;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sesión
+// ---------------------------------------------------------------------------
+
+enum TipoCliente {
+  TIPO_CLIENTE_DESCONOCIDO = 0;
+  // iPhone en terreno: envía GPS, estado y detecciones propias.
+  TIPO_CLIENTE_UNIDAD_CAMPO = 1;
+  // Escritorio: recibe en vivo lo que envían las unidades de campo.
+  TIPO_CLIENTE_CENTRO_CONTROL = 2;
+}
+
+message Hola {
+  uint32 version_protocolo = 1;
+  TipoCliente tipo = 2;
+  // Modelo del dispositivo, p. ej. "iPhone14,3".
+  string dispositivo = 3;
+  string version_app = 4;
+}
+
+message Bienvenida {
+  uint32 version_protocolo = 1;
+  bytes sesion_id = 2;
+  int64 hora_servidor_ms = 3;
+}
+
+// El Centro de Control elige qué unidad de campo seguir.
+message Suscripcion {
+  // Vacío = todas las sesiones de campo del usuario.
+  bytes sesion_id = 1;
+  bool fotogramas = 2;
+}
+
+message Ping {
+  uint64 nonce = 1;
+}
+
+message Pong {
+  uint64 nonce = 1;
+}
+
+message Ack {
+  uint64 secuencia = 1;
+}
+
+enum CodigoError {
+  CODIGO_ERROR_DESCONOCIDO = 0;
+  CODIGO_ERROR_NO_AUTORIZADO = 1;
+  CODIGO_ERROR_VERSION_INCOMPATIBLE = 2;
+  CODIGO_ERROR_MENSAJE_INVALIDO = 3;
+  CODIGO_ERROR_DEMASIADO_GRANDE = 4;
+  CODIGO_ERROR_LIMITE_EXCEDIDO = 5;
+  CODIGO_ERROR_INTERNO = 6;
+}
+
+message Error {
+  CodigoError codigo = 1;
+  string mensaje = 2;
+  // Secuencia del mensaje que lo provocó, si aplica.
+  uint64 secuencia = 3;
+}
+
+// ---------------------------------------------------------------------------
+// Telemetría
+// ---------------------------------------------------------------------------
+
+message MuestraGps {
+  // Se persiste en rastro_gps con este id (generado en el dispositivo).
+  bytes id = 1;
+  bytes mision_id = 2;
+  double lat = 3;
+  double lng = 4;
+  optional double altitud = 5;
+  // m/s
+  optional float velocidad = 6;
+  // grados [0, 360)
+  optional float rumbo = 7;
+  optional float precision_m = 8;
+  int64 registrado_ms = 9;
+}
+
+enum Red {
+  RED_DESCONOCIDA = 0;
+  RED_SIN_CONEXION = 1;
+  RED_WIFI = 2;
+  RED_CELULAR = 3;
+}
+
+message EstadoDispositivo {
+  // 0..1
+  optional float bateria = 1;
+  bool cargando = 2;
+  // Estado térmico del dispositivo (iOS: nominal/fair/serious/critical => 0..3).
+  optional uint32 termico = 3;
+  // Pulso del Apple Watch, si hay.
+  optional uint32 bpm = 4;
+  // Rumbo de la brújula, grados.
+  optional float brujula = 5;
+  Red red = 6;
+  // Capturas pendientes de sincronizar en el dispositivo.
+  uint32 cola_pendiente = 7;
+}
+
+// ---------------------------------------------------------------------------
+// Visión
+// ---------------------------------------------------------------------------
+
+enum OrigenDeteccion {
+  ORIGEN_DETECCION_DESCONOCIDO = 0;
+  // YOLO en el propio dispositivo (CoreML).
+  ORIGEN_DETECCION_DISPOSITIVO = 1;
+  // YOLO en kepler-server (ONNX, respaldo).
+  ORIGEN_DETECCION_SERVIDOR = 2;
+}
+
+// Fotograma JPEG para detección en el servidor o vista en vivo del escritorio.
+message Fotograma {
+  uint64 numero = 1;
+  bytes jpeg = 2;
+  uint32 ancho = 3;
+  uint32 alto = 4;
+}
+
+message Caja {
+  float x = 1;
+  float y = 2;
+  float ancho = 3;
+  float alto = 4;
+}
+
+message Deteccion {
+  string clase = 1;
+  float confianza = 2;
+  Caja caja = 3;
+  // Id de ByteTrack, estable entre fotogramas.
+  optional uint32 track_id = 4;
+  // Distancia medida con LiDAR, metros.
+  optional float distancia_m = 5;
+}
+
+message Detecciones {
+  bytes mision_id = 1;
+  uint64 fotograma = 2;
+  uint32 ancho = 3;
+  uint32 alto = 4;
+  repeated Deteccion items = 5;
+  OrigenDeteccion origen = 6;
+  float latencia_ms = 7;
+}
+
+// ---------------------------------------------------------------------------
+// Capturas y misiones
+// ---------------------------------------------------------------------------
+
+enum Entidad {
+  ENTIDAD_DESCONOCIDA = 0;
+  ENTIDAD_PERSONA = 1;
+  ENTIDAD_POI = 2;
+  ENTIDAD_OBJETO = 3;
+}
+
+message CoincidenciaReId {
+  bytes id = 1;
+  string nombre = 2;
+  float similitud = 3;
+}
+
+// El servidor terminó de procesar una captura (embedding + Re-ID + guardado).
+message CapturaProcesada {
+  bytes id = 1;
+  Entidad entidad = 2;
+  string nombre = 3;
+  optional CoincidenciaReId reid = 4;
+}
+
+enum TipoEventoMision {
+  TIPO_EVENTO_MISION_DESCONOCIDO = 0;
+  TIPO_EVENTO_MISION_INICIADA = 1;
+  TIPO_EVENTO_MISION_COMPLETADA = 2;
+  TIPO_EVENTO_MISION_ABORTADA = 3;
+}
+
+message EventoMision {
+  bytes mision_id = 1;
+  TipoEventoMision tipo = 2;
+  string codigo = 3;
+}
