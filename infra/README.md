@@ -34,6 +34,7 @@ Consumo en reposo: ~860 MB de RAM.
 |---|---|
 | `migrations/0001_init.sql` | Tablas, índices (sync, PostGIS, HNSW), RLS, `buscar_similares`, Realtime |
 | `migrations/0002_storage.sql` | Buckets `capturas` (privado) y `avatares` (público), permisos por carpeta `<user_id>/` |
+| `migrations/0003_usuarios.sql` | Cuentas por nombre de usuario (formato y perfil desde el email interno) |
 | `seed/0001_catalogos.sql` | Taxonomía de objetos y categorías de POI |
 
 Las migraciones aplicadas se registran en `kepler_meta.migraciones`. Para cambiar el esquema se añade un archivo nuevo numerado; nunca se edita uno ya aplicado.
@@ -52,7 +53,8 @@ En cortex (`cd ~/services/kepler`):
 ```bash
 sh scripts/gen-env.sh                          # primera vez: genera .env con secretos nuevos
 sh scripts/migrate.sh                          # aplica migraciones pendientes
-sh scripts/create-user.sh <email> <usuario>    # crea un explorador (pide contraseña)
+sh scripts/create-user.sh <usuario> [nombre]   # crea una cuenta (pide contraseña)
+sh scripts/set-password.sh <usuario>           # cambia la contraseña
 docker compose ps                              # estado
 docker compose logs -f <servicio>              # logs
 ```
@@ -63,6 +65,10 @@ Restaurar un backup:
 docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" kepler-db \
   pg_restore -h localhost -U supabase_admin -d postgres --clean --if-exists < /mnt/storage/kepler/backups/kepler-AAAA-MM-DD.dump
 ```
+
+## Cuentas
+
+Se inicia sesión con **nombre de usuario** (3-30 caracteres: minúsculas, números y `_`). Auth necesita un email, así que internamente se usa `<usuario>@kepler.local`; las apps lo construyen solas y nunca se muestra. No hay recuperación por correo: la contraseña se cambia con `set-password.sh`.
 
 ## Notas
 
