@@ -285,6 +285,32 @@ services:
       DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD}
     entrypoint: ["/bin/sh", "/docker-entrypoint.sh"]
 
+  # API REST + WebSocket en vivo (Rust). Imagen construida en la PC y
+  # enviada con scripts/deploy.sh. Se conecta como `authenticator` y asume
+  # el rol `authenticated` en cada petición: RLS también le aplica.
+  server:
+    <<: *restart
+    container_name: kepler-server
+    image: kepler-server:latest
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - ${KEPLER_SERVER_PORT:-8000}:8000
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/127.0.0.1/8000'"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    environment:
+      KEPLER_DATABASE_URL: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/postgres
+      KEPLER_JWT_SECRET: ${JWT_SECRET}
+      KEPLER_OLLAMA_URLS: ${KEPLER_OLLAMA_URLS:-http://192.168.68.114:11434,http://192.168.68.120:11434}
+      KEPLER_OLLAMA_MODELO: ${KEPLER_OLLAMA_MODELO:-mistral:7b}
+      KEPLER_CORS_ORIGENES: ${KEPLER_CORS_ORIGENES:-}
+      RUST_LOG: ${KEPLER_LOG:-kepler_server=info,tower_http=warn}
+
   # pg_dump diario (03:00) con retención configurable
   backup:
     <<: *restart

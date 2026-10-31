@@ -1,5 +1,45 @@
 # services
 
-Binarios de servidor del workspace.
+## kepler-server
 
-- `kepler-server` *(paso 4)* — API REST + WebSocket en Rust (axum), desplegado en cortex.
+API REST + WebSocket en vivo en Rust (axum + sqlx), desplegada en cortex como `kepler-server` (puerto **8000**).
+
+- Autenticación con el JWT de Supabase Auth (`Authorization: Bearer`).
+- Cada petición abre una transacción con el rol `authenticated` y los claims del usuario: **RLS se aplica también al servidor**.
+- Sin `SERVICE_ROLE_KEY`: el servidor no puede ver datos de otros usuarios aunque tenga un bug.
+
+### Endpoints
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/health` | Estado de la base de datos y de cada Ollama (sin auth) |
+| GET / PATCH | `/v1/yo` | Perfil propio |
+| GET | `/v1/catalogos` | Taxonomía y categorías de POI |
+| GET / POST | `/v1/misiones` | Listar (`?estado=&limite=`) / crear (`"iniciar": true` = Quick Launch) |
+| GET | `/v1/misiones/{id}` | Detalle |
+| POST | `/v1/misiones/{id}/iniciar` · `/completar` · `/abortar` | Ciclo de vida (409 si la transición no vale o cambió en otro dispositivo) |
+| GET / POST | `/v1/misiones/{id}/rastro` | Rastro GPS (lotes de hasta 1000 puntos, idempotente) |
+| GET | `/v1/sync/cambios?desde=&embeddings=` | Cambios desde el cursor (incluye borrados lógicos) |
+| POST | `/v1/sync/subir` | `{ "<tabla>": [filas] }` con resolución de conflictos |
+| GET (WS) | `/v1/en-vivo` | WebSocket binario `kepler-proto` |
+
+Errores: `{"error": "<codigo>", "mensaje": "..."}` con 401, 404, 409 o 422.
+
+### Variables
+
+| Variable | Descripción |
+|---|---|
+| `KEPLER_DATABASE_URL` | `postgres://authenticator:<pass>@db:5432/postgres` |
+| `KEPLER_JWT_SECRET` | `JWT_SECRET` de Supabase |
+| `KEPLER_OLLAMA_URLS` | Ollama en orden de preferencia, separados por coma |
+| `KEPLER_OLLAMA_MODELO` | `mistral:7b` |
+| `KEPLER_CORS_ORIGENES` | Orígenes web permitidos (vacío = ninguno) |
+| `KEPLER_RPS` / `KEPLER_RAFAGA` | Rate limit por IP (20/s, ráfaga 60) |
+| `KEPLER_DIRECCION` | `0.0.0.0:8000` |
+
+### Pruebas
+
+```bash
+cargo test -p kepler-server                                   # unitarios y de rutas
+cargo test -p kepler-server --test e2e -- --ignored --nocapture # contra un stack real (ver tests/e2e.rs)
+```

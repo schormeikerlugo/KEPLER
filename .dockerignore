@@ -1,0 +1,7 @@
+# Contexto mínimo para services/kepler-server/Dockerfile
+*
+!Cargo.toml
+!Cargo.lock
+!crates/
+!services/kepler-server/
+**/target

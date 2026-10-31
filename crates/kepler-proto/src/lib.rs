@@ -73,6 +73,7 @@ impl Emisor {
         Envoltura {
             secuencia: self.siguiente,
             enviado_ms: ahora_ms,
+            origen_sesion: Vec::new(),
             contenido: Some(contenido.into()),
         }
     }

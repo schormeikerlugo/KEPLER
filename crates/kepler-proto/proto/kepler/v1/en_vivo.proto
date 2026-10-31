@@ -18,6 +18,8 @@ message Envoltura {
   // Número creciente por conexión y sentido; Ack lo referencia.
   uint64 secuencia = 1;
   int64 enviado_ms = 2;
+  // Sesión de campo que originó el mensaje; la rellena el servidor al reenviarlo.
+  bytes origen_sesion = 3;
 
   oneof contenido {
     Hola hola = 10;

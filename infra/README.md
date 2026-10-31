@@ -8,6 +8,7 @@ Basado en el self-hosting oficial de Supabase, reducido a lo que usa KEPLER (sin
 
 | Contenedor | Función | Puerto (cortex) |
 |---|---|---|
+| `kepler-server` | API REST + WebSocket en vivo (Rust), ver `services/README.md` | **8000** |
 | `kepler-gateway` | Envoy: `/auth/v1`, `/rest/v1`, `/storage/v1`, `/realtime/v1` y Studio en `/` | **54321** |
 | `kepler-db` | Postgres 17 + pgvector + PostGIS | **54322** (solo LAN) |
 | `kepler-auth` | GoTrue (registro público desactivado) | interno |
@@ -17,7 +18,7 @@ Basado en el self-hosting oficial de Supabase, reducido a lo que usa KEPLER (sin
 | `kepler-meta` + `kepler-studio` | Administración (Studio pide usuario/contraseña) | vía gateway |
 | `kepler-backup` | `pg_dump` diario a las 03:00, retención 14 días | — |
 
-Consumo en reposo: ~860 MB de RAM.
+Consumo en reposo: ~860 MB de RAM (kepler-server: ~2 MB).
 
 ## Datos
 
@@ -44,8 +45,9 @@ Las migraciones aplicadas se registran en `kepler_meta.migraciones`. Para cambia
 Desde la PC de desarrollo:
 
 ```bash
-sh infra/scripts/deploy.sh          # sincroniza, levanta el stack y aplica migraciones
-sh infra/scripts/deploy.sh --sync   # solo sincroniza archivos
+sh infra/scripts/deploy.sh              # construye kepler-server, lo envía, sincroniza, levanta y migra
+sh infra/scripts/deploy.sh --sin-imagen # sin reconstruir kepler-server
+sh infra/scripts/deploy.sh --sync       # solo sincroniza archivos
 ```
 
 En cortex (`cd ~/services/kepler`):
@@ -73,4 +75,5 @@ Se inicia sesión con **nombre de usuario** (3-30 caracteres: minúsculas, núme
 ## Notas
 
 - La primera suscripción Realtime tras arrancar el stack tarda unos segundos (crea el slot de replicación).
+- La imagen de `kepler-server` se construye en la PC (Docker) y se envía con `docker save | ssh cortex docker load`. Con `docker-buildx` instalado se podría cachear la compilación.
 - `deploy.sh` usa `rsync` si está instalado; si no, copia con `tar` (sin borrar en destino archivos eliminados del repo).
