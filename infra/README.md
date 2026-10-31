@@ -27,6 +27,7 @@ Consumo en reposo: ~860 MB de RAM (kepler-server: ~2 MB).
 | Base de datos | `~/services/kepler/volumes/db/data` (NVMe) |
 | Archivos (Storage) | `/mnt/storage/kepler/storage` |
 | Backups | `/mnt/storage/kepler/backups/kepler-AAAA-MM-DD.dump` |
+| Mapas offline | `/mnt/storage/kepler/mapas/*.pmtiles` (venezuela: 434 MB) |
 | Secretos | `~/services/kepler/.env` (permisos 600, **nunca en git**) |
 
 ## Esquema
@@ -36,6 +37,7 @@ Consumo en reposo: ~860 MB de RAM (kepler-server: ~2 MB).
 | `migrations/0001_init.sql` | Tablas, índices (sync, PostGIS, HNSW), RLS, `buscar_similares`, Realtime |
 | `migrations/0002_storage.sql` | Buckets `capturas` (privado) y `avatares` (público), permisos por carpeta `<user_id>/` |
 | `migrations/0003_usuarios.sql` | Cuentas por nombre de usuario (formato y perfil desde el email interno) |
+| `migrations/0004_explorador_y_rutas.sql` | `perfiles.calzado_reset_en` y `rutas.trazado` calculado desde los waypoints |
 | `seed/0001_catalogos.sql` | Taxonomía de objetos y categorías de POI |
 
 Las migraciones aplicadas se registran en `kepler_meta.migraciones`. Para cambiar el esquema se añade un archivo nuevo numerado; nunca se edita uno ya aplicado.

@@ -10,7 +10,11 @@ COPY services/kepler-server services/kepler-server
 RUN cargo build --release --locked -p kepler-server
 
 FROM debian:trixie-slim
-RUN useradd --system --uid 10001 --no-create-home kepler
+# Certificados raíz para HTTPS (Open-Meteo, Nominatim, ipapi)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --uid 10001 --no-create-home kepler
 COPY --from=compilacion /src/target/release/kepler-server /usr/local/bin/kepler-server
 USER kepler
 EXPOSE 8000

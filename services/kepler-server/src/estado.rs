@@ -4,6 +4,7 @@ use crate::auth::Verificador;
 use crate::config::Config;
 use crate::db::Db;
 use crate::difusor::Difusor;
+use crate::externo::Externos;
 
 /// Estado compartido por todas las peticiones.
 #[derive(Clone)]
@@ -14,7 +15,9 @@ pub struct Interno {
     pub db: Db,
     pub verificador: Verificador,
     pub difusor: Difusor,
+    /// Cliente para la LAN (Ollama).
     pub http: reqwest::Client,
+    pub externos: Externos,
 }
 
 impl Estado {
@@ -30,6 +33,7 @@ impl Estado {
             verificador,
             difusor: Difusor::default(),
             http,
+            externos: Externos::new(),
         }))
     }
 }

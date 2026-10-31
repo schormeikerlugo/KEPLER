@@ -3,11 +3,14 @@
 //! Modelos y reglas compartidos por `kepler-server`, el Centro de Control y la
 //! Unidad de Campo (iOS vía UniFFI). Sin dependencias de red ni de base de datos.
 
+pub mod entorno;
 mod enums;
 mod error;
+pub mod explorador;
 mod geo;
 pub mod modelos;
 pub mod reid;
+pub mod riesgo;
 mod sync;
 mod usuario;
 pub mod vector_pg;

@@ -1,4 +1,5 @@
 use std::net::SocketAddr;
+use std::path::PathBuf;
 
 /// Configuración desde variables de entorno (ver `infra/.env.example`).
 #[derive(Debug, Clone)]
@@ -14,6 +15,10 @@ pub struct Config {
     pub cors_origenes: Vec<String>,
     pub peticiones_por_segundo: u64,
     pub rafaga: u32,
+    /// Directorio con los `.pmtiles` de los mapas offline.
+    pub mapas_dir: PathBuf,
+    /// Zona horaria por defecto para agrupar por día.
+    pub zona_horaria: String,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -45,6 +50,8 @@ impl Config {
             cors_origenes: lista("KEPLER_CORS_ORIGENES"),
             peticiones_por_segundo: opcional("KEPLER_RPS", "20").parse().unwrap_or(20),
             rafaga: opcional("KEPLER_RAFAGA", "60").parse().unwrap_or(60),
+            mapas_dir: opcional("KEPLER_MAPAS_DIR", "/data/mapas").into(),
+            zona_horaria: opcional("KEPLER_ZONA_HORARIA", "America/Caracas"),
         })
     }
 }

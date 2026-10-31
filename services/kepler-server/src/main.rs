@@ -2,12 +2,14 @@
 
 mod api;
 mod auth;
+mod cache;
 mod config;
 mod db;
 mod difusor;
 mod error;
 mod escritura;
 mod estado;
+mod externo;
 mod tablas;
 
 use std::net::SocketAddr;

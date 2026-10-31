@@ -309,7 +309,12 @@ services:
       KEPLER_OLLAMA_URLS: ${KEPLER_OLLAMA_URLS:-http://192.168.68.114:11434,http://192.168.68.120:11434}
       KEPLER_OLLAMA_MODELO: ${KEPLER_OLLAMA_MODELO:-mistral:7b}
       KEPLER_CORS_ORIGENES: ${KEPLER_CORS_ORIGENES:-}
+      KEPLER_MAPAS_DIR: /data/mapas
+      KEPLER_ZONA_HORARIA: ${TZ:-America/Caracas}
       RUST_LOG: ${KEPLER_LOG:-kepler_server=info,tower_http=warn}
+    volumes:
+      # Mapas offline (.pmtiles), solo lectura
+      - ${KEPLER_MAPAS_DIR:-/mnt/storage/kepler/mapas}:/data/mapas:ro
 
   # pg_dump diario (03:00) con retención configurable
   backup:

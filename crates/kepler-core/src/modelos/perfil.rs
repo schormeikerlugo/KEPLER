@@ -20,6 +20,9 @@ pub struct Perfil {
     pub ubicacion: Option<String>,
     #[serde(default)]
     pub preferencias: Value,
+    /// Último cambio de calzado: el desgaste se cuenta desde aquí.
+    #[serde(default)]
+    pub calzado_reset_en: Option<DateTime<Utc>>,
     pub creado_en: DateTime<Utc>,
     pub actualizado_en: DateTime<Utc>,
     pub version: i64,

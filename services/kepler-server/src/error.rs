@@ -50,12 +50,12 @@ impl IntoResponse for ApiError {
             Self::Invalido(_) => (StatusCode::UNPROCESSABLE_ENTITY, "invalido"),
             Self::Conflicto(_) => (StatusCode::CONFLICT, "conflicto"),
             Self::BaseDatos(e) => {
-                // Violaciones de RLS / check / FK: culpa del cliente, no del servidor
+                // RLS, check, FK, duplicado, formato o parámetro inválido: culpa del cliente
                 if let sqlx::Error::Database(db) = e
                     && let Some(code) = db.code()
                     && matches!(
                         code.as_ref(),
-                        "42501" | "23514" | "23503" | "23505" | "22P02"
+                        "42501" | "23514" | "23503" | "23505" | "22P02" | "22023"
                     )
                 {
                     return (

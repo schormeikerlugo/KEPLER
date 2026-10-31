@@ -101,8 +101,12 @@ pub async fn crear(
         m.clima = clima;
     }
     if n.iniciar {
-        m.iniciar(ahora, coordenada(n.lat, n.lng)?)?;
+        let inicio = coordenada(n.lat, n.lng)?;
+        m.iniciar(ahora, inicio)?;
         m.meta.version = 1;
+        if sin_clima(&m.clima) {
+            m.clima = instantanea_clima(&estado, inicio).await;
+        }
     }
 
     let mut tx = estado.db.como_usuario(&sesion).await?;
@@ -138,12 +142,19 @@ pub async fn iniciar(
 ) -> ApiResult<Json<Mision>> {
     let inicio = cuerpo.map(|Json(i)| i).unwrap_or_default();
     let coord = coordenada(inicio.lat, inicio.lng)?;
+    let clima = instantanea_clima(&estado, coord).await;
     transicion(
         estado,
         sesion,
         id,
         TipoEventoMision::Iniciada,
-        |m, ahora, _| m.iniciar(ahora, coord),
+        |m, ahora, _| {
+            m.iniciar(ahora, coord)?;
+            if sin_clima(&m.clima) {
+                m.clima = clima;
+            }
+            Ok(())
+        },
     )
     .await
 }
@@ -200,7 +211,8 @@ async fn transicion(
     // Concurrencia optimista: si otro dispositivo la cambió entretanto, 409.
     let cambiadas = sqlx::query(
         "update public.misiones set estado = $2, inicio_en = $3, fin_en = $4,
-            lat_inicio = $5, lng_inicio = $6, distancia_m = $7, duracion_s = $8, vel_max_mps = $9
+            lat_inicio = $5, lng_inicio = $6, distancia_m = $7, duracion_s = $8, vel_max_mps = $9,
+            clima = $11
          where id = $1 and version = $10",
     )
     .bind(m.id)
@@ -213,6 +225,7 @@ async fn transicion(
     .bind(m.duracion_s)
     .bind(m.vel_max_mps)
     .bind(version)
+    .bind(&m.clima)
     .execute(&mut *tx)
     .await?
     .rows_affected();
@@ -355,6 +368,22 @@ fn coordenada(lat: Option<f64>, lng: Option<f64>) -> ApiResult<Option<Coordenada
         (Some(lat), Some(lng)) => Ok(Some(Coordenada::new(lat, lng)?)),
         (None, None) => Ok(None),
         _ => Err(ApiError::Invalido("lat y lng van juntas".into())),
+    }
+}
+
+fn sin_clima(clima: &Value) -> bool {
+    clima.as_object().is_none_or(|o| o.is_empty())
+}
+
+/// Clima al despegar (incluye `multiplicador_fatiga`, que usa el estado del
+/// explorador). Vacío si no hay coordenadas o el servicio no responde.
+async fn instantanea_clima(estado: &Estado, inicio: Option<Coordenada>) -> Value {
+    let Some(c) = inicio else {
+        return Value::Object(Default::default());
+    };
+    match estado.externos.clima(c.lat, c.lng).await {
+        Ok(clima) => serde_json::to_value(clima).unwrap_or_default(),
+        Err(_) => Value::Object(Default::default()),
     }
 }
 

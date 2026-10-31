@@ -452,6 +452,171 @@ async fn punta_a_punta() {
     assert!(c3["tablas"]["misiones"].as_array().unwrap().len() <= 1);
     ok("cursor incremental");
 
+    // ===== 4b: entorno, explorador, dashboard, rutas y mapas =====
+
+    let (s, clima) = api.get(&yo, "/v1/clima?lat=10.4806&lng=-66.9036").await;
+    assert_eq!(s, StatusCode::OK);
+    assert_eq!(clima["disponible"], true, "{clima}");
+    assert!(clima["temperatura_c"].is_number() && clima["categoria"].is_string());
+    ok(&format!(
+        "clima: {} {}°C · {} (fatiga ×{})",
+        clima["ubicacion"],
+        clima["temperatura_c"],
+        clima["categoria"],
+        clima["multiplicador_fatiga"]
+    ));
+    assert_eq!(
+        m["clima"]["categoria"], clima["categoria"],
+        "la misión guardó el clima al despegar"
+    );
+    ok("la misión guardó la instantánea del clima al despegar");
+
+    let (_, aire) = api.get(&yo, "/v1/aire?lat=10.4806&lng=-66.9036").await;
+    assert_eq!(aire["disponible"], true, "{aire}");
+    ok(&format!(
+        "aire: AQI {} · {} · aire {}%",
+        aire["aqi"], aire["calidad"], aire["aire_pct"]
+    ));
+
+    let (_, ip) = api.get(&yo, "/v1/geo/ip").await;
+    assert_eq!(ip["disponible"], true, "{ip}");
+    assert!(ip["lat"].is_number() && ip["lng"].is_number());
+    ok(&format!(
+        "geo IP: {} ({}, {})",
+        ip["ciudad"], ip["lat"], ip["lng"]
+    ));
+
+    let (s, exp) = api
+        .get(&yo, "/v1/explorador?lat=10.4806&lng=-66.9036")
+        .await;
+    assert_eq!(s, StatusCode::OK, "{exp}");
+    assert_eq!(exp["misiones_completadas"], 1);
+    assert_eq!(exp["distancia_total_km"], 0.2);
+    let resistencia = exp["resistencia"].as_f64().unwrap();
+    assert!((0.0..=100.0).contains(&resistencia));
+    let (s, reset) = api.post(&yo, "/v1/explorador/calzado", json!(null)).await;
+    assert_eq!(s, StatusCode::OK);
+    assert!(reset["calzado_reset_en"].is_string());
+    ok(&format!(
+        "explorador: calzado {}%, resistencia {resistencia}%, reset de calzado",
+        exp["desgaste_calzado"]
+    ));
+
+    let (s, dash) = api.get(&yo, "/v1/dashboard?zona=America/Caracas").await;
+    assert_eq!(s, StatusCode::OK, "{dash}");
+    assert_eq!(dash["conteos"]["misiones"], 1);
+    assert_eq!(dash["conteos"]["objetos"], 1);
+    assert_eq!(dash["semana"].as_array().unwrap().len(), 7);
+    assert!(
+        dash["semana"][6]["distancia_km"].as_f64().unwrap() > 0.2,
+        "hoy cuenta la misión"
+    );
+    assert!(dash["recientes"]["objetos"][0].get("embedding").is_none());
+    let (s, _) = api.get(&yo, "/v1/dashboard?zona=Marte/Olympus").await;
+    assert_eq!(s, StatusCode::UNPROCESSABLE_ENTITY);
+    ok("dashboard: conteos, recientes, alertas y semana (zona inválida → 422)");
+
+    // Peligros cerca de una ruta: POI crítico (15) + persona hostil (10) + ruta peligrosa (5) = 30
+    let ahora = chrono::Utc::now();
+    let meta =
+        json!({ "capturado_en": ahora, "creado_en": ahora, "actualizado_en": ahora, "version": 1 });
+    let con_meta = |mut v: Value| {
+        v.as_object_mut()
+            .unwrap()
+            .extend(meta.as_object().unwrap().clone());
+        v
+    };
+    let poi = con_meta(
+        json!({ "id": kepler_core::nuevo_id(), "nombre": "Derrumbe", "nivel_riesgo": "critico",
+                               "lat": 10.5005, "lng": -66.8000, "metadata": {} }),
+    );
+    let hostil = con_meta(
+        json!({ "id": kepler_core::nuevo_id(), "nombre": "Vigía", "hostilidad": "hostil",
+                                  "lat": 10.5000, "lng": -66.7995 }),
+    );
+    let mut ruta = con_meta(
+        json!({ "id": kepler_core::nuevo_id(), "nombre": "Paso del cóndor", "origen": "registrada",
+                                    "seguridad": "peligro", "waypoints": [[10.499, -66.801], [10.501, -66.799]] }),
+    );
+    ruta.as_object_mut().unwrap().remove("capturado_en");
+    let (_, r) = api
+        .post(
+            &yo,
+            "/v1/sync/subir",
+            json!({ "puntos_interes": [poi], "personas": [hostil], "rutas": [ruta] }),
+        )
+        .await;
+    assert!(r["rechazados"].as_array().unwrap().is_empty(), "{r}");
+
+    let trazado = json!({ "waypoints": [[10.49, -66.80], [10.51, -66.80]], "corredor_m": 200 });
+    let (s, a) = api.post(&yo, "/v1/rutas/analizar", trazado.clone()).await;
+    assert_eq!(s, StatusCode::OK, "{a}");
+    assert_eq!(a["puntos_interes"].as_array().unwrap().len(), 1);
+    assert_eq!(a["personas"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        a["rutas"].as_array().unwrap().len(),
+        1,
+        "trazado PostGIS generado desde waypoints"
+    );
+    assert_eq!(
+        (
+            a["riesgo"]["nivel"].as_str(),
+            a["riesgo"]["puntuacion"].as_u64()
+        ),
+        (Some("critico"), Some(30))
+    );
+    assert!((a["distancia_km"].as_f64().unwrap() - 2.21).abs() < 0.05);
+    let (_, a_otro) = api.post(&otro, "/v1/rutas/analizar", trazado).await;
+    assert_eq!(a_otro["riesgo"]["puntuacion"], 0);
+    ok(&format!(
+        "análisis de ruta ({} km): riesgo crítico 30; el otro usuario no ve nada",
+        a["distancia_km"]
+    ));
+
+    let (_, c) = api
+        .get(&yo, "/v1/alertas/cercanas?lat=10.5&lng=-66.8&radio_m=300")
+        .await;
+    assert_eq!(c["puntos_interes"][0]["nombre"], "Derrumbe");
+    assert!(
+        c["objetos"].as_array().unwrap().is_empty(),
+        "las alertas solo incluyen peligros"
+    );
+    ok(&format!(
+        "alertas cercanas: {} peligros (nivel {})",
+        c["puntos_interes"].as_array().unwrap().len()
+            + c["personas"].as_array().unwrap().len()
+            + c["rutas"].as_array().unwrap().len(),
+        c["riesgo"]["nivel"]
+    ));
+
+    // Mapas offline con Range (lo que usa MapLibre)
+    let (_, mapas) = api.get(&yo, "/v1/mapas").await;
+    if let Some(region) = mapas.as_array().and_then(|m| m.first()) {
+        let url = format!("{}{}", api.base, region["url"].as_str().unwrap());
+        let r = http
+            .get(&url)
+            .bearer_auth(&yo.token)
+            .header("range", "bytes=0-6")
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(r.status(), StatusCode::PARTIAL_CONTENT);
+        assert_eq!(&r.bytes().await.unwrap()[..], b"PMTiles");
+        let sin_sesion = http
+            .get(&url)
+            .header("range", "bytes=0-6")
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(sin_sesion.status(), StatusCode::UNAUTHORIZED);
+        ok(&format!(
+            "mapa {} ({} MB): Range 206 con cabecera PMTiles; sin sesión 401",
+            region["id"], region["tamano_mb"]
+        ));
+    } else {
+        println!("  ⚠️  sin mapas en el servidor, se omite la prueba de PMTiles");
+    }
+
     // --- protocolo: texto no permitido
     cc.send(Message::Text("hola".into())).await.unwrap();
     assert!(matches!(

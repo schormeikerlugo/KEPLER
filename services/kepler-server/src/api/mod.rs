@@ -1,7 +1,12 @@
 mod catalogos;
+mod dashboard;
 mod en_vivo;
+mod entorno;
+mod explorador;
+mod mapas;
 mod misiones;
 mod perfil;
+mod rutas;
 mod salud;
 mod sync;
 
@@ -9,14 +14,19 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use axum::Router;
+use axum::extract::{FromRequestParts, Request, State};
 use axum::http::{HeaderValue, Method, header};
+use axum::middleware::{self, Next};
+use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use tower_governor::GovernorLayer;
 use tower_governor::governor::GovernorConfigBuilder;
 use tower_http::cors::CorsLayer;
 use tower_http::limit::RequestBodyLimitLayer;
+use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 
+use crate::auth::Sesion;
 use crate::estado::Estado;
 
 /// Tamaño máximo de un cuerpo REST (lotes de sincronización).
@@ -44,10 +54,30 @@ pub fn router(estado: Estado) -> Router {
         )
         .route("/sync/cambios", get(sync::cambios))
         .route("/sync/subir", post(sync::subir))
+        .route("/dashboard", get(dashboard::resumen))
+        .route("/explorador", get(explorador::estado))
+        .route("/explorador/calzado", post(explorador::reset_calzado))
+        .route("/clima", get(entorno::clima))
+        .route("/aire", get(entorno::aire))
+        .route("/geo/ip", get(entorno::ubicacion_ip))
+        .route("/rutas/analizar", post(rutas::analizar))
+        .route("/alertas/cercanas", get(rutas::cercanas))
+        .route("/mapas", get(mapas::listar))
         .layer(GovernorLayer::new(Arc::new(limite)))
         .layer(RequestBodyLimitLayer::new(LIMITE_CUERPO));
 
-    let v1 = rest.route("/en-vivo", get(en_vivo::conectar));
+    // Archivos PMTiles con soporte de Range: con sesión pero sin rate limit
+    // (MapLibre pide muchos fragmentos al mover el mapa).
+    let archivos_mapas = Router::new()
+        .nest_service("/mapas/archivos", ServeDir::new(&estado.config.mapas_dir))
+        .layer(middleware::from_fn_with_state(
+            estado.clone(),
+            exigir_sesion,
+        ));
+
+    let v1 = rest
+        .route("/en-vivo", get(en_vivo::conectar))
+        .merge(archivos_mapas);
 
     let mut app = Router::new()
         .route("/health", get(salud::salud))
@@ -71,6 +101,14 @@ pub fn router(estado: Estado) -> Router {
     }
 
     app.with_state(estado)
+}
+
+async fn exigir_sesion(State(estado): State<Estado>, req: Request, next: Next) -> Response {
+    let (mut partes, cuerpo) = req.into_parts();
+    match Sesion::from_request_parts(&mut partes, &estado).await {
+        Ok(_) => next.run(Request::from_parts(partes, cuerpo)).await,
+        Err(e) => e.into_response(),
+    }
 }
 
 #[cfg(test)]
@@ -100,6 +138,8 @@ mod tests {
             cors_origenes: vec![],
             peticiones_por_segundo: 1000,
             rafaga: 1000,
+            mapas_dir: std::env::temp_dir(),
+            zona_horaria: "America/Caracas".into(),
         };
         router(Estado::new(config, Db::sin_conexion()))
     }
@@ -152,6 +192,17 @@ mod tests {
             pedir("GET", "/v1/en-vivo", None, "").await.0,
             StatusCode::UNAUTHORIZED
         );
+        for ruta in [
+            "/v1/mapas/archivos/x.pmtiles",
+            "/v1/clima?lat=1&lng=1",
+            "/v1/dashboard",
+        ] {
+            assert_eq!(
+                pedir("GET", ruta, None, "").await.0,
+                StatusCode::UNAUTHORIZED,
+                "{ruta}"
+            );
+        }
     }
 
     #[tokio::test]
@@ -166,6 +217,22 @@ mod tests {
             r#"{{"id":"{}","lat":10.0,"lng":-66.0,"registrado_en":"2026-10-31T20:00:00Z"}}"#,
             Uuid::now_v7()
         );
+        let (s, _) = pedir("GET", "/v1/clima?lat=95&lng=0", Some(&t), "").await;
+        assert_eq!(
+            s,
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "latitud fuera de rango"
+        );
+
+        let un_punto = r#"{"waypoints": [[10.0, -66.0]]}"#;
+        let (s, _) = pedir("POST", "/v1/rutas/analizar", Some(&t), un_punto).await;
+        assert_eq!(s, StatusCode::UNPROCESSABLE_ENTITY);
+        let radio = "/v1/alertas/cercanas?lat=10&lng=-66&radio_m=999999";
+        assert_eq!(
+            pedir("GET", radio, Some(&t), "").await.0,
+            StatusCode::UNPROCESSABLE_ENTITY
+        );
+
         let lote = format!("[{}]", vec![punto; 1001].join(","));
         let uri = format!("/v1/misiones/{}/rastro", Uuid::now_v7());
         assert_eq!(
