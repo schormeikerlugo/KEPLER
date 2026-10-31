@@ -1,11 +1,70 @@
 # infra
 
-Stack Docker del proyecto compose `kepler`, desplegado en **cortex** (192.168.68.117).
+Stack Docker del proyecto compose **`kepler`**, desplegado en **cortex** (192.168.68.117) en `/home/cortex/services/kepler`.
 
-FleetView enciende y apaga **todo el stack**. Todos los contenedores usan el prefijo `kepler-`.
+Basado en el self-hosting oficial de Supabase, reducido a lo que usa KEPLER (sin edge functions, analytics ni pooler). FleetView enciende y apaga **todo el stack**; arranca bien aunque los contenedores se inicien en paralelo.
 
-Contenido previsto (paso 2 del roadmap):
+## Servicios
 
-- `docker-compose.yml` — Supabase (db con pgvector, auth, rest, realtime, storage, kong, meta, studio) + `kepler-server`
-- `migrations/` — esquema limpio (`0001_init.sql`) y seeds
-- `backup/` — `pg_dump` diario a `/mnt/storage/kepler/backups`
+| Contenedor | Función | Puerto (cortex) |
+|---|---|---|
+| `kepler-gateway` | Envoy: `/auth/v1`, `/rest/v1`, `/storage/v1`, `/realtime/v1` y Studio en `/` | **54321** |
+| `kepler-db` | Postgres 17 + pgvector + PostGIS | **54322** (solo LAN) |
+| `kepler-auth` | GoTrue (registro público desactivado) | interno |
+| `kepler-rest` | PostgREST | interno |
+| `kepler-realtime` | Realtime (cambios en vivo con RLS) | interno |
+| `kepler-storage` + `kepler-imgproxy` | Archivos y miniaturas | interno |
+| `kepler-meta` + `kepler-studio` | Administración (Studio pide usuario/contraseña) | vía gateway |
+| `kepler-backup` | `pg_dump` diario a las 03:00, retención 14 días | — |
+
+Consumo en reposo: ~860 MB de RAM.
+
+## Datos
+
+| Qué | Dónde (cortex) |
+|---|---|
+| Base de datos | `~/services/kepler/volumes/db/data` (NVMe) |
+| Archivos (Storage) | `/mnt/storage/kepler/storage` |
+| Backups | `/mnt/storage/kepler/backups/kepler-AAAA-MM-DD.dump` |
+| Secretos | `~/services/kepler/.env` (permisos 600, **nunca en git**) |
+
+## Esquema
+
+| Archivo | Contenido |
+|---|---|
+| `migrations/0001_init.sql` | Tablas, índices (sync, PostGIS, HNSW), RLS, `buscar_similares`, Realtime |
+| `migrations/0002_storage.sql` | Buckets `capturas` (privado) y `avatares` (público), permisos por carpeta `<user_id>/` |
+| `seed/0001_catalogos.sql` | Taxonomía de objetos y categorías de POI |
+
+Las migraciones aplicadas se registran en `kepler_meta.migraciones`. Para cambiar el esquema se añade un archivo nuevo numerado; nunca se edita uno ya aplicado.
+
+## Operación
+
+Desde la PC de desarrollo:
+
+```bash
+sh infra/scripts/deploy.sh          # sincroniza, levanta el stack y aplica migraciones
+sh infra/scripts/deploy.sh --sync   # solo sincroniza archivos
+```
+
+En cortex (`cd ~/services/kepler`):
+
+```bash
+sh scripts/gen-env.sh                          # primera vez: genera .env con secretos nuevos
+sh scripts/migrate.sh                          # aplica migraciones pendientes
+sh scripts/create-user.sh <email> <usuario>    # crea un explorador (pide contraseña)
+docker compose ps                              # estado
+docker compose logs -f <servicio>              # logs
+```
+
+Restaurar un backup:
+
+```bash
+docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" kepler-db \
+  pg_restore -h localhost -U supabase_admin -d postgres --clean --if-exists < /mnt/storage/kepler/backups/kepler-AAAA-MM-DD.dump
+```
+
+## Notas
+
+- La primera suscripción Realtime tras arrancar el stack tarda unos segundos (crea el slot de replicación).
+- `deploy.sh` usa `rsync` si está instalado; si no, copia con `tar` (sin borrar en destino archivos eliminados del repo).
