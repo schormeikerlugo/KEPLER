@@ -86,7 +86,18 @@ export struct Candidato {
     tiene-imagen: bool,
 }
 
-export enum Pantalla { login, dashboard, bitacora, archivos }
+export struct SeleccionMapa {
+    visible: bool,
+    tipo: string,
+    nombre: string,
+    detalle: string,
+    tono: color,
+    fecha: string,
+    imagen: image,
+    tiene-imagen: bool,
+}
+
+export enum Pantalla { login, dashboard, mapa, archivos, bitacora }
 
 export global Estado {
     in-out property <Pantalla> pantalla: Pantalla.login;
@@ -170,6 +181,30 @@ export global Estado {
     callback abrir-comparador();
     callback elegir-persona(int);
     callback vincular(string, string);
+
+    // Mapa
+    in property <image> mapa-imagen;
+    in property <bool> mapa-listo;
+    // Descarga del mapa offline o error ("" = nada que decir)
+    in property <string> mapa-aviso;
+    in property <float> mapa-progreso: -1;
+    in property <float> mapa-zoom;
+    in-out property <bool> capa-pois: true;
+    in-out property <bool> capa-personas: true;
+    in-out property <bool> capa-objetos: true;
+    in-out property <bool> capa-alertas: true;
+    in property <SeleccionMapa> mapa-seleccion;
+    in property <[string]> mapa-misiones;
+    in-out property <int> mapa-mision;
+    in property <string> mapa-rastro-info;
+    callback mapa-tamano(length, length);
+    callback mapa-mover(length, length);
+    callback mapa-rueda(float, length, length);
+    callback mapa-clic(length, length);
+    callback mapa-capas();
+    callback mapa-elegir-mision(int);
+    callback mapa-centrar();
+    callback mapa-cerrar-seleccion();
 
     callback refrescar();
     callback ir(Pantalla);

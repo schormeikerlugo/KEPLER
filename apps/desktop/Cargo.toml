@@ -17,6 +17,9 @@ path = "src/main.rs"
 kepler-core.workspace = true
 kepler-proto.workspace = true
 
+# Mapa: MapLibre Native (C++, se compila la primera vez; necesita cmake). OpenGL/EGL como Slint
+maplibre_native = { version = "0.10.0", default-features = false, features = ["opengl", "json"] }
+
 chrono.workspace = true
 futures-util = { version = "0.3.34", default-features = false, features = ["sink", "std"] }
 image = { version = "0.25.10", default-features = false, features = ["jpeg", "png"] }
@@ -26,7 +29,7 @@ serde_json.workspace = true
 # unstable-winit-030 (actividad del usuario para el cierre por inactividad) exige fijar la versión menor
 slint = { version = "~1.18.1", features = ["unstable-winit-030"] }
 thiserror.workspace = true
-tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "sync", "time", "fs", "io-util"] }
 # wss:// cuando el servidor salga por Cloudflare Tunnel
 tokio-tungstenite = { version = "0.30.0", features = ["rustls-tls-webpki-roots"] }
 uuid.workspace = true

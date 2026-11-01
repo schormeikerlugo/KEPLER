@@ -7,8 +7,10 @@ mod archivos;
 mod bitacora;
 mod en_vivo;
 mod imagenes;
+mod mapa;
 mod modelos;
 mod panel;
+mod vista_mapa;
 
 use std::sync::Arc;
 

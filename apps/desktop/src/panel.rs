@@ -19,7 +19,7 @@ use crate::api::{Cliente, Error};
 use crate::en_vivo::{self, Evento};
 use crate::modelos::{Aire, Clima, Dashboard, Explorador, Perfil, UbicacionIp};
 use crate::{AppWindow, Atencion, Conteo, DatoIndicador, DiaSemana, Estado, FilaMision, Pantalla};
-use crate::{archivos, bitacora, imagenes};
+use crate::{archivos, bitacora, imagenes, vista_mapa};
 
 /// Igual que el session guard de la v0.7.
 const INACTIVIDAD: Duration = Duration::from_secs(15 * 60);
@@ -37,7 +37,28 @@ pub struct Contexto {
     pub bitacora: Mutex<bitacora::Memoria>,
     pub archivos: archivos::Compartida,
     pub imagenes: imagenes::Cache,
+    pub mapa: vista_mapa::Compartida,
     en_vivo: std::sync::Mutex<Option<JoinHandle<()>>>,
+}
+
+impl Contexto {
+    /// Ubicación aproximada por IP, pedida una vez por sesión.
+    async fn ubicacion(&self) -> Option<UbicacionIp> {
+        let mut guardada = self.ubicacion.lock().await;
+        if guardada.is_none() {
+            *guardada = self
+                .cliente
+                .get::<crate::modelos::Disponible<UbicacionIp>>("/v1/geo/ip")
+                .await
+                .ok()
+                .and_then(|d| d.datos().ok());
+        }
+        guardada.clone()
+    }
+
+    pub async fn ubicacion_aproximada(&self) -> Option<(f64, f64)> {
+        self.ubicacion().await.map(|u| (u.lat, u.lng))
+    }
 }
 
 pub fn conectar(ui: &AppWindow, rt: Handle, cliente: Arc<Cliente>) {
@@ -49,6 +70,7 @@ pub fn conectar(ui: &AppWindow, rt: Handle, cliente: Arc<Cliente>) {
         bitacora: Mutex::default(),
         archivos: Mutex::default(),
         imagenes: imagenes::Cache::default(),
+        mapa: std::sync::Mutex::default(),
         en_vivo: std::sync::Mutex::new(None),
     });
     let estado = ui.global::<Estado>();
@@ -137,6 +159,30 @@ pub fn conectar(ui: &AppWindow, rt: Handle, cliente: Arc<Cliente>) {
         });
     });
     let c = ctx.clone();
+    estado.on_mapa_tamano(move |w, h| vista_mapa::tamano(&c, w, h));
+    let c = ctx.clone();
+    estado.on_mapa_mover(move |dx, dy| vista_mapa::mover(&c, dx, dy));
+    let c = ctx.clone();
+    estado.on_mapa_rueda(move |d, x, y| {
+        if let Some(ui) = c.ui.upgrade() {
+            vista_mapa::rueda(&c, &ui.global::<Estado>(), d, x, y);
+        }
+    });
+    let c = ctx.clone();
+    estado.on_mapa_clic(move |x, y| vista_mapa::clic(&c, x, y));
+    let c = ctx.clone();
+    estado.on_mapa_capas(move || {
+        if let Some(ui) = c.ui.upgrade() {
+            vista_mapa::capas(&c, &ui.global::<Estado>());
+        }
+    });
+    let c = ctx.clone();
+    estado.on_mapa_elegir_mision(move |i| vista_mapa::elegir_mision(&c, i));
+    let c = ctx.clone();
+    estado.on_mapa_centrar(move || vista_mapa::centrar(&c));
+    let c = ctx.clone();
+    estado.on_mapa_cerrar_seleccion(move || vista_mapa::cerrar_seleccion(&c));
+    let c = ctx.clone();
     estado.on_cerrar_toast(move |id| {
         if let Some(ui) = c.ui.upgrade() {
             bitacora::cerrar_toast(&ui.global::<Estado>(), &id);
@@ -217,6 +263,9 @@ fn ir(ctx: &Arc<Contexto>, pantalla: Pantalla) {
     if pantalla == Pantalla::Bitacora {
         cargar_bitacora(ctx, false);
     }
+    if pantalla == Pantalla::Mapa {
+        vista_mapa::entrar(ctx);
+    }
     if pantalla == Pantalla::Archivos
         && let Some(ui) = ctx.ui.upgrade()
     {
@@ -273,7 +322,7 @@ fn iniciar_en_vivo(ctx: &Arc<Contexto>) {
                 }
                 Evento::Novedad => {
                     // Los triggers escriben en la misma transacción: ya está en la bitácora
-                    tokio::join!(cargar(&c), bitacora::cargar(&c));
+                    tokio::join!(cargar(&c), bitacora::cargar(&c), vista_mapa::recargar(&c));
                 }
             }
         }
@@ -363,18 +412,7 @@ async fn cargar(c: &Arc<Contexto>) {
     c.ui.upgrade_in_event_loop(|ui| ui.global::<Estado>().set_cargando(true))
         .ok();
 
-    let ubicacion = {
-        let mut guardada = c.ubicacion.lock().await;
-        if guardada.is_none() {
-            *guardada = c
-                .cliente
-                .get::<crate::modelos::Disponible<UbicacionIp>>("/v1/geo/ip")
-                .await
-                .ok()
-                .and_then(|d| d.datos().ok());
-        }
-        guardada.clone()
-    };
+    let ubicacion = c.ubicacion().await;
     let posicion = ubicacion
         .as_ref()
         .map(|u| format!("lat={}&lng={}", u.lat, u.lng));

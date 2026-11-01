@@ -1,0 +1,270 @@
+// Mapa Odradek (MapLibre Native renderiza en Rust; aquí solo la imagen y la interacción).
+import { ComboBox } from "std-widgets.slint";
+import { Tema } from "tema.slint";
+import { Tarjeta, Etiqueta, Titulo, Boton } from "componentes.slint";
+import { Estado } from "estado.slint";
+
+component Capa inherits Rectangle {
+    in property <string> texto;
+    in property <color> tono;
+    in-out property <bool> activa;
+    height: 30px;
+    width: fila.preferred-width;
+    border-radius: 15px;
+    background: activa ? tono.with-alpha(0.14) : zona.has-hover ? Tema.superficie-hover : #0b0e12d0;
+    border-width: 1px;
+    border-color: activa ? tono.with-alpha(0.6) : Tema.borde-tenue;
+    animate background, border-color { duration: Tema.mov-rapido; }
+    fila := HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 14px;
+        spacing: 8px;
+        Rectangle {
+            width: 8px;
+            height: 8px;
+            y: (parent.height - self.height) / 2;
+            border-radius: 4px;
+            background: activa ? tono : #555555;
+        }
+        Text {
+            text: texto;
+            color: activa ? Tema.texto : Tema.texto-tenue;
+            font-size: 11px;
+            font-weight: Tema.peso-semi;
+            letter-spacing: 1px;
+            vertical-alignment: center;
+        }
+    }
+    zona := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.activa = !root.activa;
+            Estado.mapa-capas();
+        }
+    }
+}
+
+component BotonMapa inherits Rectangle {
+    in property <string> texto;
+    callback pulsado;
+    width: 40px;
+    height: 40px;
+    border-radius: Tema.radio-medio;
+    background: zona.has-hover ? #1b2027f0 : #0d1116e6;
+    border-width: 1px;
+    border-color: Tema.borde-holo-sutil;
+    Text {
+        text: texto;
+        color: Tema.texto;
+        font-size: 18px;
+    }
+    zona := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { pulsado(); }
+    }
+}
+
+export component PantallaMapa inherits Tarjeta {
+    clip: true;
+    background: #0a0f14;
+
+    vista := Rectangle {
+        changed width => { Estado.mapa-tamano(self.width, self.height); }
+        changed height => { Estado.mapa-tamano(self.width, self.height); }
+        init => { Estado.mapa-tamano(self.width, self.height); }
+
+        Image {
+            width: parent.width;
+            height: parent.height;
+            source: Estado.mapa-imagen;
+            image-fit: fill;
+        }
+
+        zona := TouchArea {
+            property <length> ultimo-x;
+            property <length> ultimo-y;
+            property <length> recorrido;
+            mouse-cursor: self.pressed ? MouseCursor.grabbing : MouseCursor.grab;
+            pointer-event(e) => {
+                if e.kind == PointerEventKind.down {
+                    self.ultimo-x = self.mouse-x;
+                    self.ultimo-y = self.mouse-y;
+                    self.recorrido = 0;
+                }
+            }
+            moved => {
+                if self.pressed {
+                    Estado.mapa-mover(self.mouse-x - self.ultimo-x, self.mouse-y - self.ultimo-y);
+                    self.recorrido += abs(self.mouse-x - self.ultimo-x) + abs(self.mouse-y - self.ultimo-y);
+                    self.ultimo-x = self.mouse-x;
+                    self.ultimo-y = self.mouse-y;
+                }
+            }
+            clicked => {
+                // Un arrastre no es un clic
+                if self.recorrido < 4px {
+                    Estado.mapa-clic(self.mouse-x, self.mouse-y);
+                }
+            }
+            double-clicked => { Estado.mapa-rueda(1, self.mouse-x, self.mouse-y); }
+            scroll-event(e) => {
+                Estado.mapa-rueda(e.delta-y > 0 ? 0.5 : -0.5, self.mouse-x, self.mouse-y);
+                accept
+            }
+        }
+    }
+
+    // Capas
+    HorizontalLayout {
+        x: 18px;
+        y: 18px;
+        width: self.preferred-width;
+        height: 30px;
+        spacing: 8px;
+        Capa { texto: "POIs"; tono: Tema.aviso; activa <=> Estado.capa-pois; }
+        Capa { texto: "PERSONAS"; tono: Tema.acento; activa <=> Estado.capa-personas; }
+        Capa { texto: "OBJETOS"; tono: Tema.exito; activa <=> Estado.capa-objetos; }
+        Capa { texto: "ALERTAS DE OTROS"; tono: Tema.peligro; activa <=> Estado.capa-alertas; }
+    }
+
+    // Rastro de misión
+    Rectangle {
+        x: parent.width - self.width - 18px;
+        y: 18px;
+        width: 300px;
+        height: rastro.preferred-height + 24px;
+        border-radius: Tema.radio-medio;
+        background: #0d1116e6;
+        border-width: 1px;
+        border-color: Tema.borde-holo-sutil;
+        rastro := VerticalLayout {
+            x: 12px;
+            y: 12px;
+            width: parent.width - 24px;
+            spacing: 8px;
+            Etiqueta { text: "RASTRO DE MISIÓN"; color: Tema.texto-tenue; }
+            ComboBox {
+                model: Estado.mapa-misiones;
+                current-index <=> Estado.mapa-mision;
+                selected => { Estado.mapa-elegir-mision(self.current-index); }
+            }
+            if Estado.mapa-rastro-info != "": Text {
+                text: Estado.mapa-rastro-info;
+                color: Tema.acento;
+                font-size: 12px;
+            }
+        }
+    }
+
+    // Zoom y centrar
+    VerticalLayout {
+        x: parent.width - 58px;
+        y: parent.height - self.preferred-height - 18px;
+        width: 40px;
+        spacing: 8px;
+        BotonMapa { texto: "+"; pulsado => { Estado.mapa-rueda(1, vista.width / 2, vista.height / 2); } }
+        BotonMapa { texto: "−"; pulsado => { Estado.mapa-rueda(-1, vista.width / 2, vista.height / 2); } }
+        BotonMapa { texto: "◎"; pulsado => { Estado.mapa-centrar(); } }
+    }
+
+    // Leyenda y créditos
+    Rectangle {
+        x: 18px;
+        y: parent.height - self.height - 18px;
+        width: leyenda.preferred-width + 24px;
+        height: 30px;
+        border-radius: 15px;
+        background: #0d1116d0;
+        leyenda := Etiqueta {
+            text: "Z " + round(Estado.mapa-zoom * 10) / 10 + "  ·  © OpenStreetMap · Protomaps · MapLibre";
+            color: Tema.texto-tenue;
+        }
+    }
+
+    // Ficha del elemento elegido
+    if Estado.mapa-seleccion.visible: Rectangle {
+        x: 18px;
+        y: 64px;
+        width: 320px;
+        height: ficha.preferred-height;
+        border-radius: Tema.radio-tarjeta;
+        background: #111316f5;
+        border-width: 1px;
+        border-color: Estado.mapa-seleccion.tono.with-alpha(0.5);
+        drop-shadow-blur: 24px;
+        drop-shadow-color: #000000aa;
+        clip: true;
+        TouchArea { }
+        ficha := VerticalLayout {
+            if Estado.mapa-seleccion.tiene-imagen: Image {
+                height: 200px;
+                source: Estado.mapa-seleccion.imagen;
+                image-fit: cover;
+            }
+            VerticalLayout {
+                padding: 16px;
+                spacing: 6px;
+                HorizontalLayout {
+                    Etiqueta {
+                        text: Estado.mapa-seleccion.tipo;
+                        color: Estado.mapa-seleccion.tono;
+                    }
+                    Text {
+                        text: "✕";
+                        color: cerrar.has-hover ? Tema.texto : Tema.texto-tenue;
+                        horizontal-alignment: right;
+                        cerrar := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => { Estado.mapa-cerrar-seleccion(); }
+                        }
+                    }
+                }
+                Text {
+                    text: Estado.mapa-seleccion.nombre;
+                    color: Tema.texto;
+                    font-size: 17px;
+                    wrap: word-wrap;
+                }
+                Text {
+                    text: Estado.mapa-seleccion.detalle;
+                    color: Tema.texto-secundario;
+                    font-size: 12.5px;
+                    wrap: word-wrap;
+                }
+                Etiqueta { text: Estado.mapa-seleccion.fecha; }
+            }
+        }
+    }
+
+    // Descarga del mapa offline, carga o error
+    if !Estado.mapa-listo || Estado.mapa-aviso != "": Rectangle {
+        width: 420px;
+        height: aviso.preferred-height;
+        border-radius: Tema.radio-tarjeta;
+        background: #111316f0;
+        border-width: 1px;
+        border-color: Tema.borde-holo-sutil;
+        aviso := VerticalLayout {
+            padding: 20px;
+            spacing: 12px;
+            Text {
+                text: Estado.mapa-aviso != "" ? Estado.mapa-aviso : "Preparando el mapa…";
+                color: Tema.texto-secundario;
+                font-size: 13px;
+                wrap: word-wrap;
+                horizontal-alignment: center;
+            }
+            if Estado.mapa-progreso >= 0: Rectangle {
+                height: 6px;
+                border-radius: 3px;
+                background: Tema.pista-progreso;
+                Rectangle {
+                    x: 0;
+                    width: parent.width * Estado.mapa-progreso;
+                    border-radius: 3px;
+                    background: Tema.acento;
+                }
+            }
+        }
+    }
+}

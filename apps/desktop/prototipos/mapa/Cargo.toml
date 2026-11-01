@@ -1,0 +1,12 @@
+[package]
+name = "prototipo-mapa"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+maplibre_native = { version = "0.10.0", default-features = false, features = ["opengl", "json", "log"] }
+serde_json = "1"
+url = "2"
+
+[workspace]

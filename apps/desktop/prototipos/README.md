@@ -43,3 +43,7 @@ cd slint && cargo run --release    # o: cd iced && cargo run --release
 ## Recomendación: Slint
 
 Fidelidad visual mayor (letter-spacing y fuente variable son parte del estilo KEPLER), integración natural del mapa MapLibre por OpenGL, API estable y vista previa en vivo para afinar el diseño. La diferencia de CPU (2 puntos de un núcleo) es irrelevante para un panel de control.
+
+## Mapa (`mapa/`)
+
+Prueba de MapLibre Native (`maplibre_native` 0.10, OpenGL/EGL) con el estilo Odradek y el PMTiles de Venezuela en disco: render estático 1200×800 en ~15-20 ms tras la primera carga (~500 ms). Confirmó que funciona sin internet con glifos locales.

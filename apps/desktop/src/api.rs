@@ -119,6 +119,62 @@ impl Cliente {
         Ok(r.bytes().await.map_err(red)?.to_vec())
     }
 
+    /// Tamaño de un archivo grande sin descargarlo (`Range: bytes=0-0`).
+    pub async fn tamano_remoto(&self, ruta: &str) -> Resultado<u64> {
+        self.renovar_si_toca().await?;
+        let token = self.token().await?;
+        let r = self
+            .http
+            .get(format!("{}{ruta}", self.base))
+            .bearer_auth(token)
+            .header("range", "bytes=0-0")
+            .send()
+            .await
+            .map_err(red)?;
+        r.headers()
+            .get("content-range")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.rsplit('/').next())
+            .and_then(|t| t.parse().ok())
+            .ok_or_else(|| Error::Servidor(format!("{} sin Content-Range", r.status())))
+    }
+
+    /// Descarga a `destino` (vía `<destino>.part`), informando `progreso(bytes, total)`.
+    pub async fn descargar(
+        &self,
+        ruta: &str,
+        destino: &std::path::Path,
+        progreso: impl Fn(u64, u64),
+    ) -> Resultado<()> {
+        use tokio::io::AsyncWriteExt;
+        self.renovar_si_toca().await?;
+        let token = self.token().await?;
+        let mut r = self
+            .http
+            .get(format!("{}{ruta}", self.base))
+            .bearer_auth(token)
+            .timeout(Duration::from_secs(3600))
+            .send()
+            .await
+            .map_err(red)?;
+        if !r.status().is_success() {
+            return Err(Error::Servidor(r.status().to_string()));
+        }
+        let total = r.content_length().unwrap_or(0);
+        let parcial = destino.with_extension("part");
+        let io = |e: std::io::Error| Error::Servidor(format!("{}: {e}", parcial.display()));
+        let mut archivo = tokio::fs::File::create(&parcial).await.map_err(io)?;
+        let mut hecho = 0u64;
+        while let Some(trozo) = r.chunk().await.map_err(red)? {
+            archivo.write_all(&trozo).await.map_err(io)?;
+            hecho += trozo.len() as u64;
+            progreso(hecho, total);
+        }
+        archivo.flush().await.map_err(io)?;
+        drop(archivo);
+        tokio::fs::rename(&parcial, destino).await.map_err(io)
+    }
+
     /// POST con sesión (mismo reintento que `get`).
     pub async fn post<T: DeserializeOwned>(&self, ruta: &str, cuerpo: &Value) -> Resultado<T> {
         self.renovar_si_toca().await?;
