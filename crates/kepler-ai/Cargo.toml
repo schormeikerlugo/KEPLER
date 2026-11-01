@@ -1,0 +1,22 @@
+[package]
+name = "kepler-ai"
+description = "Cliente de Ollama (LAN, con failover) para Cortex, la IA de KEPLER"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+reqwest = { version = "0.13.5", default-features = false, features = ["json", "rustls", "http2"] }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { version = "1.54.1", features = ["sync", "time", "rt"] }
+
+[dev-dependencies]
+tokio = { version = "1.54.1", features = ["macros", "rt-multi-thread", "net", "io-util"] }
+
+[lints]
+workspace = true

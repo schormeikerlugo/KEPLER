@@ -5,6 +5,7 @@ mod dashboard;
 mod en_vivo;
 mod entorno;
 mod explorador;
+mod ia;
 mod mapa;
 mod mapas;
 mod misiones;
@@ -69,6 +70,14 @@ pub fn router(estado: Estado) -> Router {
         .route("/identidades/pendientes", get(archivos::pendientes))
         .route("/personas/{id}/vincular", post(archivos::vincular))
         .route("/personas/{id}/desvincular", post(archivos::desvincular))
+        .route("/ia/chat", post(ia::chat))
+        .route("/ia/chats", get(ia::chats))
+        .route(
+            "/ia/chats/{id}",
+            get(ia::chat_detalle).delete(ia::borrar_chat),
+        )
+        .route("/ia/reporte", get(ia::reporte))
+        .route("/ia/analizar", post(ia::analizar))
         .route("/dashboard", get(dashboard::resumen))
         .route("/explorador", get(explorador::estado))
         .route("/explorador/calzado", post(explorador::reset_calzado))
@@ -153,7 +162,7 @@ mod tests {
             database_url: String::new(),
             jwt_secret: SECRETO.into(),
             ollama_urls: vec![],
-            ollama_modelo: "mistral:7b".into(),
+            ollama_modelo: "qwen3.5:9b".into(),
             cors_origenes: vec![],
             peticiones_por_segundo: 1000,
             rafaga: 1000,

@@ -10,6 +10,7 @@ mod error;
 mod escritura;
 mod estado;
 mod externo;
+mod herramientas;
 mod tablas;
 
 use std::net::SocketAddr;

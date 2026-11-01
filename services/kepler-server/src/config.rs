@@ -54,7 +54,7 @@ impl Config {
             database_url: requerida("KEPLER_DATABASE_URL")?,
             jwt_secret: requerida("KEPLER_JWT_SECRET")?,
             ollama_urls: lista("KEPLER_OLLAMA_URLS"),
-            ollama_modelo: opcional("KEPLER_OLLAMA_MODELO", "mistral:7b"),
+            ollama_modelo: opcional("KEPLER_OLLAMA_MODELO", "qwen3.5:9b"),
             cors_origenes: lista("KEPLER_CORS_ORIGENES"),
             peticiones_por_segundo: opcional("KEPLER_RPS", "20").parse().unwrap_or(20),
             rafaga: opcional("KEPLER_RAFAGA", "60").parse().unwrap_or(60),

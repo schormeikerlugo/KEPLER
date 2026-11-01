@@ -1074,6 +1074,34 @@ async fn punta_a_punta() {
     assert_eq!(s, StatusCode::NOT_FOUND);
     ok("dashboard: objetos por categoría y frecuentes, POIs por categoría; archivos por categoría");
 
+    // --- Cortex (sin llamar al modelo: validación, historial y aislamiento)
+    let (s, _) = api
+        .post(&yo, "/v1/ia/chat", json!({ "mensaje": "   " }))
+        .await;
+    assert_eq!(s, StatusCode::UNPROCESSABLE_ENTITY);
+    let (s, _) = api
+        .post(
+            &yo,
+            "/v1/ia/chat",
+            json!({ "mensaje": "hola", "chat_id": Uuid::now_v7() }),
+        )
+        .await;
+    assert_eq!(s, StatusCode::NOT_FOUND);
+    let (s, chats) = api.get(&yo, "/v1/ia/chats").await;
+    assert_eq!(
+        (s, chats.as_array().map(Vec::len)),
+        (StatusCode::OK, Some(0))
+    );
+    let (s, _) = api
+        .post(
+            &otro,
+            "/v1/ia/analizar",
+            json!({ "notificacion_id": Uuid::now_v7() }),
+        )
+        .await;
+    assert_eq!(s, StatusCode::NOT_FOUND);
+    ok("Cortex: validación del mensaje, conversación ajena o inexistente → 404");
+
     // --- mapa
     let (s, m) = api.get(&otro, "/v1/mapa/elementos").await;
     assert_eq!(s, StatusCode::OK, "{m}");

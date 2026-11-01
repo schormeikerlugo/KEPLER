@@ -41,6 +41,10 @@ Solo el autor edita; los demás suben `confirmaciones` (`vigente` / `no_vigente`
 | GET | `/v1/imagenes/{ruta}` | Foto de Storage leída como el usuario (RLS de Storage); sin rate limit, caché inmutable |
 | GET | `/v1/identidades/pendientes` | Personas sueltas con parecidos ≥ 0,6 (por debajo del Re-ID automático): comparador |
 | POST | `/v1/personas/{id}/vincular` · `/desvincular` | `{con}`: pasa a la identidad (y nombre) de otra persona, con sus avistamientos |
+| POST | `/v1/ia/chat` | `{chat_id?, mensaje, lat?, lng?}` → Cortex responde en streaming NDJSON (`estado`, `token`, `reiniciar`, `fin`, `error`) y guarda la conversación (título automático) |
+| GET / DELETE | `/v1/ia/chats` · `/v1/ia/chats/{id}` | Conversaciones / una conversación / borrado lógico |
+| GET | `/v1/ia/reporte?lat=&lng=&forzar=` | «Novedades de Cortex» en Markdown (tiempo y estado, hallazgos, sugerencia), caché 1 h |
+| POST | `/v1/ia/analizar` | `{notificacion_id, lat?, lng?}` → Deep-Dive de una entrada de la bitácora (streaming) |
 | GET | `/v1/dashboard?zona=` | Conteos, recientes, alertas, distancia de los últimos 7 días, objetos por categoría y más vistos, POIs por categoría (propios/compartidos) |
 | GET | `/v1/explorador?lat=&lng=` | Desgaste del calzado, resistencia y clima actual |
 | POST | `/v1/explorador/calzado` | Calzado nuevo (el desgaste vuelve a 0) |
@@ -70,6 +74,13 @@ La escribe la base de datos (migración `0006`), así funciona igual en línea q
 | Captura que coincide por Re-ID (la escribe kepler-server) | El explorador | info |
 | Identidad vinculada desde el comparador | El explorador | success |
 
+### Cortex (`crates/kepler-ai`)
+
+- Ollama solo en la LAN, en el orden de `KEPLER_OLLAMA_URLS` (PC con GPU → Mac mini); uno que falla queda apartado 30 s.
+- Modelo **`qwen3.5:9b`** (`KEPLER_OLLAMA_MODELO`): `mistral:7b` devolvía las llamadas a herramientas como texto.
+- Herramientas de solo lectura que corren como el usuario (RLS): `resumen_explorador`, `listar_misiones`, `detalle_mision`, `buscar_hallazgos`, `peligros_cercanos`, `clima`. Hasta 4 rondas antes de obligar a responder.
+- En la PC (RTX 3060): ~6 s una pregunta con herramientas, ~5 s el reporte, ~11 s un Deep-Dive.
+
 ### Visión (`crates/kepler-vision`)
 
 - **Detección en vivo**: una unidad de campo con `Hola.deteccion_servidor = true` recibe `Detecciones` (YOLO26s + ByteTrack, `origen = SERVIDOR`) por cada `Fotograma`; el centro de control también las recibe.
@@ -84,7 +95,7 @@ La escribe la base de datos (migración `0006`), así funciona igual en línea q
 | `KEPLER_DATABASE_URL` | `postgres://authenticator:<pass>@db:5432/postgres` |
 | `KEPLER_JWT_SECRET` | `JWT_SECRET` de Supabase |
 | `KEPLER_OLLAMA_URLS` | Ollama en orden de preferencia, separados por coma |
-| `KEPLER_OLLAMA_MODELO` | `mistral:7b` |
+| `KEPLER_OLLAMA_MODELO` | `qwen3.5:9b` |
 | `KEPLER_CORS_ORIGENES` | Orígenes web permitidos (vacío = ninguno) |
 | `KEPLER_RPS` / `KEPLER_RAFAGA` | Rate limit por IP (20/s, ráfaga 60) |
 | `KEPLER_MAPAS_DIR` | Directorio de `.pmtiles` (`/data/mapas`) |

@@ -3456,6 +3456,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "kepler-ai"
+version = "0.8.0"
+dependencies = [
+ "reqwest 0.13.5",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
 name = "kepler-core"
 version = "0.8.0"
 dependencies = [
@@ -3508,6 +3519,7 @@ dependencies = [
  "futures-util",
  "http-body-util",
  "jsonwebtoken",
+ "kepler-ai",
  "kepler-core",
  "kepler-proto",
  "kepler-vision",
