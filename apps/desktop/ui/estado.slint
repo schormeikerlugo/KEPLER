@@ -144,7 +144,25 @@ export struct FilaRuta {
     tono: color,
 }
 
-export enum Pantalla { login, dashboard, envivo, mapa, archivos, bitacora }
+// Línea de Markdown simplificado: 0 párrafo · 1 título · 2 viñeta
+export struct LineaMd {
+    texto: string,
+    tipo: int,
+}
+
+export struct MensajeChat {
+    // user · assistant
+    rol: string,
+    lineas: [LineaMd],
+}
+
+export struct ChatFila {
+    id: string,
+    titulo: string,
+    fecha: string,
+}
+
+export enum Pantalla { login, dashboard, envivo, mapa, archivos, cortex, bitacora }
 
 export global Estado {
     in-out property <Pantalla> pantalla: Pantalla.login;
@@ -285,6 +303,29 @@ export global Estado {
     in property <string> vivo-mision;
     callback vivo-elegir(string);
     callback vivo-ver-en-mapa();
+
+    // Cortex
+    in property <[ChatFila]> cortex-chats;
+    in-out property <string> cortex-chat;
+    in property <[MensajeChat]> cortex-mensajes;
+    in property <string> cortex-estado;
+    in property <bool> cortex-escribiendo;
+    in property <string> cortex-avatar: "🤖";
+    in property <string> cortex-error;
+    callback cortex-enviar(string);
+    callback cortex-abrir(string);
+    callback cortex-nuevo();
+    callback cortex-borrar(string);
+
+    // Ventana de IA: reporte de novedades o Deep-Dive
+    in-out property <bool> ia-abierta;
+    in property <string> ia-titulo;
+    in property <[LineaMd]> ia-lineas;
+    in property <string> ia-estado;
+    in property <bool> ia-cargando;
+    in property <bool> ia-regenerable;
+    callback ia-reporte(bool);
+    callback ia-analizar(string);
 
     callback refrescar();
     callback ir(Pantalla);

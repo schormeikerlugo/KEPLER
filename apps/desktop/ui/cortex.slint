@@ -1,0 +1,265 @@
+// Cortex: chat con la IA, y la ventana de reporte / Deep-Dive.
+import { Tema } from "tema.slint";
+import { Tarjeta, Etiqueta, Titulo, Boton } from "componentes.slint";
+import { Estado, LineaMd, MensajeChat, ChatFila } from "estado.slint";
+
+export component Markdown inherits VerticalLayout {
+    in property <[LineaMd]> lineas;
+    in property <color> color: Tema.texto-secundario;
+    spacing: 6px;
+    for l in lineas: HorizontalLayout {
+        spacing: 8px;
+        padding-top: l.tipo == 1 ? 8px : 0;
+        if l.tipo == 2: Text {
+            text: "▸";
+            color: Tema.acento;
+            font-size: 12px;
+            vertical-alignment: top;
+        }
+        Text {
+            text: l.texto;
+            color: l.tipo == 1 ? Tema.texto : root.color;
+            font-size: l.tipo == 1 ? 15px : 13.5px;
+            font-weight: l.tipo == 1 ? Tema.peso-semi : Tema.peso-normal;
+            wrap: word-wrap;
+            horizontal-stretch: 1;
+        }
+    }
+}
+
+component Burbuja inherits HorizontalLayout {
+    in property <MensajeChat> dato;
+    property <bool> mio: dato.rol == "user";
+    spacing: 12px;
+    alignment: mio ? end : start;
+    if !mio: Rectangle {
+        width: 36px;
+        height: 36px;
+        border-radius: 18px;
+        background: Tema.acento-suave;
+        border-width: 1px;
+        border-color: Tema.acento-borde;
+        Text { text: Estado.cortex-avatar; font-size: 17px; }
+    }
+    Rectangle {
+        max-width: 760px;
+        border-radius: Tema.radio-tarjeta;
+        background: mio ? Tema.acento-suave : #15181d;
+        border-width: 1px;
+        border-color: mio ? Tema.acento-borde : Tema.borde-sutil;
+        cuerpo := Markdown {
+            padding: 14px;
+            padding-left: 18px;
+            padding-right: 18px;
+            lineas: dato.lineas;
+            color: mio ? Tema.texto : Tema.texto-secundario;
+        }
+    }
+}
+
+export component PantallaCortex inherits HorizontalLayout {
+    spacing: 22px;
+
+    // Conversaciones
+    Tarjeta {
+        width: 300px;
+        VerticalLayout {
+            padding: 20px;
+            spacing: 12px;
+            HorizontalLayout {
+                Titulo { text: "Cortex"; vertical-alignment: center; }
+                Rectangle { horizontal-stretch: 1; }
+                Boton {
+                    principal: true;
+                    texto: "+ NUEVO";
+                    pulsado => { Estado.cortex-nuevo(); }
+                }
+            }
+            Flickable {
+                vertical-stretch: 1;
+                content-height: lista.preferred-height;
+                lista := VerticalLayout {
+                    alignment: start;
+                    spacing: 6px;
+                    for c in Estado.cortex-chats: Rectangle {
+                        property <bool> activa: Estado.cortex-chat == c.id;
+                        height: 56px;
+                        border-radius: Tema.radio-medio;
+                        background: activa ? Tema.superficie-activa : zona.has-hover ? Tema.superficie-hover : transparent;
+                        border-width: 1px;
+                        border-color: activa ? Tema.acento-borde : transparent;
+                        zona := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => { Estado.cortex-abrir(c.id); }
+                        }
+                        HorizontalLayout {
+                            padding-left: 12px;
+                            padding-right: 8px;
+                            VerticalLayout {
+                                alignment: center;
+                                spacing: 3px;
+                                horizontal-stretch: 1;
+                                Text { text: c.titulo; color: Tema.texto; font-size: 13px; overflow: elide; }
+                                Etiqueta { text: c.fecha; }
+                            }
+                            if zona.has-hover || activa: Text {
+                                text: "✕";
+                                color: borrar.has-hover ? Tema.peligro : Tema.texto-tenue;
+                                font-size: 12px;
+                                vertical-alignment: center;
+                                width: 20px;
+                                borrar := TouchArea {
+                                    mouse-cursor: pointer;
+                                    clicked => { Estado.cortex-borrar(c.id); }
+                                }
+                            }
+                        }
+                    }
+                    if Estado.cortex-chats.length == 0: Text {
+                        text: "Aún no hay conversaciones.";
+                        color: Tema.texto-tenue;
+                        font-size: Tema.t-pequeno;
+                    }
+                }
+            }
+        }
+    }
+
+    // Conversación
+    Tarjeta {
+        horizontal-stretch: 1;
+        VerticalLayout {
+            padding: 24px;
+            spacing: 14px;
+            mensajes := Flickable {
+                vertical-stretch: 1;
+                content-height: hilo.preferred-height;
+                // Siempre abajo: lo último que escribe Cortex
+                content-y: min(0, self.height - hilo.preferred-height);
+                hilo := VerticalLayout {
+                    alignment: start;
+                    spacing: 16px;
+                    for m in Estado.cortex-mensajes: Burbuja { dato: m; }
+                    if Estado.cortex-mensajes.length == 0: VerticalLayout {
+                        padding-top: 80px;
+                        spacing: 10px;
+                        Text {
+                            text: Estado.cortex-avatar;
+                            font-size: 44px;
+                            horizontal-alignment: center;
+                        }
+                        Text {
+                            text: "Pregúntale a Cortex por tus misiones, hallazgos, peligros o el clima.";
+                            color: Tema.texto-tenue;
+                            font-size: 14px;
+                            horizontal-alignment: center;
+                        }
+                        Etiqueta {
+                            text: "IA LOCAL EN TU RED · NADA SALE A INTERNET";
+                            horizontal-alignment: center;
+                        }
+                    }
+                }
+            }
+            if Estado.cortex-estado != "" || Estado.cortex-error != "": Text {
+                text: Estado.cortex-error != "" ? "⚠  " + Estado.cortex-error : Estado.cortex-estado;
+                color: Estado.cortex-error != "" ? Tema.peligro : Tema.acento;
+                font-size: 12px;
+            }
+            HorizontalLayout {
+                spacing: 12px;
+                Rectangle {
+                    height: 48px;
+                    horizontal-stretch: 1;
+                    border-radius: Tema.radio-medio;
+                    background: #00000059;
+                    border-width: 1px;
+                    border-color: entrada.has-focus ? Tema.borde-holo : Tema.borde-tenue;
+                    Text {
+                        x: 16px;
+                        visible: entrada.text == "";
+                        text: "Escribe a Cortex…";
+                        color: #ffffff40;
+                        font-size: 14px;
+                    }
+                    entrada := TextInput {
+                        x: 16px;
+                        width: parent.width - 32px;
+                        color: Tema.texto;
+                        font-size: 14px;
+                        vertical-alignment: center;
+                        enabled: !Estado.cortex-escribiendo;
+                        accepted => {
+                            if self.text != "" {
+                                Estado.cortex-enviar(self.text);
+                                self.text = "";
+                            }
+                        }
+                    }
+                }
+                Boton {
+                    height: 48px;
+                    width: 130px;
+                    principal: true;
+                    texto: Estado.cortex-escribiendo ? "…" : "ENVIAR";
+                    activo: !Estado.cortex-escribiendo && entrada.text != "";
+                    pulsado => {
+                        Estado.cortex-enviar(entrada.text);
+                        entrada.text = "";
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Reporte de novedades o Deep-Dive
+export component VentanaIA inherits Rectangle {
+    callback cerrar;
+    width: 760px;
+    height: min(720px, cuerpo.preferred-height);
+    border-radius: Tema.radio-grande;
+    background: #111316f8;
+    border-width: 1px;
+    border-color: Tema.borde-holo-sutil;
+    drop-shadow-blur: 40px;
+    drop-shadow-color: #000000cc;
+    TouchArea { }
+    cuerpo := VerticalLayout {
+        padding: 30px;
+        spacing: 16px;
+        HorizontalLayout {
+            spacing: 12px;
+            alignment: start;
+            Text { text: Estado.cortex-avatar; font-size: 22px; vertical-alignment: center; }
+            Titulo { text: Estado.ia-titulo; vertical-alignment: center; }
+        }
+        Flickable {
+            min-height: 120px;
+            preferred-height: texto.preferred-height;
+            max-height: 520px;
+            content-height: texto.preferred-height;
+            texto := Markdown { lineas: Estado.ia-lineas; }
+        }
+        if Estado.ia-estado != "": Text {
+            text: Estado.ia-estado;
+            color: Tema.acento;
+            font-size: 12px;
+        }
+        HorizontalLayout {
+            spacing: 12px;
+            Etiqueta { text: "CORTEX · IA LOCAL"; vertical-alignment: center; }
+            Rectangle { horizontal-stretch: 1; }
+            if Estado.ia-regenerable: Boton {
+                texto: "REGENERAR";
+                activo: !Estado.ia-cargando;
+                pulsado => { Estado.ia-reporte(true); }
+            }
+            Boton {
+                principal: true;
+                texto: "CERRAR";
+                pulsado => { root.cerrar(); }
+            }
+        }
+    }
+}

@@ -90,6 +90,14 @@ export component FilaNotificacion inherits Rectangle {
         mouse-cursor: dato.leida ? default : pointer;
         clicked => { pulsada(); }
     }
+    // Encima de la zona de la fila para recibir su propio clic
+    if !compacta: Boton {
+        x: parent.width - self.width - 36px;
+        y: (parent.height - self.height) / 2;
+        height: 26px;
+        texto: "ANALIZAR";
+        pulsado => { Estado.ia-analizar(dato.id); }
+    }
 }
 
 export component PanelNotificaciones inherits Rectangle {

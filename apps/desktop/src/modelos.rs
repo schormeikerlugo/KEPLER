@@ -18,6 +18,8 @@ pub struct Perfil {
     pub nombre_usuario: Option<String>,
     pub nombre_visible: Option<String>,
     pub rol: String,
+    #[serde(default)]
+    pub avatar_ia: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

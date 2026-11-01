@@ -5,6 +5,7 @@
 mod api;
 mod archivos;
 mod bitacora;
+mod cortex;
 mod en_vivo;
 mod imagenes;
 mod mapa;

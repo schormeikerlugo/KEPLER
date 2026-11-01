@@ -120,6 +120,11 @@ export component Cabecera inherits Tarjeta {
                 pulsada => { Estado.ir(Pantalla.archivos); }
             }
             Pestana {
+                texto: "CORTEX";
+                activa: Estado.pantalla == Pantalla.cortex;
+                pulsada => { Estado.ir(Pantalla.cortex); }
+            }
+            Pestana {
                 texto: "BITÁCORA";
                 activa: Estado.pantalla == Pantalla.bitacora;
                 pulsada => { Estado.ir(Pantalla.bitacora); }

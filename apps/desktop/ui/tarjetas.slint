@@ -293,3 +293,32 @@ export component TarjetaConsejo inherits Tarjeta {
         }
     }
 }
+
+export component TarjetaNovedades inherits Tarjeta {
+    VerticalLayout {
+        padding: 20px;
+        spacing: 10px;
+        HorizontalLayout {
+            Titulo { text: "Novedades de Cortex"; vertical-alignment: center; }
+            Rectangle { horizontal-stretch: 1; }
+            Text { text: Estado.cortex-avatar; font-size: 18px; }
+        }
+        for item in ["Lecturas del tiempo en tu zona", "Noticias sobre tus hallazgos", "Sugerencia de exploración"]: Rectangle {
+            height: 30px;
+            HorizontalLayout {
+                spacing: 8px;
+                Text { text: "•"; color: Tema.acento; vertical-alignment: center; }
+                Text {
+                    text: item;
+                    color: zona.has-hover ? Tema.acento : Tema.texto-secundario;
+                    font-size: 13px;
+                    vertical-alignment: center;
+                }
+            }
+            zona := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { Estado.ia-reporte(false); }
+            }
+        }
+    }
+}

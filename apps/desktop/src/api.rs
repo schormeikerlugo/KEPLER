@@ -187,6 +187,54 @@ impl Cliente {
         }
     }
 
+    /// POST con respuesta NDJSON: `al_recibir` por cada línea (streaming de Cortex).
+    pub async fn post_ndjson(
+        &self,
+        ruta: &str,
+        cuerpo: &Value,
+        mut al_recibir: impl FnMut(Value),
+    ) -> Resultado<()> {
+        self.renovar_si_toca().await?;
+        let token = self.token().await?;
+        let mut r = self
+            .http
+            .post(format!("{}{ruta}", self.base))
+            .bearer_auth(token)
+            .timeout(Duration::from_secs(300))
+            .json(cuerpo)
+            .send()
+            .await
+            .map_err(red)?;
+        if !r.status().is_success() {
+            return leer::<Value>(r).await.map(|_| ());
+        }
+        let mut pendiente = Vec::<u8>::new();
+        while let Some(trozo) = r.chunk().await.map_err(red)? {
+            pendiente.extend_from_slice(&trozo);
+            while let Some(fin) = pendiente.iter().position(|&b| b == b'\n') {
+                let linea: Vec<u8> = pendiente.drain(..=fin).collect();
+                if let Ok(v) = serde_json::from_slice::<Value>(&linea) {
+                    al_recibir(v);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// DELETE con sesión.
+    pub async fn borrar(&self, ruta: &str) -> Resultado<()> {
+        self.renovar_si_toca().await?;
+        let token = self.token().await?;
+        let r = self
+            .http
+            .delete(format!("{}{ruta}", self.base))
+            .bearer_auth(token)
+            .send()
+            .await
+            .map_err(red)?;
+        leer::<Value>(r).await.map(|_| ())
+    }
+
     /// Token válido para abrir el WebSocket.
     pub async fn token_vigente(&self) -> Resultado<String> {
         self.renovar_si_toca().await?;

@@ -10,6 +10,7 @@ import { Acerca } from "acerca.slint";
 import { PantallaArchivos, ModalDetalle, Comparador } from "archivos.slint";
 import { PantallaMapa } from "mapa.slint";
 import { PantallaVivo } from "vivo.slint";
+import { PantallaCortex, VentanaIA } from "cortex.slint";
 
 export { Estado, Pantalla }
 
@@ -60,6 +61,7 @@ export component AppWindow inherits Window {
         if Estado.pantalla == Pantalla.archivos: PantallaArchivos { vertical-stretch: 1; }
         if Estado.pantalla == Pantalla.mapa: PantallaMapa { vertical-stretch: 1; }
         if Estado.pantalla == Pantalla.envivo: PantallaVivo { vertical-stretch: 1; }
+        if Estado.pantalla == Pantalla.cortex: PantallaCortex { vertical-stretch: 1; }
     }
 
     // Panel de la campana: un clic fuera lo cierra
@@ -96,6 +98,12 @@ export component AppWindow inherits Window {
         Comparador {
             cerrar => { Estado.comparador-abierto = false; }
         }
+    }
+
+    if Estado.ia-abierta && Estado.pantalla != Pantalla.login: Rectangle {
+        background: #000000b3;
+        TouchArea { clicked => { Estado.ia-abierta = false; } }
+        VentanaIA { cerrar => { Estado.ia-abierta = false; } }
     }
 
     if root.acerca-abierto: Rectangle {

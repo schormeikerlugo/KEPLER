@@ -19,7 +19,7 @@ use crate::api::{Cliente, Error};
 use crate::en_vivo::{self, Evento};
 use crate::modelos::{Aire, Clima, Dashboard, Explorador, Perfil, UbicacionIp};
 use crate::{AppWindow, Atencion, Conteo, DatoIndicador, DiaSemana, Estado, FilaMision, Pantalla};
-use crate::{archivos, bitacora, imagenes, tarjetas, vista_mapa, vivo};
+use crate::{archivos, bitacora, cortex, imagenes, tarjetas, vista_mapa, vivo};
 
 /// Igual que el session guard de la v0.7.
 const INACTIVIDAD: Duration = Duration::from_secs(15 * 60);
@@ -39,6 +39,7 @@ pub struct Contexto {
     pub imagenes: imagenes::Cache,
     pub mapa: vista_mapa::Compartida,
     pub vivo: vivo::Vivo,
+    pub cortex: cortex::Compartida,
     /// Consejo del día: uno por sesión.
     consejo: std::sync::Mutex<Option<String>>,
     /// ¿Quiere el Centro de Control el vídeo de las unidades? (vista en vivo abierta)
@@ -77,6 +78,7 @@ pub fn conectar(ui: &AppWindow, rt: Handle, cliente: Arc<Cliente>) {
         imagenes: imagenes::Cache::default(),
         mapa: std::sync::Mutex::default(),
         vivo: vivo::Vivo::default(),
+        cortex: std::sync::Mutex::default(),
         consejo: std::sync::Mutex::new(None),
         fotogramas: tokio::sync::watch::channel(false).0,
         en_vivo: std::sync::Mutex::new(None),
@@ -86,6 +88,7 @@ pub fn conectar(ui: &AppWindow, rt: Handle, cliente: Arc<Cliente>) {
     estado.set_version(env!("CARGO_PKG_VERSION").into());
     bitacora::preparar(&estado);
     archivos::preparar(&estado);
+    cortex::preparar(&estado);
 
     let c = ctx.clone();
     estado.on_entrar(move |usuario, contrasena| {
@@ -209,6 +212,18 @@ pub fn conectar(ui: &AppWindow, rt: Handle, cliente: Arc<Cliente>) {
     let c = ctx.clone();
     estado.on_ver_todo(move |tipo| tarjetas::ver_todo(&c, &tipo, |p| ir(&c, p)));
     let c = ctx.clone();
+    estado.on_cortex_enviar(move |t| cortex::enviar(&c, t.to_string()));
+    let c = ctx.clone();
+    estado.on_cortex_abrir(move |id| cortex::abrir(&c, id.to_string()));
+    let c = ctx.clone();
+    estado.on_cortex_nuevo(move || cortex::nuevo(&c));
+    let c = ctx.clone();
+    estado.on_cortex_borrar(move |id| cortex::borrar(&c, id.to_string()));
+    let c = ctx.clone();
+    estado.on_ia_reporte(move |forzar| cortex::reporte(&c, forzar));
+    let c = ctx.clone();
+    estado.on_ia_analizar(move |id| cortex::analizar(&c, id.to_string()));
+    let c = ctx.clone();
     estado.on_cerrar_toast(move |id| {
         if let Some(ui) = c.ui.upgrade() {
             bitacora::cerrar_toast(&ui.global::<Estado>(), &id);
@@ -265,6 +280,7 @@ fn salir(ctx: &Arc<Contexto>, motivo: &'static str) {
         e.set_en_vivo(false);
         bitacora::olvidar(&e);
         vivo::olvidar(ctx, &e);
+        cortex::olvidar(ctx, &e);
         archivos::olvidar(&e);
     }
     let c = ctx.clone();
@@ -292,6 +308,9 @@ fn ir(ctx: &Arc<Contexto>, pantalla: Pantalla) {
     ctx.fotogramas.send_replace(pantalla == Pantalla::Envivo);
     if pantalla == Pantalla::Bitacora {
         cargar_bitacora(ctx, false);
+    }
+    if pantalla == Pantalla::Cortex {
+        cortex::entrar(ctx);
     }
     if pantalla == Pantalla::Mapa {
         vista_mapa::entrar(ctx);
@@ -541,7 +560,7 @@ async fn cargar(c: &Arc<Contexto>) {
 
 /// Datos ya formateados para la UI (`Send`: se construyen fuera del hilo de Slint).
 struct Vista {
-    perfil: Option<(String, String, String)>,
+    perfil: Option<(String, String, String, String)>,
     indicadores: Option<Vec<DatoIndicador>>,
     dashboard: Option<VistaDashboard>,
     explorador: Option<(f32, f32)>,
@@ -585,7 +604,13 @@ impl Vista {
                     .filter(|n| !n.trim().is_empty())
                     .unwrap_or_else(|| usuario.clone());
                 let rol = capitalizar(&p.rol);
-                (visible, usuario, rol)
+                let avatar = p
+                    .avatar_ia
+                    .as_deref()
+                    .and_then(|a| a.strip_prefix("emoji:"))
+                    .unwrap_or("🤖")
+                    .to_owned();
+                (visible, usuario, rol, avatar)
             }),
             indicadores: Some(telemetria(clima.as_ref(), aire.as_ref())),
             dashboard: dashboard.map(VistaDashboard::construir),
@@ -602,7 +627,8 @@ impl Vista {
     }
 
     fn aplicar(self, e: &Estado<'_>) {
-        if let Some((visible, usuario, rol)) = self.perfil {
+        if let Some((visible, usuario, rol, avatar)) = self.perfil {
+            e.set_cortex_avatar(avatar.into());
             e.set_iniciales(iniciales(&visible).into());
             e.set_nombre_visible(visible.into());
             e.set_usuario(usuario.into());

@@ -1,7 +1,7 @@
 import { Tema } from "tema.slint";
 import { Tarjeta, Etiqueta, Titulo, Indicador, Barra, Pastilla } from "componentes.slint";
 import { Avatar } from "cabecera.slint";
-import { TarjetaObjetos, TarjetaPois, TarjetaPersonas, TarjetaRutas, TarjetaConsejo } from "tarjetas.slint";
+import { TarjetaObjetos, TarjetaPois, TarjetaPersonas, TarjetaRutas, TarjetaConsejo, TarjetaNovedades } from "tarjetas.slint";
 import { Estado, Atencion, FilaMision } from "estado.slint";
 
 component FilaAtencion inherits Rectangle {
@@ -330,6 +330,7 @@ export component PantallaDashboard inherits Flickable {
             alignment: start;
             TarjetaConsejo { }
             TarjetaExplorador { }
+            TarjetaNovedades { }
         }
     }
 }
