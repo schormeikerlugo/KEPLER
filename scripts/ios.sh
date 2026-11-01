@@ -10,7 +10,9 @@
 # Variables: KEPLER_MAC (ssh, por defecto macmini), KEPLER_EQUIPO (Team ID para
 # firmar; si falta se toma el primero de Xcode), KEPLER_SIM (simulador),
 # KEPLER_DEMO_USUARIO/KEPLER_DEMO_CONTRASENA (entrada automática en el simulador, solo Debug),
-# KEPLER_DEMO_SECCION (desplaza el panel a esa tarjeta), KEPLER_SIM_UBICACION (lat,lng).
+# KEPLER_DEMO_SECCION (desplaza el panel a esa tarjeta o abre la pestaña «mision»),
+# KEPLER_DEMO_IMAGEN (ruta en el Mac: foto que hace de cámara en el simulador),
+# KEPLER_SIM_UBICACION (lat,lng).
 #
 # Sincroniza con tar (los archivos de git, incluidos los nuevos sin commit); en el
 # Mac el repo vive en ~/kepler y `target/` se conserva entre compilaciones.
@@ -29,6 +31,12 @@ sincronizar() {
         | grep -zv '^legacy/' \
         | tar --null --ignore-failed-read -czf - -T - 2>/dev/null \
         | ssh "$MAC" 'mkdir -p ~/kepler && tar -xzf - -C ~/kepler'
+    # Modelos (no versionados): YOLO para CoreML y la foto de prueba del simulador
+    EXTRA=$(ls -d models/coreml/*.mlpackage models/onnx/prueba-*.jpg 2>/dev/null || true)
+    if [ -n "$EXTRA" ]; then
+        # shellcheck disable=SC2086
+        tar -czf - $EXTRA | ssh "$MAC" 'tar -xzf - -C ~/kepler'
+    fi
 }
 
 # Todo lo que corre en el Mac
@@ -83,7 +91,7 @@ simulador() {
         # Ubicación simulada (Caracas por defecto) y permiso concedido para no ver el diálogo
         xcrun simctl location '${SIM}' set '${KEPLER_SIM_UBICACION:-10.5050,-66.8750}' 2>/dev/null || true
         xcrun simctl privacy '${SIM}' grant location dev.schormeiker.kepler 2>/dev/null || true
-        SIMCTL_CHILD_KEPLER_DEMO_USUARIO='${KEPLER_DEMO_USUARIO:-}' SIMCTL_CHILD_KEPLER_DEMO_CONTRASENA='${KEPLER_DEMO_CONTRASENA:-}' SIMCTL_CHILD_KEPLER_DEMO_SECCION='${KEPLER_DEMO_SECCION:-}' \\
+        SIMCTL_CHILD_KEPLER_DEMO_USUARIO='${KEPLER_DEMO_USUARIO:-}' SIMCTL_CHILD_KEPLER_DEMO_CONTRASENA='${KEPLER_DEMO_CONTRASENA:-}' SIMCTL_CHILD_KEPLER_DEMO_SECCION='${KEPLER_DEMO_SECCION:-}' SIMCTL_CHILD_KEPLER_DEMO_IMAGEN='${KEPLER_DEMO_IMAGEN:-}' \\
             xcrun simctl launch '${SIM}' dev.schormeiker.kepler >/dev/null
     "
 }

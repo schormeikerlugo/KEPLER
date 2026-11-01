@@ -14,6 +14,10 @@ legacy/backend/venv/bin/python models/export/exportar.py --yolo yolo26s.pt
 | `referencia.png` | Imagen sintética para comprobar CLIP |
 | `prueba-bus.jpg` | Imagen de Ultralytics para comprobar YOLO (no se versiona) |
 
+## iPhone (CoreML)
+
+`models/export/exportar_coreml.py` genera `models/coreml/yolo26s.mlpackage` (18 MB, float16, misma salida `[1, 300, 6]`). No se versiona: `scripts/ios.sh` lo copia al Mac y Xcode lo compila dentro de la app. El núcleo (`kepler-movil::interpretar_yolo`) deshace el letterbox y nombra las clases en español (`kepler-core::coco`).
+
 ## Preprocesado (debe ser idéntico en el iPhone)
 
 - **YOLO**: letterbox a 640 con relleno gris 114, bilineal tipo `cv2.INTER_LINEAR` (centros de píxel, sin suavizado), valores en [0, 1].

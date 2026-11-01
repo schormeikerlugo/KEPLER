@@ -19,6 +19,8 @@ targets:
     platform: iOS
     sources:
       - path: Kepler
+      # YOLO para CoreML (models/export/exportar_coreml.py; no versionado)
+      - path: ../../models/coreml/yolo26s.mlpackage
       - path: ../../design/fonts
         buildPhase: resources
         includes:
@@ -34,6 +36,9 @@ targets:
       - sdk: SystemConfiguration.framework
       - sdk: LocalAuthentication.framework
       - sdk: CoreLocation.framework
+      - sdk: AVFoundation.framework
+      - sdk: Vision.framework
+      - sdk: CoreML.framework
     info:
       path: Kepler/Info.plist
       properties:
@@ -52,6 +57,7 @@ targets:
         UIUserInterfaceStyle: Dark
         UIStatusBarStyle: UIStatusBarStyleLightContent
         NSLocationWhenInUseUsageDescription: KEPLER usa tu ubicación para el clima, la calidad del aire y los peligros cercanos de tu zona.
+        NSCameraUsageDescription: KEPLER usa la cámara para detectar y registrar objetos, personas y puntos de interés en campo.
         NSFaceIDUsageDescription: KEPLER usa Face ID para reabrir tu sesión sin escribir la contraseña.
         NSLocalNetworkUsageDescription: KEPLER se conecta al servidor de tu base (cortex) en la red local para sincronizar misiones y hallazgos.
         NSAppTransportSecurity:

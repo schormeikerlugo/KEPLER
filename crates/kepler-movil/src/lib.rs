@@ -11,7 +11,12 @@ use std::time::Duration;
 use kepler_cliente::{Cliente, Error as ErrorCliente};
 use serde_json::Value;
 
+mod captura;
 mod panel;
+mod vision;
+
+pub use captura::{CapturaGuardada, NuevaCaptura, TipoCaptura};
+pub use vision::Deteccion;
 
 pub use panel::{
     Atencion, CategoriaConteo, DiaSemana, HallazgoFila, Indicador, MisionFila, Nivel, ObjetoFila,
@@ -243,6 +248,44 @@ impl Nucleo {
                 .and_then(|s| s.parse::<chrono::DateTime<chrono::Utc>>().ok())
                 .map_or(0, |d| d.timestamp()),
         })
+    }
+
+    /// Guarda una captura con foto (`/v1/capturas`): el servidor calcula la
+    /// huella visual y hace la Re-ID. `jpeg`: el recorte (objeto/persona) o el encuadre (POI).
+    pub async fn capturar(
+        &self,
+        captura: NuevaCaptura,
+        jpeg: Vec<u8>,
+    ) -> Result<CapturaGuardada, ErrorKepler> {
+        let cuerpo = captura::cuerpo(&captura, &jpeg, chrono::Utc::now());
+        let r: Value = self.cliente.post("/v1/capturas", &cuerpo).await?;
+        captura::resultado(&captura, &r)
+    }
+
+    /// La misión activa más reciente (las capturas se asocian a ella).
+    pub async fn mision_activa(&self) -> Result<Option<MisionFila>, ErrorKepler> {
+        let v: Vec<Value> = self
+            .cliente
+            .get("/v1/misiones?estado=activa&limite=1")
+            .await?;
+        Ok(v.first().map(panel::mision))
+    }
+
+    /// Categorías de POI (para reportar uno).
+    pub async fn categorias_poi(&self) -> Result<Vec<CategoriaConteo>, ErrorKepler> {
+        let v: Value = self.cliente.get("/v1/catalogos").await?;
+        Ok(v["poi_categorias"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|k| CategoriaConteo {
+                id: k["id"].as_str().unwrap_or_default().to_owned(),
+                nombre: k["nombre"].as_str().unwrap_or_default().to_owned(),
+                color: k["color"].as_str().unwrap_or("#888888").to_owned(),
+                total: 0,
+                compartidos: 0,
+            })
+            .collect())
     }
 
     /// Bytes de una foto de Storage (`imagen_path`, `avatar_path`).

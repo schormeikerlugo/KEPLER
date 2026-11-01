@@ -22,6 +22,7 @@ required-features = ["bindgen"]
 bindgen = ["uniffi/cli"]
 
 [dependencies]
+base64 = "0.22"
 chrono.workspace = true
 kepler-cliente.workspace = true
 kepler-core.workspace = true

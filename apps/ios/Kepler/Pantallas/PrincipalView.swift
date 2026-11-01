@@ -1,17 +1,28 @@
 import SwiftUI
 
 struct PrincipalView: View {
+    @State private var pestana = 0
+
     var body: some View {
-        TabView {
+        TabView(selection: $pestana) {
             PanelView()
                 .tabItem { Label("Panel", systemImage: "square.grid.2x2") }
-            Pendiente(titulo: "Misión", detalle: "Cámara con detección, GPS y capturas offline.", fase: "F3 · F4")
+                .tag(0)
+            MisionView()
                 .tabItem { Label("Misión", systemImage: "scope") }
+                .tag(1)
             Pendiente(titulo: "Mapa", detalle: "Mapa offline con POIs, alertas y rutas.", fase: "F5")
                 .tabItem { Label("Mapa", systemImage: "map") }
+                .tag(2)
             AjustesView()
                 .tabItem { Label("Ajustes", systemImage: "gearshape") }
+                .tag(3)
         }
+        #if DEBUG
+        .onAppear {
+            if ProcessInfo.processInfo.environment["KEPLER_DEMO_SECCION"]?.hasPrefix("mision") == true { pestana = 1 }
+        }
+        #endif
     }
 }
 

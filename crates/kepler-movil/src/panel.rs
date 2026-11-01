@@ -193,16 +193,7 @@ pub(crate) fn construir(f: &Fuentes, consejo: impl FnOnce(&Situacion) -> String)
             .as_array()
             .into_iter()
             .flatten()
-            .map(|m| MisionFila {
-                id: texto(m, "id"),
-                codigo: texto(m, "codigo"),
-                titulo: m["titulo"]
-                    .as_str()
-                    .filter(|t| !t.is_empty())
-                    .map_or_else(|| texto(m, "codigo"), str::to_owned),
-                estado: texto(m, "estado"),
-                creado_en: segundos(&m["creado_en"]),
-            })
+            .map(mision)
             .collect(),
         semana_total_km: semana.iter().map(|s| s.km).sum(),
         semana,
@@ -259,6 +250,19 @@ pub(crate) fn construir(f: &Fuentes, consejo: impl FnOnce(&Situacion) -> String)
                 registrada: r["origen"] == "registrada",
             })
             .collect(),
+    }
+}
+
+pub(crate) fn mision(m: &Value) -> MisionFila {
+    MisionFila {
+        id: texto(m, "id"),
+        codigo: texto(m, "codigo"),
+        titulo: m["titulo"]
+            .as_str()
+            .filter(|t| !t.is_empty())
+            .map_or_else(|| texto(m, "codigo"), str::to_owned),
+        estado: texto(m, "estado"),
+        creado_en: segundos(&m["creado_en"]),
     }
 }
 
