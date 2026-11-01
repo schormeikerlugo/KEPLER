@@ -1,0 +1,252 @@
+// Prototipo del Centro de Control en Slint. Valores de design/tokens.json.
+import "../../../../../design/fonts/Jura-Variable.ttf";
+
+global T {
+    out property <color> fondo: #000000;
+    out property <color> superficie: #111111;
+    out property <color> texto: #ffffff;
+    out property <color> texto-sec: #cccccc;
+    out property <color> etiqueta: #666666;
+    out property <color> acento: #3FA8FF;
+    out property <color> exito: #00D4AA;
+    out property <color> aviso: #FFBB33;
+    out property <color> peligro: #FF4444;
+    out property <color> progreso: #22C55E;
+    out property <color> borde-sutil: #ffffff0f;
+    out property <length> radio: 14px;
+}
+
+export struct DatoIndicador {
+    valor: string,
+    etiqueta: string,
+    estado: int,
+}
+
+component Tarjeta inherits Rectangle {
+    background: T.superficie;
+    border-radius: T.radio;
+}
+
+component Indicador inherits Tarjeta {
+    in property <DatoIndicador> dato;
+    height: 74px;
+    property <color> punto: dato.estado == 0 ? T.exito : dato.estado == 1 ? T.aviso : T.peligro;
+    Rectangle {
+        x: parent.width - 14px; y: 10px; width: 6px; height: 6px;
+        border-radius: 3px;
+        background: punto;
+        drop-shadow-blur: 6px;
+        drop-shadow-color: punto.with-alpha(0.7);
+    }
+    VerticalLayout {
+        alignment: center;
+        spacing: 4px;
+        Text {
+            text: dato.valor;
+            font-size: 22.4px; font-weight: 700;
+            color: T.texto;
+            horizontal-alignment: center;
+        }
+        Text {
+            text: dato.etiqueta;
+            font-size: 10.4px; font-weight: 500;
+            letter-spacing: 1.5px;
+            color: T.etiqueta;
+            horizontal-alignment: center;
+        }
+    }
+}
+
+component Barra {
+    in property <string> titulo;
+    in property <string> icono;
+    in property <float> valor;
+    property <color> relleno: valor > 0.7 ? T.progreso : valor > 0.4 ? T.aviso : T.peligro;
+    VerticalLayout {
+        spacing: 10px;
+        HorizontalLayout {
+            spacing: 10px;
+            Rectangle {
+                width: 38px; height: 38px;
+                border-radius: 10px;
+                border-width: 1px; border-color: #ffffff1a;
+                Text { text: icono; font-size: 16px; }
+            }
+            Text { text: titulo; color: T.texto-sec; font-size: 13px; vertical-alignment: center; }
+            Text {
+                text: round(valor * 100) + "%";
+                color: T.texto-sec; font-size: 12.5px; font-weight: 600;
+                horizontal-alignment: right; vertical-alignment: center;
+            }
+        }
+        Rectangle {
+            height: 6px;
+            border-radius: 3px;
+            background: #ffffff14;
+            Rectangle {
+                x: 0; height: parent.height;
+                width: parent.width * valor;
+                border-radius: 3px;
+                background: relleno;
+                animate width { duration: 400ms; easing: ease-out; }
+                animate background { duration: 400ms; }
+            }
+        }
+    }
+}
+
+export component Panel inherits Window {
+    title: "KEPLER · prototipo Slint";
+    preferred-width: 1440px;
+    preferred-height: 900px;
+    background: T.fondo;
+    default-font-family: "Jura";
+
+    in property <[DatoIndicador]> indicadores;
+    in property <string> linea;
+    in property <string> area;
+    in property <int> bpm;
+    in property <float> calzado;
+    in property <float> resistencia;
+
+    VerticalLayout {
+        padding: 30px;
+        padding-left: 40px; padding-right: 40px;
+        spacing: 22px;
+
+        // ── Header ──
+        Tarjeta {
+            height: 103px;
+            HorizontalLayout {
+                padding-left: 24px; padding-right: 36px;
+                spacing: 18px;
+                // Glow del logo: halo difuso detrás (Slint no tiene text-shadow)
+                Rectangle {
+                    width: 220px;
+                    Rectangle {
+                        x: 6px; width: 190px; height: 20px; border-radius: 10px;
+                        background: #ffffff06;
+                        drop-shadow-blur: 22px; drop-shadow-color: #ffffff30;
+                    }
+                    Text {
+                        text: "KEPLER"; letter-spacing: 13px;
+                        font-size: 28px; font-weight: 600;
+                        color: T.texto; vertical-alignment: center;
+                    }
+                }
+                Rectangle { }
+                Rectangle {
+                    width: 130px; height: 34px; y: (parent.height - self.height) / 2;
+                    border-radius: 6px; border-width: 1px; border-color: #ffffff26;
+                    background: #ffffff08;
+                    Text { text: "▦  COMANDOS"; font-size: 13px; color: T.texto; letter-spacing: 1px; }
+                }
+                Rectangle {
+                    width: 50px; height: 50px; y: (parent.height - self.height) / 2;
+                    border-radius: 25px; background: #1a1a1a;
+                    Text { text: "🔔"; font-size: 18px; }
+                    Rectangle {
+                        x: 30px; y: 2px; width: 20px; height: 14px; border-radius: 7px;
+                        background: T.peligro;
+                        Text { text: "1"; font-size: 9px; color: white; font-weight: 700; }
+                    }
+                }
+                Text { text: "Schormeiker Lugo"; color: T.texto; font-size: 15px; vertical-alignment: center; }
+                Rectangle {
+                    width: 46px; height: 58px; y: (parent.height - self.height) / 2;
+                    border-radius: 23px; border-width: 2px; border-color: #ffffff2a;
+                    background: @linear-gradient(160deg, #2a3a4a 0%, #0d1218 100%);
+                    Text { text: "SL"; color: T.texto-sec; font-size: 14px; }
+                }
+            }
+        }
+
+        HorizontalLayout {
+            spacing: 30px;
+
+            VerticalLayout {
+                spacing: 16px;
+                Text { text: "Telemetría"; font-size: 18.4px; font-weight: 600; letter-spacing: 0.5px; color: T.texto; }
+                HorizontalLayout {
+                    spacing: 12px;
+                    for d in indicadores: Indicador { dato: d; }
+                }
+
+                // ── Gráfico en vivo ──
+                Tarjeta {
+                    VerticalLayout {
+                        padding: 24px; padding-top: 20px;
+                        spacing: 12px;
+                        HorizontalLayout {
+                            Text { text: "Pulso del explorador"; font-size: 18.4px; font-weight: 600; color: T.texto; }
+                            Text {
+                                text: bpm + " BPM";
+                                font-size: 22.4px; font-weight: 700; color: T.acento;
+                                horizontal-alignment: right;
+                            }
+                        }
+                        Rectangle {
+                            // rejilla
+                            for i in 5: Rectangle {
+                                y: parent.height * i / 4; height: 1px;
+                                background: #ffffff0a;
+                            }
+                            Path {
+                                width: 100%; height: 100%;
+                                viewbox-width: 239; viewbox-height: 100;
+                                commands: area;
+                                fill: @linear-gradient(180deg, #3FA8FF59 0%, #3FA8FF00 100%);
+                            }
+                            // halo de la línea
+                            Path {
+                                width: 100%; height: 100%;
+                                viewbox-width: 239; viewbox-height: 100;
+                                commands: linea;
+                                stroke: #3FA8FF33; stroke-width: 8px;
+                            }
+                            Path {
+                                width: 100%; height: 100%;
+                                viewbox-width: 239; viewbox-height: 100;
+                                commands: linea;
+                                stroke: T.acento; stroke-width: 2px;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── Tarjeta del explorador ──
+            Tarjeta {
+                width: 340px;
+                VerticalLayout {
+                    padding: 20px; padding-top: 30px;
+                    spacing: 18px;
+                    alignment: start;
+                    Rectangle {
+                        height: 100px;
+                        Rectangle {
+                            width: 72px; height: 100px;
+                            border-radius: 36px; border-width: 2px; border-color: #ffffff2a;
+                            background: @linear-gradient(160deg, #2a3a4a 0%, #0d1218 100%);
+                            drop-shadow-blur: 18px; drop-shadow-color: #3FA8FF40;
+                            Text { text: "SL"; color: T.texto-sec; font-size: 22px; }
+                        }
+                    }
+                    Text { text: "Schormeiker Lugo"; font-size: 18px; color: T.texto; horizontal-alignment: center; }
+                    Text { text: "⚡ Explorador"; font-size: 12.5px; color: #888888; horizontal-alignment: center; }
+                    Barra { titulo: "Estado del Calzado"; icono: "👟"; valor: calzado; }
+                    Barra { titulo: "Resistencia Física"; icono: "⚡"; valor: resistencia; }
+                    Rectangle {
+                        height: 38px; border-radius: 8px; background: #ffffff08;
+                        Text { text: "🌤  Clima: Fresco      🌙 Noche"; color: #888888; font-size: 12.5px; }
+                    }
+                    Rectangle {
+                        height: 34px; border-radius: 6px;
+                        background: #3FA8FF1a; border-width: 1px; border-color: #3FA8FF4d;
+                        Text { text: "VER TODO"; color: T.acento; font-size: 11px; font-weight: 700; letter-spacing: 1px; }
+                    }
+                }
+            }
+        }
+    }
+}

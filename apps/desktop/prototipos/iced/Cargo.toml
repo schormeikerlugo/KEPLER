@@ -1,0 +1,15 @@
+[package]
+name = "prototipo-iced"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+iced = { version = "0.14.0", features = ["canvas", "tokio"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+
+[workspace]
