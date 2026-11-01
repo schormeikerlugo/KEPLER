@@ -33,6 +33,7 @@ targets:
       - sdk: Security.framework
       - sdk: SystemConfiguration.framework
       - sdk: LocalAuthentication.framework
+      - sdk: CoreLocation.framework
     info:
       path: Kepler/Info.plist
       properties:
@@ -50,6 +51,7 @@ targets:
           - UIInterfaceOrientationPortrait
         UIUserInterfaceStyle: Dark
         UIStatusBarStyle: UIStatusBarStyleLightContent
+        NSLocationWhenInUseUsageDescription: KEPLER usa tu ubicación para el clima, la calidad del aire y los peligros cercanos de tu zona.
         NSFaceIDUsageDescription: KEPLER usa Face ID para reabrir tu sesión sin escribir la contraseña.
         NSLocalNetworkUsageDescription: KEPLER se conecta al servidor de tu base (cortex) en la red local para sincronizar misiones y hallazgos.
         NSAppTransportSecurity:

@@ -8,6 +8,9 @@ use chrono::{DateTime, Local, Utc};
 use serde_json::Value;
 use slint::{Color, ComponentHandle, Model, ModelRc, VecModel};
 
+use kepler_core::consejos::{self, Situacion};
+use kepler_core::entorno::CategoriaClima;
+
 use crate::imagenes::{self, MINIATURA};
 use crate::modelos::{Dashboard, Explorador};
 use crate::panel::Contexto;
@@ -125,65 +128,21 @@ pub fn aplicar(c: &Arc<Contexto>, datos: Datos, e: &Estado<'_>) {
     });
 }
 
-/// Consejo del día: uno por sesión, según el estado del explorador si hay algo que decir.
+/// Consejo del día (uno por sesión), con la regla compartida de `kepler-core`.
 pub fn consejo(
     d: Option<&Dashboard>,
     e: Option<&Explorador>,
-    categoria_clima: Option<&str>,
+    clima: Option<CategoriaClima>,
 ) -> String {
-    let mut contexto = Vec::new();
-    if let Some(e) = e {
-        if e.desgaste_calzado > 70.0 {
-            contexto.push(format!(
-                "👟 Tu calzado está al {:.0} % de desgaste: revísalo antes de la próxima misión.",
-                e.desgaste_calzado
-            ));
-        }
-        if e.resistencia < 40.0 {
-            contexto.push(format!(
-                "⚡ Resistencia al {:.0} %: hoy toca descanso o una ruta corta en terreno llano.",
-                e.resistencia
-            ));
-        }
-    }
-    match categoria_clima {
-        Some("lluvia" | "tormenta") => contexto.push("🌧️ Hay lluvia en tu zona: evita quebradas y terreno rocoso, el riesgo de resbalar se dispara.".into()),
-        Some("caluroso") => contexto.push("🌡️ Hace calor: sal temprano y lleva al menos 1 L de agua por cada 5 km.".into()),
-        Some("viento_fuerte") => contexto.push("💨 Viento fuerte: evita crestas y zonas expuestas.".into()),
-        _ => {}
-    }
-    if let Some(d) = d {
-        if d.alertas.pois_riesgo_alto > 0 {
-            contexto.push(format!(
-                "⚠️ Tienes {} POI de riesgo alto o crítico registrados: revisa si siguen vigentes antes de volver a la zona.",
-                d.alertas.pois_riesgo_alto
-            ));
-        }
-        if d.alertas.misiones_sin_reporte > 0 {
-            contexto.push("📝 Tienes misiones sin documentar: el mejor reporte se escribe en las primeras 2 h.".into());
-        }
-    }
-    let semilla = Utc::now().timestamp_subsec_nanos() as usize;
-    if let Some(c) = contexto.get(semilla % contexto.len().max(1)) {
-        return c.clone();
-    }
-    CONSEJOS[semilla % CONSEJOS.len()].to_owned()
+    let s = Situacion {
+        desgaste_calzado: e.map(|e| e.desgaste_calzado),
+        resistencia: e.map(|e| e.resistencia),
+        clima,
+        pois_riesgo_alto: d.map_or(0, |d| d.alertas.pois_riesgo_alto.max(0) as u64),
+        misiones_sin_reporte: d.map_or(0, |d| d.alertas.misiones_sin_reporte.max(0) as u64),
+    };
+    consejos::consejo(&s, Utc::now().timestamp_subsec_nanos() as usize)
 }
-
-const CONSEJOS: &[&str] = &[
-    "🧭 Verifica tu brújula antes de adentrarte en zona desconocida.",
-    "💧 Hidratación: lleva al menos 1 L de agua por cada 5 km de exploración.",
-    "📷 Documenta todo hallazgo con foto antes de manipularlo.",
-    "🔋 Carga todos tus dispositivos antes de salir a campo.",
-    "🗺️ Descarga el mapa offline de la zona antes de perder la cobertura.",
-    "👥 Nunca explores zonas de riesgo alto sin un compañero de apoyo.",
-    "🎒 Revisa tu equipo 24 h antes de cada misión, no el mismo día.",
-    "🔦 Lleva una fuente de luz extra, incluso en misiones diurnas.",
-    "⏰ Planifica el regreso con margen: calcula un 30 % más de tiempo del estimado.",
-    "📻 Establece un horario fijo de comunicación con tu base.",
-    "⚡ Si ves relámpagos, busca refugio bajo. Evita crestas y árboles aislados.",
-    "🧊 En terreno rocoso, cada paso debe ser deliberado: la prisa causa lesiones.",
-];
 
 // --- POIs por categoría -------------------------------------------------------
 

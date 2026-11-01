@@ -18,7 +18,9 @@ final class Sesion: ObservableObject {
 
     @Published private(set) var fase: Fase = .arrancando
     @Published private(set) var perfil: PerfilMovil?
-    @Published private(set) var resumen: Resumen?
+    @Published private(set) var panel: Panel?
+    /// Error al cargar el panel (con los datos anteriores aún a la vista).
+    @Published private(set) var errorPanel: String?
     @Published private(set) var servidorEstado: EstadoServidor?
     @Published var error: String?
     @Published private(set) var ocupada = false
@@ -26,6 +28,7 @@ final class Sesion: ObservableObject {
     @AppStorage("kepler.servidor") var servidor = Sesion.servidorPorDefecto
 
     let llavero = LlaveroKeychain()
+    let ubicacion = Ubicacion()
     private(set) var nucleo: Nucleo
     private var enSegundoPlanoDesde: Date?
     /// Sesión abierta en memoria (bloquear no la cierra).
@@ -90,7 +93,7 @@ final class Sesion: ObservableObject {
         llavero.olvidar()
         abierta = false
         perfil = nil
-        resumen = nil
+        panel = nil
         fase = .login
     }
 
@@ -115,12 +118,22 @@ final class Sesion: ObservableObject {
 
     func cargar() async {
         async let p = try? nucleo.perfil()
-        async let r = try? nucleo.resumen()
         async let s = nucleo.estadoServidor()
-        let (perfil, resumen, estado) = await (p, r, s)
+        async let panel: Void = cargarPanel()
+        let (perfil, estado, _) = await (p, s, panel)
         if let perfil { self.perfil = perfil }
-        if let resumen { self.resumen = resumen }
         servidorEstado = estado
+    }
+
+    /// Panel con la ubicación del GPS si hay permiso (si no, el núcleo la aproxima por IP).
+    func cargarPanel() async {
+        let posicion = await ubicacion.actual()
+        do {
+            panel = try await nucleo.panel(lat: posicion?.latitude, lng: posicion?.longitude)
+            errorPanel = nil
+        } catch {
+            errorPanel = Sesion.mensaje(error)
+        }
     }
 
     func comprobarServidor() async {

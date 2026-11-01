@@ -590,15 +590,11 @@ async fn cargar(c: &Arc<Contexto>) {
                 .ok()
                 .and_then(|e| e.clima.clone())
                 .and_then(|d| d.datos().ok())
-                .map(|k| {
-                    serde_json::to_value(k.categoria)
-                        .ok()
-                        .and_then(|v| v.as_str().map(str::to_owned))
-                });
+                .map(|k| k.categoria);
             *guardado = Some(tarjetas::consejo(
                 dashboard.as_ref().ok(),
                 explorador.as_ref().ok(),
-                clima.flatten().as_deref(),
+                clima,
             ));
         }
         guardado.clone().unwrap_or_default()

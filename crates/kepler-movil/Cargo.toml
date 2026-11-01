@@ -22,12 +22,13 @@ required-features = ["bindgen"]
 bindgen = ["uniffi/cli"]
 
 [dependencies]
+chrono.workspace = true
 kepler-cliente.workspace = true
 kepler-core.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
-tokio = { version = "1.54.1", features = ["rt-multi-thread", "sync", "time"] }
+tokio = { version = "1.54.1", features = ["rt-multi-thread", "sync", "time", "macros"] }
 uniffi = { version = "0.32.2", features = ["tokio"] }
 
 [build-dependencies]

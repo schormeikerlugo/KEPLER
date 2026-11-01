@@ -5,11 +5,18 @@
 //! Swift recibe `Nucleo` (objeto con métodos `async`), registros y errores
 //! generados por UniFFI (`apps/ios/Kepler/Nucleo/kepler_movil.swift`).
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use kepler_cliente::{Cliente, Error as ErrorCliente};
 use serde_json::Value;
+
+mod panel;
+
+pub use panel::{
+    Atencion, CategoriaConteo, DiaSemana, HallazgoFila, Indicador, MisionFila, Nivel, ObjetoFila,
+    Panel, RutaFila,
+};
 
 uniffi::setup_scaffolding!();
 
@@ -75,6 +82,17 @@ pub struct Resumen {
 #[derive(uniffi::Object)]
 pub struct Nucleo {
     cliente: Arc<Cliente>,
+    /// Consejo del día: uno por sesión.
+    consejo: Mutex<Option<String>>,
+    /// Ciudad y coordenadas aproximadas por IP (sin GPS), una vez por sesión.
+    ubicacion_ip: tokio::sync::Mutex<Option<(f64, f64, Option<String>)>>,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct Reporte {
+    /// Markdown con tres secciones (tiempo, hallazgos, sugerencia).
+    pub texto: String,
+    pub generado_en: i64,
 }
 
 #[uniffi::export(async_runtime = "tokio")]
@@ -85,7 +103,11 @@ impl Nucleo {
         cliente.al_renovar(Box::new(move |t| {
             llavero.guardar_sesion(t.usuario.clone(), t.refresh_token.clone());
         }));
-        Arc::new(Self { cliente })
+        Arc::new(Self {
+            cliente,
+            consejo: Mutex::default(),
+            ubicacion_ip: tokio::sync::Mutex::default(),
+        })
     }
 
     pub fn servidor(&self) -> String {
@@ -104,6 +126,8 @@ impl Nucleo {
 
     pub async fn salir(&self) {
         self.cliente.salir().await;
+        *self.consejo.lock().expect("consejo") = None;
+        *self.ubicacion_ip.lock().await = None;
     }
 
     pub async fn hay_sesion(&self) -> bool {
@@ -131,9 +155,124 @@ impl Nucleo {
         Ok(perfil_desde(&p))
     }
 
+    /// Todo el panel. Con `lat`/`lng` del GPS; sin ellas, ubicación aproximada por IP.
+    pub async fn panel(&self, lat: Option<f64>, lng: Option<f64>) -> Result<Panel, ErrorKepler> {
+        let gps = lat.zip(lng);
+        let (posicion, ciudad_ip) = match gps {
+            Some(p) => (Some(p), None),
+            None => match self.por_ip().await {
+                Some((lat, lng, ciudad)) => (Some((lat, lng)), ciudad),
+                None => (None, None),
+            },
+        };
+        let consulta = posicion.map(|(lat, lng)| format!("lat={lat}&lng={lng}"));
+        let ruta_explorador = consulta.as_ref().map_or_else(
+            || "/v1/explorador".into(),
+            |q| format!("/v1/explorador?{q}"),
+        );
+        let aire = async {
+            match &consulta {
+                Some(q) => self
+                    .cliente
+                    .get::<Value>(&format!("/v1/aire?{q}"))
+                    .await
+                    .ok(),
+                None => None,
+            }
+        };
+        let (dashboard, explorador, aire, salud) = tokio::join!(
+            self.cliente.get::<Value>("/v1/dashboard"),
+            self.cliente.get::<Value>(&ruta_explorador),
+            aire,
+            self.cliente.salud_detalle_con_latencia(),
+        );
+        let fuentes = panel::Fuentes {
+            dashboard: dashboard?,
+            explorador: explorador.ok(),
+            aire,
+            ubicacion_ip: ciudad_ip,
+            gps: gps.is_some(),
+            latencia_ms: salud
+                .ok()
+                .map(|(_, l)| u32::try_from(l.as_millis()).unwrap_or(u32::MAX)),
+        };
+        Ok(panel::construir(&fuentes, |s| {
+            self.consejo
+                .lock()
+                .expect("consejo")
+                .get_or_insert_with(|| panel::consejo_ahora(s))
+                .clone()
+        }))
+    }
+
+    /// POIs propios de una categoría (drill-down del panel).
+    pub async fn pois_de_categoria(
+        &self,
+        categoria_id: String,
+    ) -> Result<Vec<HallazgoFila>, ErrorKepler> {
+        let v: Value = self
+            .cliente
+            .get(&format!(
+                "/v1/archivos?tipo=puntos_interes&categoria={categoria_id}&limite=50"
+            ))
+            .await?;
+        Ok(v["items"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|p| panel::hallazgo(p, "nivel_riesgo"))
+            .collect())
+    }
+
+    /// «Novedades de Cortex» (en caché 1 h en el servidor salvo `forzar`).
+    pub async fn reporte(
+        &self,
+        lat: Option<f64>,
+        lng: Option<f64>,
+        forzar: bool,
+    ) -> Result<Reporte, ErrorKepler> {
+        let mut ruta = format!("/v1/ia/reporte?forzar={forzar}");
+        if let Some((lat, lng)) = lat.zip(lng) {
+            ruta.push_str(&format!("&lat={lat}&lng={lng}"));
+        }
+        let v: Value = self.cliente.get(&ruta).await?;
+        Ok(Reporte {
+            texto: v["reporte"].as_str().unwrap_or_default().to_owned(),
+            generado_en: v["generado_en"]
+                .as_str()
+                .and_then(|s| s.parse::<chrono::DateTime<chrono::Utc>>().ok())
+                .map_or(0, |d| d.timestamp()),
+        })
+    }
+
+    /// Bytes de una foto de Storage (`imagen_path`, `avatar_path`).
+    pub async fn imagen(&self, ruta: String) -> Result<Vec<u8>, ErrorKepler> {
+        Ok(self
+            .cliente
+            .get_bytes(&format!("/v1/imagenes/{ruta}"))
+            .await?)
+    }
+
     pub async fn resumen(&self) -> Result<Resumen, ErrorKepler> {
         let d: Value = self.cliente.get("/v1/dashboard").await?;
         Ok(resumen_desde(&d))
+    }
+}
+
+impl Nucleo {
+    async fn por_ip(&self) -> Option<(f64, f64, Option<String>)> {
+        let mut guardada = self.ubicacion_ip.lock().await;
+        if guardada.is_none() {
+            let v: Value = self.cliente.get("/v1/geo/ip").await.ok()?;
+            if v["disponible"] == true {
+                *guardada = Some((
+                    v["lat"].as_f64()?,
+                    v["lng"].as_f64()?,
+                    v["ciudad"].as_str().map(str::to_owned),
+                ));
+            }
+        }
+        guardada.clone()
     }
 }
 
@@ -180,7 +319,7 @@ fn perfil_desde(p: &Value) -> PerfilMovil {
     }
 }
 
-fn resumen_desde(d: &Value) -> Resumen {
+pub(crate) fn resumen_desde(d: &Value) -> Resumen {
     let n = |v: &Value| u32::try_from(v.as_u64().unwrap_or(0)).unwrap_or(u32::MAX);
     let k = &d["conteos"];
     let a = &d["alertas"];
