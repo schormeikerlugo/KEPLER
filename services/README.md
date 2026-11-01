@@ -24,6 +24,8 @@ Solo el autor edita; los demás suben `confirmaciones` (`vigente` / `no_vigente`
 | Método | Ruta | Descripción |
 |---|---|---|
 | GET | `/health` | Estado de la base de datos y de cada Ollama (sin auth) |
+| POST | `/v1/sesion` | `{usuario, contrasena}` → tokens (sin auth; reenvía a Auth como `<usuario>@kepler.local`) |
+| POST | `/v1/sesion/renovar` · `/v1/sesion/cerrar` | Renovar con `refresh_token` / revocar la sesión |
 | GET / PATCH | `/v1/yo` | Perfil propio |
 | GET | `/v1/catalogos` | Taxonomía y categorías de POI |
 | GET / POST | `/v1/misiones` | Listar (`?estado=&limite=`) / crear (`"iniciar": true` = Quick Launch) |
@@ -70,6 +72,7 @@ Los servicios externos (clima, aire, IP) responden `{"disponible": false, "motiv
 | `KEPLER_MODELOS_DIR` | Directorio de `modelos.json` y los `.onnx` (`/data/modelos`) |
 | `KEPLER_VISION_HILOS` | Hilos por modelo (4) |
 | `KEPLER_STORAGE_URL` / `KEPLER_ANON_KEY` | Storage vía gateway para guardar las fotos |
+| `KEPLER_AUTH_URL` | Auth vía gateway para `/v1/sesion` (`http://api-gw:8000/auth/v1`) |
 | `KEPLER_DIRECCION` | `0.0.0.0:8000` |
 
 ### Pruebas

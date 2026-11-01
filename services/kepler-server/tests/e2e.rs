@@ -2,7 +2,7 @@
 //!
 //! Requiere dos cuentas creadas con `create-user.sh` y estas variables:
 //!   KEPLER_E2E_API=http://192.168.68.117:8000
-//!   KEPLER_E2E_AUTH=http://192.168.68.117:54321
+//!   KEPLER_E2E_AUTH=http://192.168.68.117:54321   (gateway, para leer Storage)
 //!   KEPLER_E2E_ANON=<ANON_KEY>
 //!   KEPLER_E2E_USUARIOS=e2e_uno,e2e_dos
 //!   KEPLER_E2E_PASSWORD=<contraseña de ambas>
@@ -13,7 +13,6 @@
 use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
-use kepler_core::NombreUsuario;
 use kepler_proto::v1::{
     Caja, Deteccion, Detecciones, Fotograma, Hola, MuestraGps, OrigenDeteccion, Suscripcion,
     TipoCliente, TipoEventoMision,
@@ -35,27 +34,24 @@ fn var(k: &str) -> String {
 
 struct Cuenta {
     token: String,
+    refresh: String,
 }
 
+/// Login por usuario a través de `/v1/sesion` (el servidor reenvía a Auth).
 async fn login(http: &Client, usuario: &str) -> Cuenta {
-    let email = NombreUsuario::desde_entrada(usuario)
-        .unwrap()
-        .email_interno();
     let r: Value = http
-        .post(format!(
-            "{}/auth/v1/token?grant_type=password",
-            var("KEPLER_E2E_AUTH")
-        ))
-        .header("apikey", var("KEPLER_E2E_ANON"))
-        .json(&json!({ "email": email, "password": var("KEPLER_E2E_PASSWORD") }))
+        .post(format!("{}/v1/sesion", var("KEPLER_E2E_API")))
+        .json(&json!({ "usuario": usuario, "contrasena": var("KEPLER_E2E_PASSWORD") }))
         .send()
         .await
         .unwrap()
         .json()
         .await
         .unwrap();
+    assert_eq!(r["usuario"].as_str(), Some(usuario));
     Cuenta {
         token: r["access_token"].as_str().expect("login").to_owned(),
+        refresh: r["refresh_token"].as_str().expect("refresh").to_owned(),
     }
 }
 
@@ -190,6 +186,29 @@ async fn punta_a_punta() {
         (StatusCode::OK, Some(u1))
     );
     ok("login por usuario y /v1/yo");
+
+    let r = http
+        .post(format!("{}/v1/sesion", api.base))
+        .json(&json!({ "usuario": u1, "contrasena": "incorrecta-123" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(r.status(), StatusCode::UNAUTHORIZED);
+    let r: Value = http
+        .post(format!("{}/v1/sesion/renovar", api.base))
+        .json(&json!({ "refresh_token": yo.refresh }))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let yo = Cuenta {
+        token: r["access_token"].as_str().expect("renovar").to_owned(),
+        refresh: r["refresh_token"].as_str().unwrap().to_owned(),
+    };
+    assert_eq!(api.get(&yo, "/v1/yo").await.0, StatusCode::OK);
+    ok("contraseña incorrecta → 401 y renovación del token");
 
     let (_, cat) = api.get(&yo, "/v1/catalogos").await;
     assert_eq!(cat["categorias"].as_array().unwrap().len(), 13);

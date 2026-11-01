@@ -315,6 +315,7 @@ services:
       KEPLER_VISION_HILOS: ${KEPLER_VISION_HILOS:-4}
       # Fotos de capturas: Storage vía gateway, actuando como el usuario
       KEPLER_STORAGE_URL: http://api-gw:8000/storage/v1
+      KEPLER_AUTH_URL: http://api-gw:8000/auth/v1
       KEPLER_ANON_KEY: ${ANON_KEY}
       RUST_LOG: ${KEPLER_LOG:-kepler_server=info,tower_http=warn}
     volumes:

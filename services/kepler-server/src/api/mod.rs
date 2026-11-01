@@ -9,6 +9,7 @@ mod misiones;
 mod perfil;
 mod rutas;
 mod salud;
+mod sesion;
 mod sync;
 
 use std::sync::Arc;
@@ -42,6 +43,9 @@ pub fn router(estado: Estado) -> Router {
         .expect("configuración de rate limit");
 
     let rest = Router::new()
+        .route("/sesion", post(sesion::entrar))
+        .route("/sesion/renovar", post(sesion::renovar))
+        .route("/sesion/cerrar", post(sesion::cerrar))
         .route("/yo", get(perfil::obtener).patch(perfil::actualizar))
         .route("/catalogos", get(catalogos::listar))
         .route("/misiones", get(misiones::listar).post(misiones::crear))
@@ -146,6 +150,7 @@ mod tests {
             vision_hilos: 1,
             storage_url: String::new(),
             anon_key: String::new(),
+            auth_url: String::new(),
         };
         router(Estado::new(
             config,

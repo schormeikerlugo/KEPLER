@@ -25,6 +25,8 @@ pub struct Config {
     /// Storage de Supabase (vía gateway) y su clave pública.
     pub storage_url: String,
     pub anon_key: String,
+    /// Auth (GoTrue) por la red interna, para `/v1/sesion`.
+    pub auth_url: String,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -62,6 +64,7 @@ impl Config {
             vision_hilos: opcional("KEPLER_VISION_HILOS", "4").parse().unwrap_or(4),
             storage_url: opcional("KEPLER_STORAGE_URL", "http://api-gw:8000/storage/v1"),
             anon_key: opcional("KEPLER_ANON_KEY", ""),
+            auth_url: opcional("KEPLER_AUTH_URL", "http://api-gw:8000/auth/v1"),
         })
     }
 }
