@@ -397,7 +397,7 @@ async fn guardar(
     ))
 }
 
-async fn subir_imagen(
+pub(crate) async fn subir_imagen(
     estado: &Estado,
     sesion: &Sesion,
     ruta: &str,

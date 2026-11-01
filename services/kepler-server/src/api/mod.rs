@@ -4,6 +4,7 @@ mod catalogos;
 mod dashboard;
 mod en_vivo;
 mod entorno;
+mod etiquetas;
 mod explorador;
 mod ia;
 mod mapa;
@@ -50,7 +51,15 @@ pub fn router(estado: Estado) -> Router {
         .route("/sesion", post(sesion::entrar))
         .route("/sesion/renovar", post(sesion::renovar))
         .route("/sesion/cerrar", post(sesion::cerrar))
+        .route("/sesion/contrasena", post(sesion::cambiar_contrasena))
         .route("/yo", get(perfil::obtener).patch(perfil::actualizar))
+        .route("/yo/avatar", post(perfil::subir_avatar))
+        .route("/etiquetas", get(etiquetas::listar).post(etiquetas::crear))
+        .route("/etiquetas/{id}", axum::routing::delete(etiquetas::borrar))
+        .route(
+            "/objetos/{id}/etiquetas",
+            axum::routing::put(etiquetas::asignar),
+        )
         .route("/catalogos", get(catalogos::listar))
         .route("/misiones", get(misiones::listar).post(misiones::crear))
         .route("/misiones/{id}", get(misiones::obtener))

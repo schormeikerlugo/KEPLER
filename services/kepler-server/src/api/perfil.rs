@@ -71,3 +71,47 @@ pub async fn actualizar(
         serde_json::from_value(fila).map_err(|e| ApiError::Interno(e.to_string()))?,
     ))
 }
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Avatar {
+    /// JPEG en base64 (máx. 2 MB).
+    imagen: String,
+}
+
+/// `POST /v1/yo/avatar` — sube la foto de perfil a Storage y la asigna.
+pub async fn subir_avatar(
+    State(estado): State<Estado>,
+    sesion: Sesion,
+    Json(a): Json<Avatar>,
+) -> ApiResult<Json<Perfil>> {
+    use base64::Engine;
+    let jpeg = base64::engine::general_purpose::STANDARD
+        .decode(
+            a.imagen
+                .trim()
+                .trim_start_matches("data:image/jpeg;base64,"),
+        )
+        .map_err(|e| ApiError::Invalido(format!("imagen: base64 inválido ({e})")))?;
+    if jpeg.len() > 2 * 1024 * 1024 || !jpeg.starts_with(&[0xFF, 0xD8]) {
+        return Err(ApiError::Invalido("imagen: JPEG de hasta 2 MB".into()));
+    }
+    let ruta = format!("{}/avatar/{}.jpg", sesion.user_id, kepler_core::nuevo_id());
+    super::capturas::subir_imagen(&estado, &sesion, &ruta, jpeg)
+        .await
+        .map_err(ApiError::Interno)?;
+    let mut tx = estado.db.como_usuario(&sesion).await?;
+    sqlx::query("update public.perfiles set avatar_path = $2 where id = $1")
+        .bind(sesion.user_id)
+        .bind(&ruta)
+        .execute(&mut *tx)
+        .await?;
+    let fila: Value = sqlx::query_scalar(SQL_PERFIL)
+        .bind(sesion.user_id)
+        .fetch_one(&mut *tx)
+        .await?;
+    tx.commit().await?;
+    Ok(Json(
+        serde_json::from_value(fila).map_err(|e| ApiError::Interno(e.to_string()))?,
+    ))
+}

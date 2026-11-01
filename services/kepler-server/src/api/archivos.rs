@@ -19,6 +19,11 @@ use crate::error::{ApiError, ApiResult};
 use crate::estado::Estado;
 
 const LIMITE_MAX: i64 = 200;
+/// Etiquetas del objeto `t`, añadidas a la fila.
+const ETIQUETAS: &str = " || jsonb_build_object('etiquetas', (
+        select coalesce(jsonb_agg(jsonb_build_object('id', e.id, 'nombre', e.nombre, 'color', e.color) order by e.nombre), '[]')
+        from public.objeto_etiquetas oe join public.etiquetas e on e.id = oe.etiqueta_id
+        where oe.objeto_id = t.id))";
 /// Por debajo del umbral de Re-ID automático (0.78): parecidos para revisar a mano.
 const UMBRAL_COMPARADOR: f64 = 0.6;
 
@@ -98,9 +103,14 @@ pub async fn listar(
     } else {
         "and ($6::uuid is null or t.categoria_id = $6) and (not $7 or t.categoria_id is null)"
     };
+    let etiquetas = if matches!(p.tipo, Tipo::Objetos) {
+        ETIQUETAS
+    } else {
+        ""
+    };
     let sql = format!(
         "select to_jsonb(t) - 'embedding' - 'posicion'
-                || jsonb_build_object('tiene_embedding', t.embedding is not null)
+                || jsonb_build_object('tiene_embedding', t.embedding is not null){etiquetas}
          from public.{tabla} t
          where t.user_id = (select auth.uid()) and t.eliminado_en is null
            and ($1::uuid is null or t.mision_id = $1)
@@ -149,9 +159,10 @@ pub async fn obtener(
             ));
         }
     };
+    let etiquetas = if tabla == "objetos" { ETIQUETAS } else { "" };
     let sql = format!(
         "select to_jsonb(t) - 'embedding' - 'posicion'
-                || jsonb_build_object('tiene_embedding', t.embedding is not null)
+                || jsonb_build_object('tiene_embedding', t.embedding is not null){etiquetas}
          from public.{tabla} t
          where t.id = $1 and t.user_id = (select auth.uid()) and t.eliminado_en is null"
     );

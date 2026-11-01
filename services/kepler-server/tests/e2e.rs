@@ -86,6 +86,13 @@ impl Api {
         self.pedir(c, reqwest::Method::POST, ruta, Some(cuerpo))
             .await
     }
+    async fn put(&self, c: &Cuenta, ruta: &str, cuerpo: Value) -> (StatusCode, Value) {
+        self.pedir(c, reqwest::Method::PUT, ruta, Some(cuerpo))
+            .await
+    }
+    async fn delete(&self, c: &Cuenta, ruta: &str) -> (StatusCode, Value) {
+        self.pedir(c, reqwest::Method::DELETE, ruta, None).await
+    }
 }
 
 async fn conectar_ws(c: &Cuenta, tipo: TipoCliente, emisor: &mut Emisor) -> (Ws, Uuid) {
@@ -1322,6 +1329,120 @@ async fn punta_a_punta() {
         propias.len(),
         ajenas.len()
     ));
+
+    // --- etiquetas
+    let (s, et) = api
+        .post(
+            &yo,
+            "/v1/etiquetas",
+            json!({ "nombre": "Frecuente", "color": "#3FA8FF" }),
+        )
+        .await;
+    assert_eq!(s, StatusCode::OK, "{et}");
+    let (s, _) = api
+        .post(
+            &yo,
+            "/v1/etiquetas",
+            json!({ "nombre": "Mala", "color": "azul" }),
+        )
+        .await;
+    assert_eq!(s, StatusCode::UNPROCESSABLE_ENTITY);
+    let (_, a) = api
+        .get(&yo, "/v1/archivos?tipo=objetos&q=autob&limite=1")
+        .await;
+    let objeto = a["items"][0]["id"].as_str().unwrap().to_owned();
+    let ruta_et = format!("/v1/objetos/{objeto}/etiquetas");
+    let (s, r) = api
+        .put(&yo, &ruta_et, json!({ "etiquetas": [et["id"]] }))
+        .await;
+    assert_eq!(
+        (s, r[0]["nombre"].as_str()),
+        (StatusCode::OK, Some("Frecuente")),
+        "{r}"
+    );
+    let (_, a) = api
+        .get(&yo, &format!("/v1/archivos/objetos/{objeto}"))
+        .await;
+    assert_eq!(a["etiquetas"][0]["nombre"], "Frecuente");
+    let (_, lista) = api.get(&yo, "/v1/etiquetas").await;
+    assert_eq!(lista[0]["objetos"], 1);
+    let (s, _) = api
+        .put(&otro, &ruta_et, json!({ "etiquetas": [et["id"]] }))
+        .await;
+    assert_eq!(s, StatusCode::NOT_FOUND, "objeto ajeno");
+    let (_, et_otro) = api
+        .post(&otro, "/v1/etiquetas", json!({ "nombre": "Ajena" }))
+        .await;
+    let (_, r) = api
+        .put(&yo, &ruta_et, json!({ "etiquetas": [et_otro["id"]] }))
+        .await;
+    assert_eq!(r, json!([]), "una etiqueta ajena no se puede poner");
+    let (s, _) = api
+        .delete(
+            &yo,
+            &format!("/v1/etiquetas/{}", et["id"].as_str().unwrap()),
+        )
+        .await;
+    assert_eq!(s, StatusCode::OK);
+    ok("etiquetas: crear, asignar a un objeto, listarlas con él, ajenas no; borrar");
+
+    // --- avatar
+    let (s, p) = api
+        .post(&yo, "/v1/yo/avatar", json!({ "imagen": b64 }))
+        .await;
+    assert_eq!(s, StatusCode::OK, "{p}");
+    let avatar = p["avatar_path"].as_str().unwrap().to_owned();
+    assert!(avatar.contains("/avatar/"));
+    let r = http
+        .get(format!("{}/v1/imagenes/{avatar}", api.base))
+        .bearer_auth(&yo.token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(r.status(), StatusCode::OK);
+    let (s, _) = api
+        .post(&yo, "/v1/yo/avatar", json!({ "imagen": "aG9sYQ==" }))
+        .await;
+    assert_eq!(s, StatusCode::UNPROCESSABLE_ENTITY, "no es un JPEG");
+    fotos_capturas.push(avatar);
+    ok("avatar: foto de perfil subida a Storage y visible");
+
+    // --- contraseña (al final: cambia la de e2e_uno)
+    let (s, _) = api
+        .post(
+            &yo,
+            "/v1/sesion/contrasena",
+            json!({ "actual": "incorrecta", "nueva": "Nueva-Clave-2026" }),
+        )
+        .await;
+    assert_eq!(s, StatusCode::UNAUTHORIZED);
+    let (s, _) = api
+        .post(
+            &yo,
+            "/v1/sesion/contrasena",
+            json!({ "actual": var("KEPLER_E2E_PASSWORD"), "nueva": "corta" }),
+        )
+        .await;
+    assert_eq!(s, StatusCode::UNPROCESSABLE_ENTITY);
+    let (s, r) = api
+        .post(
+            &yo,
+            "/v1/sesion/contrasena",
+            json!({ "actual": var("KEPLER_E2E_PASSWORD"), "nueva": "Nueva-Clave-2026" }),
+        )
+        .await;
+    assert_eq!(s, StatusCode::NO_CONTENT, "{r}");
+    let r: Value = http
+        .post(format!("{}/v1/sesion", api.base))
+        .json(&json!({ "usuario": u1, "contrasena": "Nueva-Clave-2026" }))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert!(r["access_token"].is_string(), "{r}");
+    ok("contraseña: la actual se verifica, mínimo 8, la nueva sirve para entrar");
 
     for foto in [&foto_hostil, &foto_privada]
         .into_iter()

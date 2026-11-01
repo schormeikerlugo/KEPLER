@@ -27,6 +27,10 @@ Solo el autor edita; los demás suben `confirmaciones` (`vigente` / `no_vigente`
 | POST | `/v1/sesion` | `{usuario, contrasena}` → tokens (sin auth; reenvía a Auth como `<usuario>@kepler.local`) |
 | POST | `/v1/sesion/renovar` · `/v1/sesion/cerrar` | Renovar con `refresh_token` / revocar la sesión |
 | GET / PATCH | `/v1/yo` | Perfil propio |
+| POST | `/v1/yo/avatar` | `{imagen}` JPEG base64 (≤ 2 MB) → Storage y `avatar_path` |
+| POST | `/v1/sesion/contrasena` | `{actual, nueva}`: verifica la actual y cambia (mín. 8) |
+| GET / POST / DELETE | `/v1/etiquetas` · `/v1/etiquetas/{id}` | Etiquetas personales (con cuántos objetos llevan cada una) |
+| PUT | `/v1/objetos/{id}/etiquetas` | `{etiquetas: [...]}` reemplaza las del objeto (solo propias); los objetos de `/v1/archivos` traen `etiquetas` |
 | GET | `/v1/catalogos` | Taxonomía y categorías de POI |
 | GET / POST | `/v1/misiones` | Listar (`?estado=&limite=`) / crear (`"iniciar": true` = Quick Launch) |
 | GET | `/v1/misiones/{id}` | Detalle |

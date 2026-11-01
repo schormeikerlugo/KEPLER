@@ -112,3 +112,60 @@ async fn pedir_tokens(estado: &Estado, tipo: &str, cuerpo: Value) -> ApiResult<T
         ))),
     }
 }
+
+#[derive(Debug, Deserialize)]
+pub struct CambioContrasena {
+    actual: String,
+    nueva: String,
+}
+
+/// `POST /v1/sesion/contrasena` — `{actual, nueva}`: comprueba la actual y cambia.
+pub async fn cambiar_contrasena(
+    State(estado): State<Estado>,
+    sesion: Sesion,
+    Json(c): Json<CambioContrasena>,
+) -> ApiResult<StatusCode> {
+    if c.nueva.chars().count() < 8 {
+        return Err(ApiError::Invalido(
+            "la contraseña nueva necesita al menos 8 caracteres".into(),
+        ));
+    }
+    let usuario: String = {
+        let mut tx = estado.db.como_usuario(&sesion).await?;
+        let u: Option<String> =
+            sqlx::query_scalar("select nombre_usuario from public.perfiles where id = $1")
+                .bind(sesion.user_id)
+                .fetch_optional(&mut *tx)
+                .await?;
+        tx.commit().await?;
+        u.ok_or(ApiError::NoEncontrado("perfil no encontrado"))?
+    };
+    let email = NombreUsuario::new(usuario)
+        .map_err(|_| ApiError::Interno("usuario inválido".into()))?
+        .email_interno();
+    // La actual se verifica iniciando sesión con ella
+    pedir_tokens(
+        &estado,
+        "password",
+        json!({ "email": email, "password": c.actual }),
+    )
+    .await
+    .map_err(|_| ApiError::NoAutorizado("la contraseña actual no es correcta"))?;
+    let r = estado
+        .http
+        .put(format!("{}/user", auth_url(&estado)))
+        .header("apikey", &estado.config.anon_key)
+        .bearer_auth(&sesion.token)
+        .json(&json!({ "password": c.nueva }))
+        .send()
+        .await
+        .map_err(|e| ApiError::Interno(format!("Auth: {e}")))?;
+    if r.status().is_success() {
+        Ok(StatusCode::NO_CONTENT)
+    } else {
+        let detalle = r.text().await.unwrap_or_default();
+        Err(ApiError::Invalido(format!(
+            "Auth rechazó la contraseña: {detalle}"
+        )))
+    }
+}
