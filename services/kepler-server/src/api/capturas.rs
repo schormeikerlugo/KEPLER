@@ -17,8 +17,8 @@ use axum::extract::State;
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use chrono::Utc;
-use kepler_core::Entidad;
 use kepler_core::reid::UMBRAL_REID;
+use kepler_core::{Entidad, TipoNotificacion};
 use kepler_proto::v1::{CapturaProcesada, CoincidenciaReId, Entidad as ProtoEntidad};
 use kepler_proto::{Emisor, codificar, uuid_a_bytes};
 use serde::{Deserialize, Serialize};
@@ -26,6 +26,7 @@ use serde_json::Value;
 use sqlx::Acquire;
 use uuid::Uuid;
 
+use super::notificaciones::notificar;
 use super::sync::{aplicar_fila, avisar, es_peligro_compartido};
 use crate::auth::Sesion;
 use crate::db::{Tx, leer_json};
@@ -204,6 +205,11 @@ pub async fn procesar(
             }
         }
     }
+    for p in &procesadas {
+        if let Some((mensaje, contexto)) = mensaje_reid(p) {
+            notificar(&mut tx, TipoNotificacion::Info, &mensaje, contexto).await?;
+        }
+    }
     let autor: Option<String> =
         sqlx::query_scalar("select nombre_usuario from public.perfiles where id = $1")
             .bind(sesion.user_id)
@@ -321,6 +327,26 @@ async fn buscar(
     .await?;
     // Un reenvío de la misma captura se encontraría a sí misma
     Ok(candidatos.into_iter().find(|c| c.id != propio))
+}
+
+/// Entrada de bitácora cuando la captura coincide con algo ya registrado.
+fn mensaje_reid(p: &Procesada) -> Option<(String, Value)> {
+    let c = p.reid.as_ref()?;
+    let nombre = p.fila["nombre"].as_str().unwrap_or_default();
+    let pct = (c.similitud * 100.0).round();
+    let mensaje = match p.entidad {
+        Entidad::Persona => format!("👁️ Re-ID: persona vinculada a «{}» ({pct} %)", c.nombre),
+        Entidad::Poi => format!(
+            "📍 «{nombre}» ya estaba reportado como «{}»: cuenta como confirmación",
+            c.nombre
+        ),
+        Entidad::Objeto => format!("👁️ «{nombre}» se parece a «{}» ({pct} %)", c.nombre),
+    };
+    let contexto = serde_json::json!({
+        "origen": "reid", "entidad": p.entidad.como_str(), "id": p.id,
+        "coincide_con": c.id, "similitud": c.similitud,
+    });
+    Some((mensaje, contexto))
 }
 
 fn es_duplicado(p: &Pendiente) -> bool {

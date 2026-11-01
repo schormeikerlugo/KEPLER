@@ -1022,6 +1022,73 @@ async fn punta_a_punta() {
     ));
     ok("mensaje de texto en WebSocket → Error");
 
+    // --- bitácora
+    let mensajes = |v: &Value| -> Vec<String> {
+        v["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|n| n["mensaje"].as_str().unwrap().to_owned())
+            .collect()
+    };
+    let (s, b) = api.get(&yo, "/v1/notificaciones?limite=200").await;
+    assert_eq!(s, StatusCode::OK, "{b}");
+    let propias = mensajes(&b);
+    for esperado in ["iniciada", "completada", "Re-ID: persona vinculada"] {
+        assert!(
+            propias.iter().any(|m| m.contains(esperado)),
+            "falta «{esperado}» en {propias:?}"
+        );
+    }
+    assert!(
+        !propias.iter().any(|m| m.contains("reportó")),
+        "no se avisa a uno mismo"
+    );
+    let (_, b) = api.get(&otro, "/v1/notificaciones").await;
+    assert!(
+        mensajes(&b)
+            .iter()
+            .any(|m| m.contains("cuenta como confirmación")),
+        "POI duplicado de otro explorador"
+    );
+    let (_, b) = api
+        .get(
+            &otro,
+            "/v1/notificaciones?tipo=critical&solo_no_leidas=true",
+        )
+        .await;
+    let ajenas = mensajes(&b);
+    assert!(
+        ajenas
+            .iter()
+            .any(|m| m.contains("reportó un peligro: «Derrumbe» (riesgo crítico)")),
+        "{ajenas:?}"
+    );
+    assert!(
+        ajenas
+            .iter()
+            .any(|m| m.contains("persona hostil: Chaqueta roja")),
+        "{ajenas:?}"
+    );
+    assert!(b["no_leidas"].as_i64().unwrap() >= 2);
+    let (s, _) = api
+        .post(
+            &otro,
+            "/v1/notificaciones/leer",
+            json!({ "todas": true, "ids": [Uuid::now_v7()] }),
+        )
+        .await;
+    assert_eq!(s, StatusCode::UNPROCESSABLE_ENTITY);
+    let (_, r) = api
+        .post(&otro, "/v1/notificaciones/leer", json!({ "todas": true }))
+        .await;
+    assert_eq!(r["no_leidas"], 0, "{r}");
+    ok(&format!(
+        "bitácora: {} entradas propias (misión, Re-ID), {} avisos de peligro al otro, marcar leídas",
+        propias.len(),
+        ajenas.len()
+    ));
+
     for foto in [&foto_hostil, &foto_privada]
         .into_iter()
         .chain(&fotos_capturas)

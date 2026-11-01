@@ -34,6 +34,8 @@ Solo el autor edita; los demás suben `confirmaciones` (`vigente` / `no_vigente`
 | GET / POST | `/v1/misiones/{id}/rastro` | Rastro GPS (lotes de hasta 1000 puntos, idempotente) |
 | GET | `/v1/sync/cambios?desde=&embeddings=` | Cambios desde el cursor (incluye borrados lógicos) |
 | POST | `/v1/sync/subir` | `{ "<tabla>": [filas] }` con resolución de conflictos |
+| GET | `/v1/notificaciones?limite=&antes=&tipo=&solo_no_leidas=` | Bitácora (más reciente primero) + total de no leídas |
+| POST | `/v1/notificaciones/leer` | `{ids: [...]}` o `{todas: true}` |
 | GET | `/v1/dashboard?zona=` | Conteos, recientes, alertas y distancia de los últimos 7 días |
 | GET | `/v1/explorador?lat=&lng=` | Desgaste del calzado, resistencia y clima actual |
 | POST | `/v1/explorador/calzado` | Calzado nuevo (el desgaste vuelve a 0) |
@@ -49,6 +51,17 @@ Solo el autor edita; los demás suben `confirmaciones` (`vigente` / `no_vigente`
 Errores: `{"error": "<codigo>", "mensaje": "..."}` con 401, 404, 409 o 422.
 
 Los servicios externos (clima, aire, IP) responden `{"disponible": false, "motivo": "..."}` si fallan: nunca se inventan valores. Caché en memoria: 15 min clima/aire, 24 h lugares, 1 h IP.
+
+### Bitácora
+
+La escribe la base de datos (migración `0006`), así funciona igual en línea que por sincronización offline:
+
+| Evento | Destino | Tipo |
+|---|---|---|
+| Misión iniciada / completada (km y min) / abortada | El explorador | info / success / warning |
+| POI compartido nuevo de riesgo alto o crítico | Todos los demás | warning / critical |
+| Persona hostil nueva (rasgos, sin nombre) | Todos los demás | critical |
+| Captura que coincide por Re-ID (la escribe kepler-server) | El explorador | info |
 
 ### Visión (`crates/kepler-vision`)
 
@@ -80,4 +93,5 @@ Los servicios externos (clima, aire, IP) responden `{"disponible": false, "motiv
 ```bash
 cargo test -p kepler-server                                   # unitarios y de rutas
 cargo test -p kepler-server --test e2e -- --ignored --nocapture # contra un stack real (ver tests/e2e.rs)
+sh infra/scripts/e2e.sh                                       # lo mismo con cuentas temporales en cortex
 ```

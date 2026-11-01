@@ -6,6 +6,7 @@ mod entorno;
 mod explorador;
 mod mapas;
 mod misiones;
+mod notificaciones;
 mod perfil;
 mod rutas;
 mod salud;
@@ -59,6 +60,8 @@ pub fn router(estado: Estado) -> Router {
         )
         .route("/sync/cambios", get(sync::cambios))
         .route("/sync/subir", post(sync::subir))
+        .route("/notificaciones", get(notificaciones::listar))
+        .route("/notificaciones/leer", post(notificaciones::leer))
         .route("/dashboard", get(dashboard::resumen))
         .route("/explorador", get(explorador::estado))
         .route("/explorador/calzado", post(explorador::reset_calzado))
