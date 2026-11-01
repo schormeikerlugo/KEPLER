@@ -149,23 +149,9 @@ struct CampoKepler: View {
     }
 }
 
-/// Fondo de las pantallas: negro con rejilla de puntos tenue.
+/// Fondo de las pantallas: negro puro (OLED), como el Centro de Control.
 struct FondoKepler: View {
     var body: some View {
-        Canvas { ctx, tam in
-            let paso: CGFloat = 28
-            var y: CGFloat = paso / 2
-            while y < tam.height {
-                var x: CGFloat = paso / 2
-                while x < tam.width {
-                    ctx.fill(Path(ellipseIn: CGRect(x: x - 0.8, y: y - 0.8, width: 1.6, height: 1.6)),
-                             with: .color(.white.opacity(0.05)))
-                    x += paso
-                }
-                y += paso
-            }
-        }
-        .background(Tema.Color.fondoLogin)
-        .ignoresSafeArea()
+        Tema.Color.fondo.ignoresSafeArea()
     }
 }
