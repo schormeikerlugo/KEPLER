@@ -23,6 +23,12 @@ pub struct Dashboard {
     alertas: Alertas,
     /// Distancia recorrida por día, últimos 7 días (hoy al final).
     semana: Vec<Dia>,
+    /// Objetos propios por categoría (incluye «Sin categoría»), para el radar.
+    objetos_por_categoria: Vec<Value>,
+    /// Objetos propios agrupados por nombre, los más vistos primero.
+    objetos_frecuentes: Vec<Value>,
+    /// Categorías de POI con cuántos propios y compartidos hay en cada una.
+    pois_por_categoria: Vec<Value>,
 }
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
@@ -132,6 +138,44 @@ pub async fn resumen(
     .bind(&zona)
     .fetch_all(&mut *tx)
     .await?;
+    let objetos_por_categoria: Vec<Value> = sqlx::query_scalar(
+        "select jsonb_build_object('categoria_id', c.id, 'nombre', coalesce(c.nombre, 'Sin categoría'),
+                                   'color', coalesce(c.color, '#888888'), 'total', count(*))
+         from public.objetos o
+         left join public.categorias c on c.id = o.categoria_id
+         where o.user_id = (select auth.uid()) and o.eliminado_en is null
+         group by c.id, c.nombre, c.color, c.orden
+         order by count(*) desc, c.orden",
+    )
+    .fetch_all(&mut *tx)
+    .await?;
+
+    let objetos_frecuentes: Vec<Value> = sqlx::query_scalar(
+        "select jsonb_build_object('nombre', min(o.nombre), 'categoria', coalesce(min(c.nombre), 'Sin categoría'),
+                                   'color', coalesce(min(c.color), '#888888'), 'total', count(*),
+                                   'ultimo_id', (array_agg(o.id order by o.capturado_en desc))[1])
+         from public.objetos o
+         left join public.categorias c on c.id = o.categoria_id
+         where o.user_id = (select auth.uid()) and o.eliminado_en is null
+         group by lower(o.nombre)
+         order by count(*) desc, max(o.capturado_en) desc
+         limit 8",
+    )
+    .fetch_all(&mut *tx)
+    .await?;
+
+    let pois_por_categoria: Vec<Value> = sqlx::query_scalar(
+        "select jsonb_build_object('categoria_id', k.id, 'nombre', k.nombre, 'color', k.color,
+                    'propios', count(p.id) filter (where p.user_id = (select auth.uid())),
+                    'compartidos', count(p.id) filter (where p.user_id <> (select auth.uid())))
+         from public.poi_categorias k
+         left join public.puntos_interes p
+           on p.categoria_id = k.id and p.eliminado_en is null and p.estado <> 'inactivo'
+         group by k.id, k.nombre, k.color, k.orden
+         order by k.orden",
+    )
+    .fetch_all(&mut *tx)
+    .await?;
     tx.commit().await?;
 
     Ok(Json(Dashboard {
@@ -139,5 +183,8 @@ pub async fn resumen(
         recientes,
         alertas,
         semana,
+        objetos_por_categoria,
+        objetos_frecuentes,
+        pois_por_categoria,
     }))
 }

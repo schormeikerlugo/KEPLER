@@ -1032,6 +1032,33 @@ async fn punta_a_punta() {
         "archivos: listado propio sin embeddings, búsqueda; imágenes vía servidor con RLS de Storage",
     );
 
+    // --- dashboard: agregados por categoría
+    let (_, d) = api.get(&yo, "/v1/dashboard").await;
+    let total_cat: i64 = d["objetos_por_categoria"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["total"].as_i64().unwrap())
+        .sum();
+    assert_eq!(total_cat, d["conteos"]["objetos"].as_i64().unwrap(), "{d}");
+    assert!(
+        d["objetos_frecuentes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|o| o["nombre"] == "Autobús")
+    );
+    assert_eq!(d["pois_por_categoria"].as_array().unwrap().len(), 4);
+    let (s, _) = api
+        .get(&yo, "/v1/archivos?tipo=puntos_interes&categoria=ninguna")
+        .await;
+    assert_eq!(s, StatusCode::OK);
+    let (s, _) = api
+        .get(&yo, "/v1/archivos?tipo=personas&categoria=ninguna")
+        .await;
+    assert_eq!(s, StatusCode::UNPROCESSABLE_ENTITY);
+    ok("dashboard: objetos por categoría y frecuentes, POIs por categoría; archivos por categoría");
+
     // --- mapa
     let (s, m) = api.get(&otro, "/v1/mapa/elementos").await;
     assert_eq!(s, StatusCode::OK, "{m}");

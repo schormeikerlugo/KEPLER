@@ -35,6 +35,8 @@ pub struct Params {
     tipo: Tipo,
     /// Uuid de la misión, o `ninguna` para lo capturado fuera de misión.
     mision: Option<String>,
+    /// Uuid de la categoría (POI u objeto), o `ninguna`.
+    categoria: Option<String>,
     /// Busca en nombre y descripción.
     q: Option<String>,
     limite: Option<i64>,
@@ -68,11 +70,33 @@ pub async fn listar(
             ),
         ),
     };
+    let (sin_categoria, categoria) = match p.categoria.as_deref() {
+        None | Some("") => (false, None),
+        Some("ninguna") => (true, None),
+        Some(id) => (
+            false,
+            Some(
+                id.parse::<Uuid>()
+                    .map_err(|_| ApiError::Invalido("categoria: uuid o `ninguna`".into()))?,
+            ),
+        ),
+    };
+    if (sin_categoria || categoria.is_some()) && matches!(p.tipo, Tipo::Personas) {
+        return Err(ApiError::Invalido(
+            "las personas no tienen categoría".into(),
+        ));
+    }
     // Tabla y columna de texto fijas por tipo (nunca de la entrada)
     let (tabla, descripcion) = match p.tipo {
         Tipo::Objetos => ("objetos", "descripcion"),
         Tipo::Personas => ("personas", "rasgos_fisicos"),
         Tipo::PuntosInteres => ("puntos_interes", "descripcion"),
+    };
+    // Mismo número de parámetros en todos los tipos (las personas no tienen categoría)
+    let filtro_categoria = if matches!(p.tipo, Tipo::Personas) {
+        "and $6::uuid is null and not $7"
+    } else {
+        "and ($6::uuid is null or t.categoria_id = $6) and (not $7 or t.categoria_id is null)"
     };
     let sql = format!(
         "select to_jsonb(t) - 'embedding' - 'posicion'
@@ -83,6 +107,7 @@ pub async fn listar(
            and (not $2 or t.mision_id is null)
            and ($3::text is null or t.nombre ilike $3 or t.{descripcion} ilike $3)
            and ($4::timestamptz is null or t.capturado_en < $4)
+           {filtro_categoria}
          order by t.capturado_en desc
          limit $5"
     );
@@ -98,6 +123,8 @@ pub async fn listar(
         .bind(patron)
         .bind(p.antes)
         .bind(limite + 1)
+        .bind(categoria)
+        .bind(sin_categoria)
         .fetch_all(&mut *tx)
         .await?;
     tx.commit().await?;
