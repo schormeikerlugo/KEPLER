@@ -65,6 +65,7 @@ pub fn router(estado: Estado) -> Router {
         .route("/notificaciones", get(notificaciones::listar))
         .route("/notificaciones/leer", post(notificaciones::leer))
         .route("/archivos", get(archivos::listar))
+        .route("/archivos/{tipo}/{id}", get(archivos::obtener))
         .route("/identidades/pendientes", get(archivos::pendientes))
         .route("/personas/{id}/vincular", post(archivos::vincular))
         .route("/personas/{id}/desvincular", post(archivos::desvincular))

@@ -133,6 +133,39 @@ pub async fn listar(
     Ok(Json(Pagina { items, hay_mas }))
 }
 
+/// `GET /v1/archivos/{tipo}/{id}` — un hallazgo propio, como en el listado.
+pub async fn obtener(
+    State(estado): State<Estado>,
+    sesion: Sesion,
+    Path((tipo, id)): Path<(String, Uuid)>,
+) -> ApiResult<Json<Value>> {
+    let tabla = match tipo.as_str() {
+        "objetos" => "objetos",
+        "personas" => "personas",
+        "puntos_interes" => "puntos_interes",
+        _ => {
+            return Err(ApiError::Invalido(
+                "tipo: objetos, personas o puntos_interes".into(),
+            ));
+        }
+    };
+    let sql = format!(
+        "select to_jsonb(t) - 'embedding' - 'posicion'
+                || jsonb_build_object('tiene_embedding', t.embedding is not null)
+         from public.{tabla} t
+         where t.id = $1 and t.user_id = (select auth.uid()) and t.eliminado_en is null"
+    );
+    let mut tx = estado.db.como_usuario(&sesion).await?;
+    // `tabla` sale del match de arriba, no de la petición
+    let fila: Option<Value> = sqlx::query_scalar(sqlx::AssertSqlSafe(sql))
+        .bind(id)
+        .fetch_optional(&mut *tx)
+        .await?;
+    tx.commit().await?;
+    fila.map(Json)
+        .ok_or(ApiError::NoEncontrado("hallazgo no encontrado"))
+}
+
 /// `GET /v1/imagenes/{*ruta}` — foto de Storage (`capturas`) leída como el usuario:
 /// la RLS de Storage decide qué puede ver.
 pub async fn imagen(

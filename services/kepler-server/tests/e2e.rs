@@ -1057,6 +1057,21 @@ async fn punta_a_punta() {
         .get(&yo, "/v1/archivos?tipo=personas&categoria=ninguna")
         .await;
     assert_eq!(s, StatusCode::UNPROCESSABLE_ENTITY);
+    let id_frecuente = d["objetos_frecuentes"][0]["ultimo_id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let (s, o) = api
+        .get(&yo, &format!("/v1/archivos/objetos/{id_frecuente}"))
+        .await;
+    assert_eq!(
+        (s, o["id"].as_str()),
+        (StatusCode::OK, Some(id_frecuente.as_str()))
+    );
+    let (s, _) = api
+        .get(&otro, &format!("/v1/archivos/objetos/{id_frecuente}"))
+        .await;
+    assert_eq!(s, StatusCode::NOT_FOUND);
     ok("dashboard: objetos por categoría y frecuentes, POIs por categoría; archivos por categoría");
 
     // --- mapa

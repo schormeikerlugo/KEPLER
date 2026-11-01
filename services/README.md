@@ -37,6 +37,7 @@ Solo el autor edita; los demás suben `confirmaciones` (`vigente` / `no_vigente`
 | GET | `/v1/notificaciones?limite=&antes=&tipo=&solo_no_leidas=` | Bitácora (más reciente primero) + total de no leídas |
 | POST | `/v1/notificaciones/leer` | `{ids: [...]}` o `{todas: true}` |
 | GET | `/v1/archivos?tipo=objetos\|personas\|puntos_interes&mision=&categoria=&q=&limite=&antes=` | Hallazgos propios para revisar (sin embeddings, con `tiene_embedding`); editar/borrar va por `/v1/sync/subir` |
+| GET | `/v1/archivos/{tipo}/{id}` | Un hallazgo propio (mismo formato que el listado) |
 | GET | `/v1/imagenes/{ruta}` | Foto de Storage leída como el usuario (RLS de Storage); sin rate limit, caché inmutable |
 | GET | `/v1/identidades/pendientes` | Personas sueltas con parecidos ≥ 0,6 (por debajo del Re-ID automático): comparador |
 | POST | `/v1/personas/{id}/vincular` · `/desvincular` | `{con}`: pasa a la identidad (y nombre) de otra persona, con sus avistamientos |
