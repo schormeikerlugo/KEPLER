@@ -1032,6 +1032,47 @@ async fn punta_a_punta() {
         "archivos: listado propio sin embeddings, búsqueda; imágenes vía servidor con RLS de Storage",
     );
 
+    // --- mapa
+    let (s, m) = api.get(&otro, "/v1/mapa/elementos").await;
+    assert_eq!(s, StatusCode::OK, "{m}");
+    let props: Vec<&Value> = m["features"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| &f["properties"])
+        .collect();
+    assert!(props.iter().any(|p| p["tipo"] == "poi"
+        && p["nombre"] == "Derrumbe"
+        && p["propio"] == false
+        && p["autor"] == u1));
+    assert!(
+        props
+            .iter()
+            .any(|p| p["tipo"] == "alerta" && p["nombre"] == "Persona hostil")
+    );
+    assert!(
+        !props
+            .iter()
+            .any(|p| p["tipo"] == "persona" || p["tipo"] == "objeto"),
+        "personas y objetos ajenos no salen"
+    );
+    let (_, m) = api.get(&yo, "/v1/mapa/elementos").await;
+    let tipos: std::collections::BTreeSet<&str> = m["features"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|f| f["properties"]["tipo"].as_str())
+        .collect();
+    assert!(
+        tipos.contains("persona") && tipos.contains("objeto") && tipos.contains("poi"),
+        "{tipos:?}"
+    );
+    assert!(
+        !tipos.contains("alerta"),
+        "mis propias alertas salen como persona"
+    );
+    ok("mapa: GeoJSON con POIs propios y compartidos, alertas ajenas y hallazgos propios");
+
     // --- comparador: dos personas parecidas (similitud 0.70) por debajo del Re-ID automático
     let mut eje = vec![0f32; 512];
     eje[0] = 1.0;

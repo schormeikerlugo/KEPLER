@@ -48,6 +48,7 @@ Solo el autor edita; los demás suben `confirmaciones` (`vigente` / `no_vigente`
 | GET | `/v1/geo/ip` | Ubicación aproximada por IP (ipwho.is) cuando no hay GPS |
 | POST | `/v1/rutas/analizar` | Hallazgos y riesgo a lo largo de un trazado (PostGIS) |
 | GET | `/v1/alertas/cercanas?lat=&lng=&radio_m=` | Peligros alrededor del explorador |
+| GET | `/v1/mapa/elementos` | GeoJSON con POIs (propios y compartidos), personas y objetos propios, alertas de personas hostiles de otros |
 | GET | `/v1/mapas` · `/v1/mapas/archivos/{región}.pmtiles` | Mapas offline (con `Range`) |
 | POST | `/v1/capturas` | Lote (≤ 10) de capturas con foto JPEG en base64: Storage + CLIP + Re-ID + guardado |
 | GET (WS) | `/v1/en-vivo` | WebSocket binario `kepler-proto` |

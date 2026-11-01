@@ -5,6 +5,7 @@ mod dashboard;
 mod en_vivo;
 mod entorno;
 mod explorador;
+mod mapa;
 mod mapas;
 mod misiones;
 mod notificaciones;
@@ -76,6 +77,7 @@ pub fn router(estado: Estado) -> Router {
         .route("/rutas/analizar", post(rutas::analizar))
         .route("/alertas/cercanas", get(rutas::cercanas))
         .route("/mapas", get(mapas::listar))
+        .route("/mapa/elementos", get(mapa::elementos))
         .route("/capturas", post(capturas::procesar))
         .layer(GovernorLayer::new(Arc::new(limite)))
         .layer(RequestBodyLimitLayer::new(LIMITE_CUERPO));
