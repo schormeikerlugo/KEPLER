@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/*", "services/kepler-server"]
+members = ["crates/*", "services/kepler-server", "apps/desktop"]
 # Prototipos de UI (paso 6): proyectos independientes para compararlos
 exclude = ["apps/desktop/prototipos"]
 

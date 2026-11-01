@@ -4,4 +4,5 @@
 !Cargo.lock
 !crates/
 !services/kepler-server/
+!apps/desktop/Cargo.toml
 **/target

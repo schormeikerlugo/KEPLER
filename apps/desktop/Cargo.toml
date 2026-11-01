@@ -1,0 +1,38 @@
+[package]
+name = "kepler-desktop"
+description = "Centro de Control de KEPLER (escritorio, Slint)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[[bin]]
+name = "kepler-centro"
+path = "src/main.rs"
+
+[dependencies]
+kepler-core.workspace = true
+
+chrono.workspace = true
+reqwest = { version = "0.13.5", default-features = false, features = ["json", "query", "rustls", "http2"] }
+serde.workspace = true
+serde_json.workspace = true
+# unstable-winit-030 (actividad del usuario para el cierre por inactividad) exige fijar la versión menor
+slint = { version = "~1.18.1", features = ["unstable-winit-030"] }
+thiserror.workspace = true
+tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+uuid.workspace = true
+
+[build-dependencies]
+serde_json.workspace = true
+slint-build = "~1.18.1"
+
+# El código que genera Slint necesita `allow(unsafe_code)`: deny en vez del forbid del workspace
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }

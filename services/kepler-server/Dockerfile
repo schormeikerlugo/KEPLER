@@ -9,6 +9,9 @@ WORKDIR /src
 COPY Cargo.toml Cargo.lock ./
 COPY crates crates
 COPY services/kepler-server services/kepler-server
+# El escritorio es miembro del workspace: basta su manifiesto (no se compila aquí)
+COPY apps/desktop/Cargo.toml apps/desktop/Cargo.toml
+RUN mkdir -p apps/desktop/src && touch apps/desktop/src/main.rs
 RUN cargo build --release --locked -p kepler-server \
     && cargo build --release --locked -p kepler-vision --example bench
 

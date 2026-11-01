@@ -1,0 +1,94 @@
+import { Tema } from "tema.slint";
+import { Logo, Etiqueta, Campo, Boton } from "componentes.slint";
+
+export component PantallaLogin inherits Rectangle {
+    in property <bool> cargando;
+    in property <string> error;
+    in property <string> servidor;
+    callback entrar(string, string);
+
+    init => {
+        usuario.enfocar();
+    }
+
+    background: @radial-gradient(circle, #16202b 0%, Tema.fondo-login 55%, #06090c 100%);
+
+    // Rejilla de puntos del fondo de la PWA
+    Image {
+        width: 100%;
+        height: 100%;
+        source: @image-url("img/punto.svg");
+        horizontal-tiling: repeat;
+        vertical-tiling: repeat;
+        opacity: 0.5;
+    }
+
+    Rectangle {
+        width: 420px;
+        height: formulario.preferred-height;
+        border-radius: Tema.radio-grande;
+        background: #0d131acc;
+        border-width: 1px;
+        border-color: Tema.borde-holo-sutil;
+        drop-shadow-blur: 40px;
+        drop-shadow-color: #00000099;
+
+        // Línea de luz en el borde superior
+        Rectangle {
+            y: 0;
+            height: 1px;
+            width: parent.width - 2 * Tema.radio-grande;
+            background: @linear-gradient(90deg, #3FA8FF00 0%, Tema.acento 50%, #3FA8FF00 100%);
+        }
+
+        formulario := VerticalLayout {
+            padding: 40px;
+            padding-top: 36px;
+            spacing: Tema.espacio-lg;
+
+            HorizontalLayout {
+                alignment: center;
+                padding-bottom: Tema.espacio-sm;
+                Logo { width: 210px; height: 48px; }
+            }
+
+            usuario := Campo {
+                etiqueta: "ID DE EXPLORADOR";
+                marcador: "usuario";
+                aceptado => { clave.enfocar(); }
+            }
+            clave := Campo {
+                etiqueta: "CLAVE DE ACCESO";
+                marcador: "••••••••";
+                secreto: true;
+                aceptado => { boton.pulsado(); }
+            }
+
+            Text {
+                text: error;
+                visible: error != "";
+                height: error != "" ? self.preferred-height : 0;
+                color: Tema.peligro;
+                font-size: Tema.t-pequeno;
+                wrap: word-wrap;
+                horizontal-alignment: center;
+            }
+
+            boton := Boton {
+                height: 48px;
+                principal: true;
+                activo: !cargando && usuario.texto != "" && clave.texto != "";
+                texto: cargando ? "CONECTANDO…" : "INICIAR CONEXIÓN";
+                pulsado => {
+                    entrar(usuario.texto, clave.texto);
+                }
+            }
+
+            Etiqueta {
+                text: "CONEXIÓN SEGURA // " + servidor;
+                color: #ffffff30;
+                horizontal-alignment: center;
+            }
+        }
+    }
+}

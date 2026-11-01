@@ -1,0 +1,70 @@
+// Estado que Rust rellena (src/ui.rs) y las pantallas leen.
+import { DatoIndicador } from "componentes.slint";
+
+export { DatoIndicador }
+
+export struct Atencion {
+    cantidad: int,
+    resaltado: string,
+    texto: string,
+    icono: string,
+}
+
+export struct Conteo {
+    valor: int,
+    etiqueta: string,
+    color: color,
+}
+
+export struct FilaMision {
+    codigo: string,
+    titulo: string,
+    estado: string,
+    fecha: string,
+}
+
+export struct DiaSemana {
+    etiqueta: string,
+    km: float,
+}
+
+export enum Pantalla { login, dashboard }
+
+export global Estado {
+    in-out property <Pantalla> pantalla: Pantalla.login;
+    in property <string> servidor;
+
+    // Login
+    in-out property <bool> entrando;
+    in-out property <string> error-login;
+
+    // Sesión
+    in property <string> usuario;
+    in property <string> nombre-visible;
+    in property <string> iniciales;
+    in property <string> rol;
+    in property <bool> en-linea;
+    in property <string> enlace;
+
+    // Dashboard
+    in property <bool> cargando;
+    in property <string> error;
+    in property <string> actualizado;
+    in property <[DatoIndicador]> indicadores;
+    in property <[Atencion]> atenciones;
+    in property <[FilaMision]> misiones;
+    in property <[Conteo]> conteos;
+    in property <float> calzado: 1;
+    in property <float> resistencia: 1;
+    in property <string> clima;
+    in property <bool> es-dia: true;
+    in property <string> ubicacion;
+    in property <[DiaSemana]> semana;
+    in property <string> semana-total;
+    in property <string> semana-linea;
+    in property <float> semana-max: 1;
+
+    callback entrar(string, string);
+    callback salir();
+    callback refrescar();
+}

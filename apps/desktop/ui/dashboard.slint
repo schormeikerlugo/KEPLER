@@ -1,0 +1,414 @@
+import { Tema } from "tema.slint";
+import { Tarjeta, Logo, Etiqueta, Titulo, Boton, Indicador, Barra, Pastilla } from "componentes.slint";
+import { Estado, Atencion, FilaMision } from "estado.slint";
+
+component Avatar inherits Rectangle {
+    in property <string> iniciales;
+    in property <length> letra: 14px;
+    border-radius: self.width / 2;
+    border-width: 2px;
+    border-color: #ffffff2a;
+    background: @linear-gradient(160deg, #2a3a4a 0%, #0d1218 100%);
+    Text {
+        text: iniciales;
+        color: Tema.texto-secundario;
+        font-size: letra;
+        font-weight: Tema.peso-semi;
+    }
+}
+
+component Cabecera inherits Tarjeta {
+    height: 103px;
+    HorizontalLayout {
+        padding-left: 24px;
+        padding-right: 30px;
+        spacing: 18px;
+        alignment: stretch;
+        Logo { }
+        Rectangle { horizontal-stretch: 1; }
+        VerticalLayout {
+            alignment: center;
+            Pastilla {
+                texto: Estado.en-linea ? "EN LÍNEA · " + Estado.enlace : "SIN CONEXIÓN";
+                tono: Estado.en-linea ? Tema.exito : Tema.peligro;
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            Boton {
+                texto: Estado.cargando ? "ACTUALIZANDO…" : "↻  ACTUALIZAR";
+                activo: !Estado.cargando;
+                pulsado => { Estado.refrescar(); }
+            }
+        }
+        Rectangle {
+            width: 1px;
+            height: 34px;
+            y: (parent.height - self.height) / 2;
+            background: Tema.borde-tenue;
+        }
+        VerticalLayout {
+            alignment: center;
+            Text {
+                text: Estado.nombre-visible;
+                color: Tema.texto;
+                font-size: 15px;
+                horizontal-alignment: right;
+            }
+            Etiqueta {
+                text: "@" + Estado.usuario;
+                horizontal-alignment: right;
+            }
+        }
+        Avatar {
+            width: 46px;
+            height: 58px;
+            y: (parent.height - self.height) / 2;
+            iniciales: Estado.iniciales;
+        }
+        VerticalLayout {
+            alignment: center;
+            Boton {
+                texto: "SALIR";
+                pulsado => { Estado.salir(); }
+            }
+        }
+    }
+}
+
+component FilaAtencion inherits Rectangle {
+    in property <Atencion> dato;
+    height: 56px;
+    HorizontalLayout {
+        spacing: 12px;
+        padding-left: 14px;
+        Rectangle {
+            width: 36px;
+            height: 36px;
+            y: (parent.height - self.height) / 2;
+            border-radius: 8px;
+            border-width: 1px;
+            border-color: Tema.borde-tenue;
+            Text {
+                text: dato.icono;
+                font-size: 15px;
+                color: Tema.texto-secundario;
+            }
+        }
+        Text {
+            text: dato.cantidad + " " + dato.resaltado;
+            color: Tema.acento;
+            font-size: Tema.t-cuerpo;
+            vertical-alignment: center;
+        }
+        Text {
+            text: dato.texto;
+            color: Tema.texto-secundario;
+            font-size: Tema.t-cuerpo;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+        }
+    }
+}
+
+component TablaMisiones inherits Tarjeta {
+    function color-estado(e: string) -> color {
+        if e == "activa" {
+            return Tema.exito;
+        }
+        if e == "planificada" {
+            return Tema.acento;
+        }
+        if e == "abortada" {
+            return Tema.peligro;
+        }
+        return Tema.texto-tenue;
+    }
+    VerticalLayout {
+        padding-top: Tema.relleno-tarjeta-v;
+        padding-bottom: Tema.relleno-tarjeta-v;
+        padding-left: Tema.relleno-tarjeta-h;
+        padding-right: Tema.relleno-tarjeta-h;
+        spacing: 6px;
+        alignment: start;
+        Titulo { text: "Misiones"; }
+        Rectangle { height: 10px; }
+        HorizontalLayout {
+            padding-left: 10px;
+            Etiqueta { text: "CÓDIGO"; width: 31%; }
+            Etiqueta { text: "TÍTULO"; width: 30%; }
+            Etiqueta { text: "ESTADO"; width: 19%; }
+            Etiqueta { text: "FECHA"; }
+        }
+        for m in Estado.misiones: Rectangle {
+            height: 42px;
+            Rectangle {
+                y: parent.height - 1px;
+                height: 1px;
+                background: Tema.borde-sutil;
+            }
+            HorizontalLayout {
+                padding-left: 10px;
+                Text { text: m.codigo; width: 31%; color: Tema.texto-tenue; font-size: 13px; vertical-alignment: center; overflow: elide; }
+                Text { text: m.titulo; width: 30%; color: Tema.texto; font-size: 13px; vertical-alignment: center; overflow: elide; }
+                Rectangle {
+                    width: 19%;
+                    Pastilla { x: 0; texto: m.estado; tono: color-estado(m.estado); }
+                }
+                Text { text: m.fecha; color: Tema.texto-tenue; font-size: 12.5px; vertical-alignment: center; overflow: elide; }
+            }
+        }
+        if Estado.misiones.length == 0: Text {
+            text: "Sin misiones todavía. Se crean desde la Unidad de Campo.";
+            color: Tema.texto-tenue;
+            font-size: Tema.t-pequeno;
+            height: 60px;
+            vertical-alignment: center;
+        }
+    }
+}
+
+component Resumen inherits Tarjeta {
+    VerticalLayout {
+        padding-top: Tema.relleno-tarjeta-v;
+        padding-bottom: Tema.relleno-tarjeta-v;
+        padding-left: Tema.relleno-tarjeta-h;
+        padding-right: Tema.relleno-tarjeta-h;
+        spacing: 6px;
+        alignment: start;
+        Titulo { text: "Registros"; }
+        Rectangle { height: 10px; }
+        for c in Estado.conteos: Rectangle {
+            height: 48px;
+            Rectangle {
+                y: parent.height - 1px;
+                height: 1px;
+                background: Tema.borde-sutil;
+            }
+            HorizontalLayout {
+                spacing: 12px;
+                padding-left: 6px;
+                Rectangle {
+                    width: 7px;
+                    height: 7px;
+                    y: (parent.height - self.height) / 2;
+                    border-radius: 3.5px;
+                    background: c.color;
+                    drop-shadow-blur: 6px;
+                    drop-shadow-color: c.color.with-alpha(0.6);
+                }
+                Rectangle {
+                    width: 46px;
+                    height: 20px;
+                    y: (parent.height - self.height) / 2;
+                    border-radius: 10px;
+                    background: Tema.acento-suave;
+                    Text {
+                        text: c.valor < 10 ? "0" + c.valor : c.valor;
+                        color: Tema.acento;
+                        font-size: 11px;
+                        font-weight: Tema.peso-semi;
+                    }
+                }
+                Text {
+                    text: c.etiqueta;
+                    color: Tema.texto;
+                    font-size: Tema.t-cuerpo;
+                    vertical-alignment: center;
+                }
+            }
+        }
+    }
+}
+
+component GraficoSemana inherits Rectangle {
+    height: 110px;
+    // Margen para que las etiquetas de los extremos queden centradas bajo su punto
+    property <length> margen: 14px;
+    property <length> alto: self.height - 22px;
+    property <length> ancho: self.width - 2 * margen;
+    for i in 5: Rectangle {
+        y: root.alto * i / 4;
+        height: 1px;
+        background: #ffffff08;
+    }
+    Path {
+        x: root.margen;
+        y: 0;
+        width: root.ancho;
+        height: root.alto;
+        viewbox-width: 600;
+        viewbox-height: 100;
+        fit: fill;
+        commands: Estado.semana-linea;
+        stroke: Tema.acento;
+        stroke-width: 2px;
+    }
+    for d[i] in Estado.semana: Rectangle {
+        property <length> cx: root.margen + (Estado.semana.length > 1 ? root.ancho * i / (Estado.semana.length - 1) : 0);
+        x: 0;
+        y: 0;
+        Rectangle {
+            x: parent.cx - 4px;
+            y: root.alto - root.alto * d.km / Estado.semana-max - 4px;
+            width: 8px;
+            height: 8px;
+            border-radius: 4px;
+            background: Tema.acento;
+            drop-shadow-blur: 8px;
+            drop-shadow-color: Tema.glow-acento;
+        }
+        Text {
+            x: parent.cx - 20px;
+            y: root.alto + 8px;
+            width: 40px;
+            text: d.etiqueta;
+            color: Tema.texto-etiqueta;
+            font-size: 10px;
+            horizontal-alignment: center;
+        }
+    }
+}
+
+component TarjetaExplorador inherits Tarjeta {
+    VerticalLayout {
+        padding: 20px;
+        padding-top: 30px;
+        spacing: 18px;
+        alignment: start;
+        HorizontalLayout {
+            alignment: center;
+            Avatar {
+                width: 72px;
+                height: 100px;
+                letra: 22px;
+                iniciales: Estado.iniciales;
+                drop-shadow-blur: 18px;
+                drop-shadow-color: #3FA8FF40;
+            }
+        }
+        VerticalLayout {
+            spacing: 4px;
+            Text { text: Estado.nombre-visible; font-size: 18px; color: Tema.texto; horizontal-alignment: center; }
+            Text { text: "⚡ " + Estado.rol; font-size: Tema.t-pequeno; color: Tema.texto-tenue; horizontal-alignment: center; }
+        }
+        Barra { titulo: "Estado del Calzado"; icono: "👟"; valor: Estado.calzado; }
+        Barra { titulo: "Resistencia Física"; icono: "⚡"; valor: Estado.resistencia; }
+        Rectangle {
+            height: 38px;
+            border-radius: 8px;
+            background: #ffffff08;
+            HorizontalLayout {
+                padding-left: 14px;
+                spacing: 18px;
+                Text { text: "🌤  Clima: " + Estado.clima; color: Tema.texto-tenue; font-size: Tema.t-pequeno; vertical-alignment: center; }
+                Text { text: Estado.es-dia ? "☀ Día" : "🌙 Noche"; color: Tema.texto-tenue; font-size: Tema.t-pequeno; vertical-alignment: center; }
+            }
+        }
+        Rectangle {
+            height: 38px;
+            border-radius: 8px;
+            background: #ffffff08;
+            Text {
+                x: 14px;
+                width: parent.width - 28px;
+                text: "📍  Ubicación: " + Estado.ubicacion;
+                color: Tema.texto-tenue;
+                font-size: Tema.t-pequeno;
+                overflow: elide;
+            }
+        }
+        VerticalLayout {
+            spacing: 6px;
+            Text { text: "Distancia recorrida semanal (km)"; color: Tema.texto-tenue; font-size: Tema.t-pequeno; }
+            HorizontalLayout {
+                spacing: 10px;
+                alignment: start;
+                Text { text: Estado.semana-total + " KM"; color: Tema.acento; font-size: Tema.t-valor; font-weight: Tema.peso-negrita; }
+                Text { text: "recorridos"; color: Tema.texto-etiqueta; font-size: Tema.t-pequeno; vertical-alignment: bottom; }
+            }
+        }
+        GraficoSemana { }
+    }
+}
+
+export component PantallaDashboard inherits Rectangle {
+    background: Tema.fondo;
+
+    VerticalLayout {
+        padding-top: 30px;
+        padding-bottom: 30px;
+        padding-left: Tema.espacio-pagina;
+        padding-right: Tema.espacio-pagina;
+        spacing: 22px;
+
+        Cabecera { }
+
+        if Estado.error != "": Rectangle {
+            height: 40px;
+            border-radius: Tema.radio-medio;
+            background: #FF444418;
+            border-width: 1px;
+            border-color: #FF444455;
+            Text { text: "⚠  " + Estado.error; color: Tema.peligro; font-size: 13px; }
+        }
+
+        cuerpo := Flickable {
+            content-height: contenido.preferred-height;
+            contenido := HorizontalLayout {
+                spacing: 30px;
+                alignment: stretch;
+
+                VerticalLayout {
+                    spacing: 22px;
+                    alignment: start;
+                    horizontal-stretch: 1;
+
+                    HorizontalLayout {
+                        Titulo { text: "Telemetría"; }
+                        Etiqueta { text: Estado.actualizado; horizontal-alignment: right; vertical-alignment: center; }
+                    }
+                    HorizontalLayout {
+                        spacing: 12px;
+                        for d in Estado.indicadores: Indicador {
+                            dato: d;
+                            preferred-width: 100px;
+                            horizontal-stretch: 1;
+                        }
+                    }
+
+                    Tarjeta {
+                        VerticalLayout {
+                            padding: Tema.relleno-tarjeta-h;
+                            spacing: 4px;
+                            HorizontalLayout {
+                                spacing: 10px;
+                                padding-bottom: 8px;
+                                alignment: start;
+                                Text { text: "⚠"; color: Tema.aviso; font-size: 18px; }
+                                Text {
+                                    text: Estado.atenciones.length > 0 ? "Aviso: estas acciones necesitan tu atención" : "Todo en orden: nada requiere tu atención";
+                                    color: Tema.texto-secundario;
+                                    font-size: Tema.t-pequeno;
+                                    vertical-alignment: center;
+                                }
+                            }
+                            for a in Estado.atenciones: FilaAtencion { dato: a; }
+                        }
+                    }
+
+                    HorizontalLayout {
+                        spacing: 22px;
+                        alignment: stretch;
+                        TablaMisiones { horizontal-stretch: 3; }
+                        Resumen { horizontal-stretch: 2; }
+                    }
+                }
+
+                TarjetaExplorador {
+                    width: 340px;
+                }
+            }
+        }
+    }
+}

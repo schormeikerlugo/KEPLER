@@ -1,0 +1,223 @@
+// Piezas reutilizables con el estilo de la PWA (valores de Tema = design/tokens.json).
+import { Tema } from "tema.slint";
+
+export struct DatoIndicador {
+    valor: string,
+    etiqueta: string,
+    // 0 real · 1 aviso · 2 peligro · 3 sin datos
+    estado: int,
+}
+
+export component Tarjeta inherits Rectangle {
+    background: Tema.superficie;
+    border-radius: Tema.radio-tarjeta;
+}
+
+// Slint no tiene text-shadow: el glow es un halo difuso detrás del texto.
+export component Logo inherits Rectangle {
+    in property <length> tamano: Tema.t-logo;
+    width: 220px;
+    Rectangle {
+        x: 6px;
+        width: parent.width - 30px;
+        height: tamano * 0.7;
+        border-radius: self.height / 2;
+        background: #ffffff06;
+        drop-shadow-blur: 22px;
+        drop-shadow-color: #ffffff30;
+    }
+    Text {
+        text: "KEPLER";
+        letter-spacing: Tema.espaciado-logo + 1px;
+        font-size: tamano;
+        font-weight: Tema.peso-semi;
+        color: Tema.texto;
+        vertical-alignment: center;
+    }
+}
+
+export component Etiqueta inherits Text {
+    font-size: Tema.t-etiqueta;
+    font-weight: Tema.peso-medio;
+    letter-spacing: Tema.espaciado-etiqueta;
+    color: Tema.texto-etiqueta;
+}
+
+export component Titulo inherits Text {
+    font-size: Tema.t-titulo-tarjeta;
+    font-weight: Tema.peso-semi;
+    letter-spacing: Tema.espaciado-titulo;
+    color: Tema.texto;
+}
+
+export component Boton inherits Rectangle {
+    in property <string> texto;
+    in property <bool> principal;
+    in property <bool> activo: true;
+    callback pulsado;
+    height: 34px;
+    min-width: etiqueta.preferred-width + 28px;
+    border-radius: Tema.radio-pequeno;
+    border-width: 1px;
+    border-color: principal ? (zona.has-hover ? Tema.borde-holo-fuerte : Tema.acento-borde) : Tema.borde-tenue;
+    background: principal ? (zona.has-hover ? #3FA8FF2a : Tema.acento-suave) : (zona.has-hover ? Tema.superficie-hover : #ffffff08);
+    opacity: activo ? 1 : 0.5;
+    animate background, border-color { duration: Tema.mov-rapido; }
+    etiqueta := Text {
+        text: texto;
+        color: principal ? Tema.acento : Tema.texto-secundario;
+        font-size: 11px;
+        font-weight: Tema.peso-negrita;
+        letter-spacing: 1px;
+    }
+    zona := TouchArea {
+        mouse-cursor: activo ? pointer : default;
+        clicked => {
+            if activo {
+                pulsado();
+            }
+        }
+    }
+}
+
+export component Campo inherits VerticalLayout {
+    in property <string> etiqueta;
+    in property <string> marcador;
+    in property <bool> secreto;
+    in-out property <string> texto <=> entrada.text;
+    callback aceptado;
+    public function enfocar() {
+        entrada.focus();
+    }
+    spacing: Tema.espacio-sm;
+    Etiqueta {
+        text: etiqueta;
+        color: Tema.texto-tenue;
+    }
+    Rectangle {
+        height: 44px;
+        border-radius: Tema.radio-medio;
+        background: #00000059;
+        border-width: 1px;
+        border-color: entrada.has-focus ? Tema.borde-holo : Tema.borde-tenue;
+        animate border-color { duration: Tema.mov-rapido; }
+        Text {
+            x: 18px;
+            visible: entrada.text == "";
+            text: marcador;
+            color: #ffffff40;
+            font-size: Tema.t-cuerpo;
+        }
+        entrada := TextInput {
+            x: 18px;
+            width: parent.width - 36px;
+            color: Tema.texto;
+            font-size: Tema.t-cuerpo;
+            vertical-alignment: center;
+            input-type: secreto ? InputType.password : InputType.text;
+            accepted => {
+                aceptado();
+            }
+        }
+    }
+}
+
+export component Indicador inherits Tarjeta {
+    in property <DatoIndicador> dato;
+    height: 74px;
+    property <color> punto: dato.estado == 0 ? Tema.exito : dato.estado == 1 ? Tema.aviso : dato.estado == 2 ? Tema.peligro : #444444;
+    Rectangle {
+        x: parent.width - 14px;
+        y: 10px;
+        width: 6px;
+        height: 6px;
+        border-radius: 3px;
+        background: punto;
+        drop-shadow-blur: dato.estado == 3 ? 0 : 6px;
+        drop-shadow-color: punto.with-alpha(0.7);
+    }
+    VerticalLayout {
+        alignment: center;
+        spacing: 4px;
+        Text {
+            text: dato.valor;
+            font-size: Tema.t-valor;
+            font-weight: Tema.peso-negrita;
+            color: dato.estado == 3 ? Tema.texto-etiqueta : Tema.texto;
+            horizontal-alignment: center;
+        }
+        Etiqueta {
+            text: dato.etiqueta;
+            horizontal-alignment: center;
+        }
+    }
+}
+
+// Barra de progreso del explorador (0-1): verde > 70 %, ámbar > 40 %, rojo.
+export component Barra {
+    in property <string> titulo;
+    in property <string> icono;
+    in property <float> valor;
+    property <color> relleno: valor > 0.7 ? Tema.progreso-ok : valor > 0.4 ? Tema.aviso : Tema.peligro;
+    VerticalLayout {
+        spacing: 10px;
+        HorizontalLayout {
+            spacing: 10px;
+            Rectangle {
+                width: 38px;
+                height: 38px;
+                border-radius: Tema.radio-medio;
+                border-width: 1px;
+                border-color: Tema.borde-tenue;
+                Text {
+                    text: icono;
+                    font-size: 16px;
+                }
+            }
+            Text {
+                text: titulo;
+                color: Tema.texto-secundario;
+                font-size: 13px;
+                vertical-alignment: center;
+            }
+            Text {
+                text: round(valor * 100) + "%";
+                color: Tema.texto-secundario;
+                font-size: Tema.t-pequeno;
+                font-weight: Tema.peso-semi;
+                horizontal-alignment: right;
+                vertical-alignment: center;
+            }
+        }
+        Rectangle {
+            height: 6px;
+            border-radius: 3px;
+            background: Tema.pista-progreso;
+            Rectangle {
+                x: 0;
+                height: parent.height;
+                width: parent.width * clamp(valor, 0, 1);
+                border-radius: 3px;
+                background: relleno;
+                animate width { duration: Tema.mov-lento; easing: ease-out; }
+                animate background { duration: Tema.mov-lento; }
+            }
+        }
+    }
+}
+
+// Pastilla de estado ("● activa").
+export component Pastilla inherits Rectangle {
+    in property <string> texto;
+    in property <color> tono;
+    height: 22px;
+    width: contenido.preferred-width + 18px;
+    border-radius: 11px;
+    background: tono.with-alpha(0.12);
+    contenido := Text {
+        text: "● " + texto;
+        color: tono;
+        font-size: 11px;
+        font-weight: Tema.peso-semi;
+    }
+}

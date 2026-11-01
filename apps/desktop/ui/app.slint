@@ -1,0 +1,27 @@
+// Ventana del Centro de Control.
+import "../../../design/fonts/Jura-Variable.ttf";
+import { Tema } from "tema.slint";
+import { Estado, Pantalla } from "estado.slint";
+import { PantallaLogin } from "login.slint";
+import { PantallaDashboard } from "dashboard.slint";
+
+export { Estado, Pantalla }
+
+export component AppWindow inherits Window {
+    title: "KEPLER · Centro de Control";
+    icon: @image-url("img/icono.svg");
+    preferred-width: 1600px;
+    preferred-height: 1000px;
+    min-width: 1280px;
+    min-height: 760px;
+    background: Tema.fondo;
+    default-font-family: "Jura";
+
+    if Estado.pantalla == Pantalla.login: PantallaLogin {
+        cargando: Estado.entrando;
+        error: Estado.error-login;
+        servidor: Estado.servidor;
+        entrar(u, c) => { Estado.entrar(u, c); }
+    }
+    if Estado.pantalla == Pantalla.dashboard: PantallaDashboard { }
+}
