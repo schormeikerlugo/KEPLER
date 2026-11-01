@@ -121,6 +121,7 @@ mod tests {
             tipo: TipoCliente::UnidadCampo.into(),
             dispositivo: "iPhone14,3".into(),
             version_app: "0.8.0".into(),
+            deteccion_servidor: false,
         };
         let bytes = codificar(&emisor.envolver(hola.clone(), AHORA));
         let e = decodificar(&bytes).unwrap();

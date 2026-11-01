@@ -28,6 +28,7 @@ DerivedData/
 /models/**/*.onnx
 /models/**/*.mlpackage/
 /models/**/*.pt
+/models/**/prueba-*.jpg
 *.pmtiles
 *.db
 *.sqlite

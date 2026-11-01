@@ -21,7 +21,7 @@ pub struct Mision {
     pub descripcion_ia: Option<String>,
     pub tipo_terreno: Option<TipoTerreno>,
     pub dificultad: Option<Dificultad>,
-    #[serde(default)]
+    #[serde(default = "super::json_vacio")]
     pub clima: Value,
     pub lat_inicio: Option<f64>,
     pub lng_inicio: Option<f64>,

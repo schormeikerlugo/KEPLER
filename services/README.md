@@ -41,11 +41,19 @@ Solo el autor edita; los demás suben `confirmaciones` (`vigente` / `no_vigente`
 | POST | `/v1/rutas/analizar` | Hallazgos y riesgo a lo largo de un trazado (PostGIS) |
 | GET | `/v1/alertas/cercanas?lat=&lng=&radio_m=` | Peligros alrededor del explorador |
 | GET | `/v1/mapas` · `/v1/mapas/archivos/{región}.pmtiles` | Mapas offline (con `Range`) |
+| POST | `/v1/capturas` | Lote (≤ 10) de capturas con foto JPEG en base64: Storage + CLIP + Re-ID + guardado |
 | GET (WS) | `/v1/en-vivo` | WebSocket binario `kepler-proto` |
 
 Errores: `{"error": "<codigo>", "mensaje": "..."}` con 401, 404, 409 o 422.
 
 Los servicios externos (clima, aire, IP) responden `{"disponible": false, "motivo": "..."}` si fallan: nunca se inventan valores. Caché en memoria: 15 min clima/aire, 24 h lugares, 1 h IP.
+
+### Visión (`crates/kepler-vision`)
+
+- **Detección en vivo**: una unidad de campo con `Hola.deteccion_servidor = true` recibe `Detecciones` (YOLO26n + ByteTrack, `origen = SERVIDOR`) por cada `Fotograma`; el centro de control también las recibe.
+- **Capturas**: foto en `capturas/<user>/<entidad>/<id>.jpg` (subida con el JWT del usuario), embedding CLIP y Re-ID (≥ 0.78): persona → se vincula a la identidad; POI → duplicado (si es de otro explorador cuenta como confirmación); objeto → se informa el parecido. Se avisa por WebSocket con `CapturaProcesada`.
+- Sin modelos el servidor arranca igual (`/health` → `vision.ok = false`): las capturas se guardan sin embedding.
+- Rendimiento en cortex (Ryzen 7 3700X, 4 hilos): YOLO 27 ms, CLIP 43 ms (34 ms/imagen en lote). Medir con `docker exec kepler-server kepler-bench /data/modelos`.
 
 ### Variables
 
@@ -59,6 +67,9 @@ Los servicios externos (clima, aire, IP) responden `{"disponible": false, "motiv
 | `KEPLER_RPS` / `KEPLER_RAFAGA` | Rate limit por IP (20/s, ráfaga 60) |
 | `KEPLER_MAPAS_DIR` | Directorio de `.pmtiles` (`/data/mapas`) |
 | `KEPLER_ZONA_HORARIA` | Zona por defecto del dashboard (`America/Caracas`) |
+| `KEPLER_MODELOS_DIR` | Directorio de `modelos.json` y los `.onnx` (`/data/modelos`) |
+| `KEPLER_VISION_HILOS` | Hilos por modelo (4) |
+| `KEPLER_STORAGE_URL` / `KEPLER_ANON_KEY` | Storage vía gateway para guardar las fotos |
 | `KEPLER_DIRECCION` | `0.0.0.0:8000` |
 
 ### Pruebas

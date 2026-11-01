@@ -311,10 +311,17 @@ services:
       KEPLER_CORS_ORIGENES: ${KEPLER_CORS_ORIGENES:-}
       KEPLER_MAPAS_DIR: /data/mapas
       KEPLER_ZONA_HORARIA: ${TZ:-America/Caracas}
+      KEPLER_MODELOS_DIR: /data/modelos
+      KEPLER_VISION_HILOS: ${KEPLER_VISION_HILOS:-4}
+      # Fotos de capturas: Storage vía gateway, actuando como el usuario
+      KEPLER_STORAGE_URL: http://api-gw:8000/storage/v1
+      KEPLER_ANON_KEY: ${ANON_KEY}
       RUST_LOG: ${KEPLER_LOG:-kepler_server=info,tower_http=warn}
     volumes:
       # Mapas offline (.pmtiles), solo lectura
       - ${KEPLER_MAPAS_DIR:-/mnt/storage/kepler/mapas}:/data/mapas:ro
+      # Modelos ONNX (models/export/exportar.py), solo lectura
+      - ${KEPLER_MODELOS_DIR:-/mnt/storage/kepler/modelos}:/data/modelos:ro
 
   # pg_dump diario (03:00) con retención configurable
   backup:

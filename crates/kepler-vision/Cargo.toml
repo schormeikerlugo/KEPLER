@@ -1,0 +1,19 @@
+[package]
+name = "kepler-vision"
+description = "Visión de KEPLER en el servidor: YOLO26 + ByteTrack y embeddings CLIP (ONNX Runtime)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+image = { version = "0.25.10", default-features = false, features = ["jpeg", "png"] }
+ort = { version = "=2.0.0-rc.15", default-features = false, features = ["std", "download-binaries", "tls-rustls", "copy-dylibs", "api-22"] }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

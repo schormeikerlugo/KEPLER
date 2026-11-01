@@ -20,6 +20,11 @@ pub use notificacion::Notificacion;
 pub use perfil::Perfil;
 pub use ruta::Ruta;
 
+/// Valor por defecto de las columnas `jsonb not null default '{}'`.
+pub(crate) fn json_vacio() -> serde_json::Value {
+    serde_json::Value::Object(Default::default())
+}
+
 /// Implementa [`crate::Sincronizable`] para un modelo con `id` y `meta`.
 macro_rules! sincronizable {
     ($tipo:ty, $tabla:literal) => {

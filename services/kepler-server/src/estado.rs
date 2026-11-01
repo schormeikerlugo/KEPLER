@@ -18,10 +18,16 @@ pub struct Interno {
     /// Cliente para la LAN (Ollama).
     pub http: reqwest::Client,
     pub externos: Externos,
+    /// Modelos de visión, o el motivo de que no estén (el resto sigue funcionando).
+    pub vision: Result<Arc<kepler_vision::Modelos>, String>,
 }
 
 impl Estado {
-    pub fn new(config: Config, db: Db) -> Self {
+    pub fn new(
+        config: Config,
+        db: Db,
+        vision: Result<Arc<kepler_vision::Modelos>, String>,
+    ) -> Self {
         let verificador = Verificador::new(&config.jwt_secret);
         let http = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(30))
@@ -34,6 +40,7 @@ impl Estado {
             difusor: Difusor::default(),
             http,
             externos: Externos::new(),
+            vision,
         }))
     }
 }

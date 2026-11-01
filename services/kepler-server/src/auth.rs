@@ -22,6 +22,8 @@ pub struct Sesion {
     pub user_id: Uuid,
     /// Claims tal cual, para `request.jwt.claims` (lo que lee `auth.uid()` en RLS).
     pub claims_json: String,
+    /// JWT original, para actuar como el usuario ante Storage.
+    pub token: String,
 }
 
 #[derive(Clone)]
@@ -53,6 +55,7 @@ impl Verificador {
         Ok(Sesion {
             user_id: claims.sub,
             claims_json: datos.claims.to_string(),
+            token: token.to_owned(),
         })
     }
 }

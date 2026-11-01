@@ -57,6 +57,9 @@ message Hola {
   // Modelo del dispositivo, p. ej. "iPhone14,3".
   string dispositivo = 3;
   string version_app = 4;
+  // Unidad de campo sin detección propia: el servidor detecta en los
+  // Fotograma que envíe y le devuelve Detecciones.
+  bool deteccion_servidor = 5;
 }
 
 message Bienvenida {

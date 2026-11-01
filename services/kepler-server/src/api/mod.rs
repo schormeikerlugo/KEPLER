@@ -1,3 +1,4 @@
+mod capturas;
 mod catalogos;
 mod dashboard;
 mod en_vivo;
@@ -63,6 +64,7 @@ pub fn router(estado: Estado) -> Router {
         .route("/rutas/analizar", post(rutas::analizar))
         .route("/alertas/cercanas", get(rutas::cercanas))
         .route("/mapas", get(mapas::listar))
+        .route("/capturas", post(capturas::procesar))
         .layer(GovernorLayer::new(Arc::new(limite)))
         .layer(RequestBodyLimitLayer::new(LIMITE_CUERPO));
 
@@ -140,8 +142,16 @@ mod tests {
             rafaga: 1000,
             mapas_dir: std::env::temp_dir(),
             zona_horaria: "America/Caracas".into(),
+            modelos_dir: std::env::temp_dir(),
+            vision_hilos: 1,
+            storage_url: String::new(),
+            anon_key: String::new(),
         };
-        router(Estado::new(config, Db::sin_conexion()))
+        router(Estado::new(
+            config,
+            Db::sin_conexion(),
+            Err("sin modelos en tests".into()),
+        ))
     }
 
     async fn pedir(

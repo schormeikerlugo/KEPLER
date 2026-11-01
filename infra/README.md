@@ -18,7 +18,7 @@ Basado en el self-hosting oficial de Supabase, reducido a lo que usa KEPLER (sin
 | `kepler-meta` + `kepler-studio` | Administración (Studio pide usuario/contraseña) | vía gateway |
 | `kepler-backup` | `pg_dump` diario a las 03:00, retención 14 días | — |
 
-Consumo en reposo: ~860 MB de RAM (kepler-server: ~2 MB).
+Consumo en reposo: ~1,3 GB de RAM (kepler-server: ~460 MB con los modelos de visión cargados).
 
 ## Datos
 
@@ -28,6 +28,7 @@ Consumo en reposo: ~860 MB de RAM (kepler-server: ~2 MB).
 | Archivos (Storage) | `/mnt/storage/kepler/storage` |
 | Backups | `/mnt/storage/kepler/backups/kepler-AAAA-MM-DD.dump` |
 | Mapas offline | `/mnt/storage/kepler/mapas/*.pmtiles` (venezuela: 434 MB) |
+| Modelos de visión | `/mnt/storage/kepler/modelos` (YOLO26n + CLIP, ~360 MB) |
 | Secretos | `~/services/kepler/.env` (permisos 600, **nunca en git**) |
 
 ## Esquema

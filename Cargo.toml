@@ -13,6 +13,7 @@ authors = ["Schormeikerl <schormeikerl@gmail.com>"]
 [workspace.dependencies]
 kepler-core = { path = "crates/kepler-core" }
 kepler-proto = { path = "crates/kepler-proto" }
+kepler-vision = { path = "crates/kepler-vision" }
 
 chrono = { version = "0.4.45", default-features = false, features = ["std", "clock", "serde"] }
 prost = "0.14.4"

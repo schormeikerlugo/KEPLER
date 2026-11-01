@@ -19,6 +19,12 @@ pub struct Config {
     pub mapas_dir: PathBuf,
     /// Zona horaria por defecto para agrupar por día.
     pub zona_horaria: String,
+    /// Directorio con `modelos.json` y los `.onnx` (YOLO, CLIP).
+    pub modelos_dir: PathBuf,
+    pub vision_hilos: usize,
+    /// Storage de Supabase (vía gateway) y su clave pública.
+    pub storage_url: String,
+    pub anon_key: String,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -52,6 +58,10 @@ impl Config {
             rafaga: opcional("KEPLER_RAFAGA", "60").parse().unwrap_or(60),
             mapas_dir: opcional("KEPLER_MAPAS_DIR", "/data/mapas").into(),
             zona_horaria: opcional("KEPLER_ZONA_HORARIA", "America/Caracas"),
+            modelos_dir: opcional("KEPLER_MODELOS_DIR", "/data/modelos").into(),
+            vision_hilos: opcional("KEPLER_VISION_HILOS", "4").parse().unwrap_or(4),
+            storage_url: opcional("KEPLER_STORAGE_URL", "http://api-gw:8000/storage/v1"),
+            anon_key: opcional("KEPLER_ANON_KEY", ""),
         })
     }
 }

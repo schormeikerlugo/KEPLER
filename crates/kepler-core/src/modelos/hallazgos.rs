@@ -33,9 +33,9 @@ pub struct Objeto {
     /// Privado por defecto; el explorador puede compartirlo.
     #[serde(default)]
     pub visibilidad: Visibilidad,
-    #[serde(default)]
+    #[serde(default = "super::json_vacio")]
     pub atributos: Value,
-    #[serde(default)]
+    #[serde(default = "super::json_vacio")]
     pub contexto_ambiental: Value,
     pub capturado_en: DateTime<Utc>,
     #[serde(flatten)]
@@ -110,7 +110,7 @@ pub struct PuntoInteres {
         skip_serializing_if = "Option::is_none"
     )]
     pub embedding: Option<Vec<f32>>,
-    #[serde(default)]
+    #[serde(default = "super::json_vacio")]
     pub metadata: Value,
     pub capturado_en: DateTime<Utc>,
     #[serde(flatten)]
@@ -214,6 +214,19 @@ mod tests {
         let p: Persona = serde_json::from_value(fila).unwrap();
         assert_eq!(p.hostilidad, Hostilidad::Desconocido);
         assert_eq!(p.identidad(), p.id);
+
+        let o: Objeto = serde_json::from_value(serde_json::json!({
+            "id": "0192f0a0-0000-7000-8000-000000000009",
+            "user_id": "0192f0a0-0000-7000-8000-000000000002",
+            "nombre": "Sin atributos", "capturado_en": "2026-10-31T20:05:00Z",
+            "creado_en": "2026-10-31T20:05:00Z", "actualizado_en": "2026-10-31T20:05:00Z", "version": 1
+        }))
+        .unwrap();
+        assert_eq!(
+            o.atributos,
+            serde_json::json!({}),
+            "jsonb not null: {{}} y no null"
+        );
         assert!(p.coordenada().is_none());
     }
 }

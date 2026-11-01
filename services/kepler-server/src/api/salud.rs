@@ -13,7 +13,17 @@ pub struct Salud {
     version: &'static str,
     base_datos: Componente,
     ollama: Vec<Ollama>,
+    vision: Vision,
     sesiones_en_vivo: usize,
+}
+
+#[derive(Serialize)]
+struct Vision {
+    ok: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    clases: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -65,6 +75,18 @@ pub async fn salud(State(estado): State<Estado>) -> (StatusCode, Json<Salud>) {
             version: kepler_core::VERSION,
             base_datos,
             ollama,
+            vision: match &estado.vision {
+                Ok(m) => Vision {
+                    ok: true,
+                    clases: Some(m.detector.clases().len()),
+                    error: None,
+                },
+                Err(e) => Vision {
+                    ok: false,
+                    clases: None,
+                    error: Some(e.clone()),
+                },
+            },
             sesiones_en_vivo: estado.difusor.sesiones(),
         }),
     )

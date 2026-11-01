@@ -6,6 +6,7 @@
 //!   KEPLER_E2E_ANON=<ANON_KEY>
 //!   KEPLER_E2E_USUARIOS=e2e_uno,e2e_dos
 //!   KEPLER_E2E_PASSWORD=<contraseña de ambas>
+//!   KEPLER_E2E_MODELOS=models/onnx   (para prueba-bus.jpg)
 //!
 //!   cargo test -p kepler-server --test e2e -- --ignored --nocapture
 
@@ -92,6 +93,15 @@ impl Api {
 }
 
 async fn conectar_ws(c: &Cuenta, tipo: TipoCliente, emisor: &mut Emisor) -> (Ws, Uuid) {
+    conectar_ws_con(c, tipo, emisor, false).await
+}
+
+async fn conectar_ws_con(
+    c: &Cuenta,
+    tipo: TipoCliente,
+    emisor: &mut Emisor,
+    deteccion_servidor: bool,
+) -> (Ws, Uuid) {
     let url = var("KEPLER_E2E_API").replace("http", "ws") + "/v1/en-vivo";
     let mut req = url.into_client_request().unwrap();
     req.headers_mut().insert(
@@ -104,6 +114,7 @@ async fn conectar_ws(c: &Cuenta, tipo: TipoCliente, emisor: &mut Emisor) -> (Ws,
         tipo: tipo.into(),
         dispositivo: "e2e".into(),
         version_app: "0.8.0".into(),
+        deteccion_servidor,
     };
     enviar(&mut ws, emisor, hola).await;
     let Some(Contenido::Bienvenida(b)) = recibir(&mut ws).await.and_then(|e| e.contenido) else {
@@ -137,6 +148,11 @@ async fn nada_en(ws: &mut Ws, ms: u64) -> bool {
     tokio::time::timeout(Duration::from_millis(ms), ws.next())
         .await
         .is_err()
+}
+
+/// Descarta lo pendiente en el socket.
+async fn vaciar(ws: &mut Ws) {
+    while !nada_en(ws, 300).await {}
 }
 
 fn ok(paso: &str) {
@@ -763,6 +779,194 @@ async fn punta_a_punta() {
     );
     ok("confirmaciones: POI confirmado, persona retirada (riesgo 30 → 20), privado rechazado");
 
+    // ===== Paso 5: visión en el servidor =====
+    let salud: Value = http
+        .get(format!("{}/health", api.base))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(salud["vision"]["ok"], true, "{salud}");
+    let foto = std::fs::read(format!("{}/prueba-bus.jpg", var("KEPLER_E2E_MODELOS"))).unwrap();
+
+    // Detección en vivo: Fotograma → YOLO + ByteTrack → Detecciones
+    let mut e_vision = Emisor::default();
+    let (mut vision, _) = conectar_ws_con(&yo, TipoCliente::UnidadCampo, &mut e_vision, true).await;
+    let mut tracks = Vec::new();
+    for numero in 1..=2 {
+        enviar(
+            &mut vision,
+            &mut e_vision,
+            Fotograma {
+                numero,
+                jpeg: foto.clone(),
+                ancho: 810,
+                alto: 1080,
+            },
+        )
+        .await;
+        let Some(Contenido::Detecciones(d)) = recibir(&mut vision).await.and_then(|e| e.contenido)
+        else {
+            panic!("sin detecciones")
+        };
+        assert_eq!(d.origen(), OrigenDeteccion::Servidor);
+        assert_eq!(d.fotograma, numero);
+        let personas = d.items.iter().filter(|i| i.clase == "person").count();
+        assert!(
+            personas >= 4 && d.items.iter().any(|i| i.clase == "bus"),
+            "{:?}",
+            d.items
+        );
+        let mut ids: Vec<u32> = d.items.iter().filter_map(|i| i.track_id).collect();
+        ids.sort();
+        tracks.push(ids);
+        if numero == 1 {
+            ok(&format!(
+                "detección en el servidor: {} objetos ({personas} personas + bus) en {:.0} ms",
+                d.items.len(),
+                d.latencia_ms
+            ));
+        }
+    }
+    assert_eq!(tracks[0], tracks[1], "ByteTrack mantiene los ids");
+    ok(&format!(
+        "ByteTrack: mismos track_id en dos fotogramas {:?}",
+        tracks[0]
+    ));
+    let mut vistos = (false, false);
+    while let Some(e) = tokio::time::timeout(Duration::from_millis(500), recibir(&mut cc))
+        .await
+        .ok()
+        .flatten()
+    {
+        match e.contenido {
+            Some(Contenido::Fotograma(_)) => vistos.0 = true,
+            Some(Contenido::Detecciones(d)) if d.origen() == OrigenDeteccion::Servidor => {
+                vistos.1 = true
+            }
+            _ => {}
+        }
+    }
+    assert_eq!(
+        vistos,
+        (true, true),
+        "el centro de control recibe fotograma y detecciones"
+    );
+    ok("el centro de control recibe el fotograma y las detecciones del servidor");
+
+    // Capturas: foto a Storage + CLIP + Re-ID
+    use base64::Engine;
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&foto);
+    let captura = |entidad: &str, extra: Value| {
+        let ahora = chrono::Utc::now();
+        let mut fila = json!({ "id": kepler_core::nuevo_id(), "capturado_en": ahora, "creado_en": ahora,
+                               "actualizado_en": ahora, "version": 1, "lat": 10.481, "lng": -66.903 });
+        fila.as_object_mut()
+            .unwrap()
+            .extend(extra.as_object().unwrap().clone());
+        json!({ "entidad": entidad, "fila": fila, "imagen": b64 })
+    };
+    let (s, r) = api
+        .post(
+            &yo,
+            "/v1/capturas",
+            json!([
+                captura("persona", json!({ "nombre": "Conductor" })),
+                captura(
+                    "objeto",
+                    json!({ "nombre": "Autobús", "clase_yolo": "bus", "confianza": 0.93 })
+                ),
+                captura(
+                    "poi",
+                    json!({ "nombre": "Parada", "nivel_riesgo": "bajo", "metadata": {} })
+                ),
+            ]),
+        )
+        .await;
+    assert_eq!(s, StatusCode::OK, "{r}");
+    assert_eq!(r["vision"], true);
+    let procesadas = r["procesadas"].as_array().unwrap();
+    assert_eq!(procesadas.len(), 3, "{}", r["rechazadas"]);
+    assert!(
+        procesadas
+            .iter()
+            .all(|p| p["accion"] == "creada" && p["imagen_path"].is_string())
+    );
+    assert!(
+        procesadas
+            .iter()
+            .all(|p| p["fila"].get("embedding").is_none())
+    );
+    let persona_1 = procesadas[0]["id"].clone();
+    let poi_1 = procesadas[2]["id"].clone();
+    let mut fotos_capturas: Vec<String> = procesadas
+        .iter()
+        .map(|p| p["imagen_path"].as_str().unwrap().to_owned())
+        .collect();
+    let foto_guardada = http
+        .get(format!(
+            "{auth}/storage/v1/object/authenticated/capturas/{}",
+            fotos_capturas[0]
+        ))
+        .header("apikey", &anon)
+        .bearer_auth(&yo.token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(foto_guardada.bytes().await.unwrap().len(), foto.len());
+    ok("capturas: persona, objeto y POI guardados con foto en Storage y embedding");
+
+    let (_, r) = api
+        .post(
+            &yo,
+            "/v1/capturas",
+            json!([captura("persona", json!({ "nombre": "Persona 20:41" }))]),
+        )
+        .await;
+    let p = &r["procesadas"][0];
+    assert_eq!(p["reid"]["id"], persona_1, "{r}");
+    assert!(p["reid"]["similitud"].as_f64().unwrap() > 0.99);
+    assert_eq!(p["fila"]["identidad_id"], persona_1);
+    assert_eq!(p["fila"]["nombre"], "Conductor");
+    fotos_capturas.push(p["imagen_path"].as_str().unwrap().to_owned());
+    ok(&format!(
+        "Re-ID de persona: vinculada a \"Conductor\" (similitud {:.3})",
+        p["reid"]["similitud"].as_f64().unwrap()
+    ));
+
+    let (_, r) = api
+        .post(
+            &otro,
+            "/v1/capturas",
+            json!([captura(
+                "poi",
+                json!({ "nombre": "Parada de bus", "metadata": {} })
+            )]),
+        )
+        .await;
+    let p = &r["procesadas"][0];
+    assert_eq!(p["accion"], "duplicado", "{r}");
+    assert_eq!(p["reid"]["id"], poi_1);
+    assert!(p["imagen_path"].is_null(), "un duplicado no guarda foto");
+    let (_, c) = api.get(&otro, "/v1/sync/cambios").await;
+    assert!(
+        c["tablas"]["confirmaciones"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|x| x["registro_id"] == poi_1 && x["tipo"] == "vigente")
+    );
+    ok("Re-ID de POI entre exploradores: duplicado detectado y cuenta como confirmación");
+
+    let (_, r) = api.post(&yo, "/v1/capturas", json!([
+        { "entidad": "objeto", "fila": { "id": kepler_core::nuevo_id(), "nombre": "x" }, "imagen": "no-es-base64!" }
+    ])).await;
+    assert_eq!(r["rechazadas"].as_array().unwrap().len(), 1, "{r}");
+    ok("captura con datos inválidos: rechazada sin tumbar el lote");
+    vaciar(&mut cc).await;
+
     // Mapas offline con Range (lo que usa MapLibre)
     let (_, mapas) = api.get(&yo, "/v1/mapas").await;
     if let Some(region) = mapas.as_array().and_then(|m| m.first()) {
@@ -799,7 +1003,10 @@ async fn punta_a_punta() {
     ));
     ok("mensaje de texto en WebSocket → Error");
 
-    for foto in [&foto_hostil, &foto_privada] {
+    for foto in [&foto_hostil, &foto_privada]
+        .into_iter()
+        .chain(&fotos_capturas)
+    {
         http.delete(format!("{auth}/storage/v1/object/capturas/{foto}"))
             .header("apikey", &anon)
             .bearer_auth(&yo.token)

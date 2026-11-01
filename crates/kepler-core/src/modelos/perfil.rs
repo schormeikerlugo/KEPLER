@@ -18,7 +18,7 @@ pub struct Perfil {
     #[serde(default)]
     pub rol: Rol,
     pub ubicacion: Option<String>,
-    #[serde(default)]
+    #[serde(default = "super::json_vacio")]
     pub preferencias: Value,
     /// Último cambio de calzado: el desgaste se cuenta desde aquí.
     #[serde(default)]

@@ -253,7 +253,7 @@ pub async fn subir(
 }
 
 /// POI compartido de riesgo alto/crítico o persona hostil.
-fn es_peligro_compartido(tabla: Tabla, fila: &Value) -> bool {
+pub(crate) fn es_peligro_compartido(tabla: Tabla, fila: &Value) -> bool {
     match tabla {
         Tabla::PuntosInteres => {
             fila["visibilidad"] == "compartido"
@@ -264,7 +264,7 @@ fn es_peligro_compartido(tabla: Tabla, fila: &Value) -> bool {
     }
 }
 
-fn avisar(estado: &Estado, sesion: &Sesion, tabla: Tabla, fila: &Value, autor: &str) {
+pub(crate) fn avisar(estado: &Estado, sesion: &Sesion, tabla: Tabla, fila: &Value, autor: &str) {
     let es_persona = tabla == Tabla::Personas;
     let Some(id) = fila["id"].as_str().and_then(|s| s.parse::<Uuid>().ok()) else {
         return;
@@ -308,7 +308,7 @@ fn avisar(estado: &Estado, sesion: &Sesion, tabla: Tabla, fila: &Value, autor: &
 }
 
 /// Devuelve la fila final, quién ganó si hubo conflicto y si se creó ahora.
-async fn aplicar_fila(
+pub(crate) async fn aplicar_fila(
     estado: &Estado,
     tx: &mut Tx<'_>,
     tabla: Tabla,
