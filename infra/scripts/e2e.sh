@@ -1,7 +1,7 @@
 #!/bin/sh
 # Prueba de punta a punta contra el stack de cortex con cuentas temporales
 # (e2e_uno, e2e_dos) que se borran al terminar, junto con los avisos que
-# hayan generado a las cuentas reales.
+# hayan generado a las cuentas reales y las fotos que queden huérfanas en Storage.
 #
 # Uso (desde la PC de desarrollo): sh infra/scripts/e2e.sh
 set -u
@@ -14,6 +14,8 @@ borrar() {
     [ -n "$id" ] && curl -s -o /dev/null -X DELETE "http://localhost:54321/auth/v1/admin/users/$id" -H "apikey: $SERVICE_ROLE_KEY" -H "Authorization: Bearer $SERVICE_ROLE_KEY";
   done;
   docker exec -e PGPASSWORD=$POSTGRES_PASSWORD kepler-db psql -h localhost -U supabase_admin -d postgres -tAc "delete from notificaciones where contexto->>'"'"'autor'"'"' in ('"'"'e2e_uno'"'"', '"'"'e2e_dos'"'"')" >/dev/null;
+  huerfanas=$(docker exec -e PGPASSWORD=$POSTGRES_PASSWORD kepler-db psql -h localhost -U supabase_admin -d postgres -tAc "select json_agg(name) from storage.objects o where bucket_id = '"'"'capturas'"'"' and not exists (select 1 from auth.users u where u.id::text = split_part(o.name, '"'"'/'"'"', 1))");
+  [ -n "$huerfanas" ] && curl -s -o /dev/null -X DELETE "http://localhost:54321/storage/v1/object/capturas" -H "apikey: $SERVICE_ROLE_KEY" -H "Authorization: Bearer $SERVICE_ROLE_KEY" -H "Content-Type: application/json" -d "{\"prefixes\": $huerfanas}";
   docker exec -e PGPASSWORD=$POSTGRES_PASSWORD kepler-db psql -h localhost -U supabase_admin -d postgres -tAc "select count(*) from auth.users"'
 }
 

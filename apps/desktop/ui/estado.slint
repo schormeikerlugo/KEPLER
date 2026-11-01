@@ -37,7 +37,56 @@ export struct Notificacion {
     leida: bool,
 }
 
-export enum Pantalla { login, dashboard, bitacora }
+export struct Hallazgo {
+    id: string,
+    nombre: string,
+    etiqueta: string,
+    tono: color,
+    fecha: string,
+    imagen: image,
+    tiene-imagen: bool,
+}
+
+export struct MisionArchivo {
+    // "" = todas · "ninguna" = sin misión · uuid
+    id: string,
+    titulo: string,
+    detalle: string,
+    estado: string,
+}
+
+// Copia editable de un hallazgo (los campos que no aplican al tipo se ignoran)
+export struct Detalle {
+    id: string,
+    // objetos · personas · puntos_interes
+    tipo: string,
+    nombre: string,
+    // descripción (objetos, POIs) o rasgos físicos (personas)
+    texto: string,
+    // notas (personas)
+    notas: string,
+    // hostilidad (personas) o nivel de riesgo (POIs)
+    nivel: string,
+    // estado del POI: activo · verificado · inactivo
+    estado: string,
+    compartido: bool,
+    categoria: int,
+    subcategoria: int,
+    datos: string,
+    imagen: image,
+    tiene-imagen: bool,
+}
+
+export struct Candidato {
+    id: string,
+    nombre: string,
+    similitud: float,
+    fecha: string,
+    imagen: image,
+    tiene-imagen: bool,
+}
+
+export enum Pantalla { login, dashboard, bitacora, archivos }
 
 export global Estado {
     in-out property <Pantalla> pantalla: Pantalla.login;
@@ -89,6 +138,39 @@ export global Estado {
 
     callback entrar(string, string);
     callback salir();
+    // Archivos
+    in-out property <string> archivos-tipo: "objetos";
+    in-out property <string> archivos-mision;
+    in-out property <string> archivos-busqueda;
+    in property <[MisionArchivo]> archivos-misiones;
+    in property <[Hallazgo]> archivos;
+    in property <bool> archivos-cargando;
+    in property <bool> archivos-hay-mas;
+    in property <[string]> categorias;
+    in property <[string]> subcategorias;
+    in-out property <bool> detalle-abierto;
+    in property <Detalle> detalle;
+    in property <bool> detalle-guardando;
+    in property <string> detalle-error;
+    callback cargar-archivos();
+    callback mas-archivos();
+    callback abrir-detalle(string);
+    callback elegir-categoria(int);
+    callback guardar-detalle(Detalle);
+    callback eliminar-detalle(string);
+
+    // Comparador de identidades
+    in property <int> pendientes-identidad;
+    in-out property <bool> comparador-abierto;
+    in property <[Candidato]> comparador-personas;
+    in property <[Candidato]> comparador-candidatos;
+    in-out property <int> comparador-persona;
+    in-out property <int> comparador-candidato;
+    in property <bool> comparador-cargando;
+    callback abrir-comparador();
+    callback elegir-persona(int);
+    callback vincular(string, string);
+
     callback refrescar();
     callback ir(Pantalla);
     callback marcar-leida(string);

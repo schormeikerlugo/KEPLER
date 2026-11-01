@@ -7,6 +7,7 @@ import { Cabecera } from "cabecera.slint";
 import { PantallaDashboard } from "dashboard.slint";
 import { PanelNotificaciones, Toasts, PantallaBitacora } from "notificaciones.slint";
 import { Acerca } from "acerca.slint";
+import { PantallaArchivos, ModalDetalle, Comparador } from "archivos.slint";
 
 export { Estado, Pantalla }
 
@@ -54,6 +55,7 @@ export component AppWindow inherits Window {
 
         if Estado.pantalla == Pantalla.dashboard: PantallaDashboard { vertical-stretch: 1; }
         if Estado.pantalla == Pantalla.bitacora: PantallaBitacora { vertical-stretch: 1; }
+        if Estado.pantalla == Pantalla.archivos: PantallaArchivos { vertical-stretch: 1; }
     }
 
     // Panel de la campana: un clic fuera lo cierra
@@ -74,6 +76,22 @@ export component AppWindow inherits Window {
         y: root.height - self.preferred-height - 28px;
         width: 380px;
         height: self.preferred-height;
+    }
+
+    if Estado.detalle-abierto && Estado.pantalla == Pantalla.archivos: Rectangle {
+        background: #000000b3;
+        TouchArea { }
+        ModalDetalle {
+            cerrar => { Estado.detalle-abierto = false; }
+        }
+    }
+
+    if Estado.comparador-abierto && Estado.pantalla == Pantalla.archivos: Rectangle {
+        background: #000000b3;
+        TouchArea { }
+        Comparador {
+            cerrar => { Estado.comparador-abierto = false; }
+        }
     }
 
     if root.acerca-abierto: Rectangle {

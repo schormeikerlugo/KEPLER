@@ -20,7 +20,9 @@ fn main() {
         std::fs::write(destino, tema).expect("escribir ui/tema.slint");
     }
 
-    slint_build::compile("ui/app.slint").expect("compilar la UI");
+    // Estilo oscuro para los pocos widgets estándar (ComboBox, AboutSlint)
+    let config = slint_build::CompilerConfiguration::new().with_style("fluent-dark".into());
+    slint_build::compile_with_config("ui/app.slint", config).expect("compilar la UI");
 }
 
 fn generar(t: &Value) -> String {

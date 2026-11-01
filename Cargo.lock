@@ -3167,6 +3167,7 @@ version = "0.8.0"
 dependencies = [
  "chrono",
  "futures-util",
+ "image",
  "kepler-core",
  "kepler-proto",
  "reqwest",

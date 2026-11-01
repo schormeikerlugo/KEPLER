@@ -16,10 +16,10 @@ use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
 use crate::api::{Cliente, Error};
-use crate::bitacora;
 use crate::en_vivo::{self, Evento};
 use crate::modelos::{Aire, Clima, Dashboard, Explorador, Perfil, UbicacionIp};
 use crate::{AppWindow, Atencion, Conteo, DatoIndicador, DiaSemana, Estado, FilaMision, Pantalla};
+use crate::{archivos, bitacora, imagenes};
 
 /// Igual que el session guard de la v0.7.
 const INACTIVIDAD: Duration = Duration::from_secs(15 * 60);
@@ -35,6 +35,8 @@ pub struct Contexto {
     /// Sin GPS en el escritorio: ubicación aproximada por IP, una vez por sesión.
     ubicacion: Mutex<Option<UbicacionIp>>,
     pub bitacora: Mutex<bitacora::Memoria>,
+    pub archivos: archivos::Compartida,
+    pub imagenes: imagenes::Cache,
     en_vivo: std::sync::Mutex<Option<JoinHandle<()>>>,
 }
 
@@ -45,12 +47,15 @@ pub fn conectar(ui: &AppWindow, rt: Handle, cliente: Arc<Cliente>) {
         ui: ui.as_weak(),
         ubicacion: Mutex::new(None),
         bitacora: Mutex::default(),
+        archivos: Mutex::default(),
+        imagenes: imagenes::Cache::default(),
         en_vivo: std::sync::Mutex::new(None),
     });
     let estado = ui.global::<Estado>();
     estado.set_servidor(ctx.cliente.base().into());
     estado.set_version(env!("CARGO_PKG_VERSION").into());
     bitacora::preparar(&estado);
+    archivos::preparar(&estado);
 
     let c = ctx.clone();
     estado.on_entrar(move |usuario, contrasena| {
@@ -76,6 +81,61 @@ pub fn conectar(ui: &AppWindow, rt: Handle, cliente: Arc<Cliente>) {
     estado.on_filtrar_bitacora(move || cargar_bitacora(&c, false));
     let c = ctx.clone();
     estado.on_mas_bitacora(move || cargar_bitacora(&c, true));
+    let c = ctx.clone();
+    estado.on_cargar_archivos(move || cargar_archivos(&c, false));
+    let c = ctx.clone();
+    estado.on_mas_archivos(move || cargar_archivos(&c, true));
+    let c = ctx.clone();
+    estado.on_abrir_detalle(move |id| {
+        let Some(ui) = c.ui.upgrade() else { return };
+        let tipo = ui.global::<Estado>().get_archivos_tipo().to_string();
+        let c2 = c.clone();
+        c.rt.spawn(async move { archivos::abrir_detalle(&c2, id.to_string(), tipo).await });
+    });
+    let c = ctx.clone();
+    estado.on_elegir_categoria(move |i| {
+        let c2 = c.clone();
+        c.rt.spawn(async move { archivos::elegir_categoria(&c2, i).await });
+    });
+    let c = ctx.clone();
+    estado.on_guardar_detalle(move |d| {
+        let d = archivos::DatosDetalle::desde_ui(&d);
+        let c2 = c.clone();
+        c.rt.spawn(async move { archivos::guardar(&c2, d).await });
+    });
+    let c = ctx.clone();
+    estado.on_eliminar_detalle(move |id| {
+        let Some(ui) = c.ui.upgrade() else { return };
+        let tipo = ui.global::<Estado>().get_archivos_tipo().to_string();
+        let c2 = c.clone();
+        c.rt.spawn(async move { archivos::eliminar(&c2, id.to_string(), tipo).await });
+    });
+    let c = ctx.clone();
+    estado.on_abrir_comparador(move || {
+        let c2 = c.clone();
+        c.rt.spawn(async move { archivos::abrir_comparador(&c2, 0).await });
+    });
+    let c = ctx.clone();
+    estado.on_elegir_persona(move |i| {
+        let c2 = c.clone();
+        c.rt.spawn(async move { archivos::elegir_persona(&c2, i.max(0) as usize).await });
+    });
+    let c = ctx.clone();
+    estado.on_vincular(move |persona, con| {
+        let c2 = c.clone();
+        c.rt.spawn(async move {
+            archivos::vincular(&c2, persona.to_string(), con.to_string()).await;
+            // La rejilla de personas muestra el nuevo nombre e identidad
+            let c3 = c2.clone();
+            c2.ui
+                .upgrade_in_event_loop(move |ui| {
+                    if ui.global::<Estado>().get_archivos_tipo() == "personas" {
+                        cargar_archivos(&c3, false);
+                    }
+                })
+                .ok();
+        });
+    });
     let c = ctx.clone();
     estado.on_cerrar_toast(move |id| {
         if let Some(ui) = c.ui.upgrade() {
@@ -131,12 +191,15 @@ fn salir(ctx: &Arc<Contexto>, motivo: &'static str) {
         let e = ui.global::<Estado>();
         e.set_en_vivo(false);
         bitacora::olvidar(&e);
+        archivos::olvidar(&e);
     }
     let c = ctx.clone();
     ctx.rt.spawn(async move {
         c.cliente.salir().await;
         *c.ubicacion.lock().await = None;
         *c.bitacora.lock().await = bitacora::Memoria::default();
+        *c.archivos.lock().await = archivos::Memoria::default();
+        c.imagenes.vaciar();
     });
 }
 
@@ -154,6 +217,32 @@ fn ir(ctx: &Arc<Contexto>, pantalla: Pantalla) {
     if pantalla == Pantalla::Bitacora {
         cargar_bitacora(ctx, false);
     }
+    if pantalla == Pantalla::Archivos
+        && let Some(ui) = ctx.ui.upgrade()
+    {
+        let e = ui.global::<Estado>();
+        let filtros = (
+            e.get_archivos_tipo().to_string(),
+            e.get_archivos_mision().to_string(),
+            e.get_archivos_busqueda().to_string(),
+        );
+        let c = ctx.clone();
+        ctx.rt
+            .spawn(async move { archivos::entrar(&c, filtros.0, filtros.1, filtros.2).await });
+    }
+}
+
+fn cargar_archivos(ctx: &Arc<Contexto>, seguir: bool) {
+    let Some(ui) = ctx.ui.upgrade() else { return };
+    let e = ui.global::<Estado>();
+    let (tipo, mision, busqueda) = (
+        e.get_archivos_tipo().to_string(),
+        e.get_archivos_mision().to_string(),
+        e.get_archivos_busqueda().to_string(),
+    );
+    let c = ctx.clone();
+    ctx.rt
+        .spawn(async move { archivos::cargar(&c, tipo, mision, busqueda, seguir).await });
 }
 
 fn cargar_bitacora(ctx: &Arc<Contexto>, seguir: bool) {

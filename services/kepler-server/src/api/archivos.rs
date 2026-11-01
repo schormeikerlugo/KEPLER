@@ -185,7 +185,10 @@ pub async fn pendientes(
          cross join lateral (
              select coalesce(jsonb_agg(c order by c.similitud desc), '[]') as lista
              from (
-                 select q.id, coalesce(r.nombre, q.nombre) as nombre, q.imagen_path,
+               select * from (
+                 -- El mejor avistamiento de cada identidad
+                 select distinct on (coalesce(q.identidad_id, q.id))
+                        q.id, coalesce(r.nombre, q.nombre) as nombre, q.imagen_path,
                         q.capturado_en, coalesce(q.identidad_id, q.id) as identidad_id,
                         round((1 - (q.embedding operator(extensions.<=>) p.embedding))::numeric, 3)::float8 as similitud
                  from public.personas q
@@ -194,8 +197,10 @@ pub async fn pendientes(
                    and q.eliminado_en is null and q.embedding is not null
                    and coalesce(q.identidad_id, q.id) <> p.id
                    and 1 - (q.embedding operator(extensions.<=>) p.embedding) >= $1
-                 order by q.embedding operator(extensions.<=>) p.embedding
-                 limit 5
+                 order by coalesce(q.identidad_id, q.id), q.embedding operator(extensions.<=>) p.embedding
+               ) d
+               order by d.similitud desc
+               limit 5
              ) c
          ) c
          where p.user_id = (select auth.uid()) and p.eliminado_en is null

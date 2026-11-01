@@ -81,6 +81,8 @@ export component Boton inherits Rectangle {
 }
 
 export component Campo inherits VerticalLayout {
+    alignment: start;
+    vertical-stretch: 0;
     in property <string> etiqueta;
     in property <string> marcador;
     in property <bool> secreto;
@@ -219,5 +221,86 @@ export component Pastilla inherits Rectangle {
         color: tono;
         font-size: 11px;
         font-weight: Tema.peso-semi;
+    }
+}
+
+// Texto de varias líneas (notas, descripciones).
+export component CampoTexto inherits VerticalLayout {
+    alignment: start;
+    vertical-stretch: 0;
+    in property <string> etiqueta;
+    in property <string> marcador;
+    in property <length> alto: 90px;
+    in-out property <string> texto <=> entrada.text;
+    spacing: Tema.espacio-sm;
+    Etiqueta {
+        text: etiqueta;
+        color: Tema.texto-tenue;
+    }
+    Rectangle {
+        height: alto;
+        border-radius: Tema.radio-medio;
+        background: #00000059;
+        border-width: 1px;
+        border-color: entrada.has-focus ? Tema.borde-holo : Tema.borde-tenue;
+        clip: true;
+        animate border-color { duration: Tema.mov-rapido; }
+        Text {
+            x: 14px;
+            y: 12px;
+            visible: entrada.text == "";
+            text: marcador;
+            color: #ffffff40;
+            font-size: 13px;
+        }
+        entrada := TextInput {
+            x: 14px;
+            y: 12px;
+            width: parent.width - 28px;
+            height: parent.height - 24px;
+            color: Tema.texto;
+            font-size: 13px;
+            single-line: false;
+            wrap: word-wrap;
+        }
+    }
+}
+
+// Grupo de opciones excluyentes (hostilidad, riesgo…).
+export component Opciones inherits VerticalLayout {
+    alignment: start;
+    vertical-stretch: 0;
+    in property <string> etiqueta;
+    in property <[{valor: string, texto: string, tono: color}]> opciones;
+    in-out property <string> valor;
+    spacing: Tema.espacio-sm;
+    Etiqueta {
+        text: etiqueta;
+        color: Tema.texto-tenue;
+    }
+    HorizontalLayout {
+        spacing: 8px;
+        alignment: start;
+        for o in opciones: Rectangle {
+            property <bool> activa: o.valor == root.valor;
+            height: 30px;
+            width: t.preferred-width + 26px;
+            border-radius: 15px;
+            background: activa ? o.tono.with-alpha(0.15) : zona.has-hover ? Tema.superficie-hover : transparent;
+            border-width: 1px;
+            border-color: activa ? o.tono.with-alpha(0.7) : Tema.borde-tenue;
+            animate background, border-color { duration: Tema.mov-rapido; }
+            t := Text {
+                text: o.texto;
+                color: activa ? o.tono : Tema.texto-secundario;
+                font-size: 11px;
+                font-weight: Tema.peso-semi;
+                letter-spacing: 1px;
+            }
+            zona := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { root.valor = o.valor; }
+            }
+        }
     }
 }

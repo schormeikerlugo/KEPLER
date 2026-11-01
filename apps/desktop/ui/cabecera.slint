@@ -105,6 +105,11 @@ export component Cabecera inherits Tarjeta {
                 pulsada => { Estado.ir(Pantalla.dashboard); }
             }
             Pestana {
+                texto: "ARCHIVOS";
+                activa: Estado.pantalla == Pantalla.archivos;
+                pulsada => { Estado.ir(Pantalla.archivos); }
+            }
+            Pestana {
                 texto: "BITÁCORA";
                 activa: Estado.pantalla == Pantalla.bitacora;
                 pulsada => { Estado.ir(Pantalla.bitacora); }

@@ -1,0 +1,645 @@
+// Archivos: misiones a la izquierda, rejilla de hallazgos, detalle editable y comparador.
+import { ComboBox } from "std-widgets.slint";
+import { Tema } from "tema.slint";
+import { Tarjeta, Etiqueta, Titulo, Boton, Campo, CampoTexto, Opciones, Pastilla } from "componentes.slint";
+import { Estado, Hallazgo, MisionArchivo, Detalle, Candidato } from "estado.slint";
+
+component Foto inherits Rectangle {
+    in property <image> imagen;
+    in property <bool> tiene-imagen;
+    in property <string> vacio: "SIN FOTO";
+    background: #0b0d10;
+    clip: true;
+    if tiene-imagen: Image {
+        width: parent.width;
+        height: parent.height;
+        source: imagen;
+        image-fit: cover;
+    }
+    if !tiene-imagen: Etiqueta {
+        text: vacio;
+        color: #ffffff30;
+    }
+}
+
+component FilaMision inherits Rectangle {
+    in property <MisionArchivo> dato;
+    property <bool> activa: Estado.archivos-mision == dato.id;
+    property <color> tono: dato.estado == "activa" ? Tema.exito : dato.estado == "planificada" ? Tema.acento : dato.estado == "abortada" ? Tema.peligro : #555555;
+    height: contenido.preferred-height + 22px;
+    border-radius: Tema.radio-medio;
+    background: activa ? Tema.superficie-activa : zona.has-hover ? Tema.superficie-hover : #ffffff05;
+    border-width: 1px;
+    border-color: activa ? Tema.acento-borde : transparent;
+    animate background { duration: Tema.mov-rapido; }
+    Rectangle {
+        x: 0;
+        width: 3px;
+        height: parent.height - 20px;
+        border-radius: 1.5px;
+        background: dato.estado == "" ? transparent : tono;
+    }
+    contenido := VerticalLayout {
+        x: 16px;
+        width: parent.width - 28px;
+        spacing: 4px;
+        alignment: center;
+        Text {
+            text: dato.titulo;
+            color: activa ? Tema.texto : Tema.texto-secundario;
+            font-size: 14px;
+            overflow: elide;
+        }
+        if dato.detalle != "": Etiqueta {
+            text: dato.detalle;
+            overflow: elide;
+        }
+    }
+    zona := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            Estado.archivos-mision = dato.id;
+            Estado.cargar-archivos();
+        }
+    }
+}
+
+component Pestana inherits Rectangle {
+    in property <string> texto;
+    in property <string> valor;
+    property <bool> activa: Estado.archivos-tipo == valor;
+    height: 32px;
+    width: t.preferred-width + 28px;
+    border-radius: Tema.radio-pequeno;
+    background: activa ? Tema.acento-suave : zona.has-hover ? Tema.superficie-hover : transparent;
+    border-width: 1px;
+    border-color: activa ? Tema.acento-borde : Tema.borde-tenue;
+    t := Text {
+        text: texto;
+        color: activa ? Tema.acento : Tema.texto-secundario;
+        font-size: 11px;
+        font-weight: Tema.peso-negrita;
+        letter-spacing: 1px;
+    }
+    zona := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            Estado.archivos-tipo = valor;
+            Estado.cargar-archivos();
+        }
+    }
+}
+
+component Ficha inherits Rectangle {
+    in property <Hallazgo> dato;
+    border-radius: Tema.radio-tarjeta;
+    background: zona.has-hover ? #1a1c20 : #15171a;
+    border-width: 1px;
+    border-color: zona.has-hover ? Tema.borde-holo-sutil : Tema.borde-sutil;
+    clip: true;
+    animate background, border-color { duration: Tema.mov-rapido; }
+    Foto {
+        y: 0;
+        height: parent.height - 76px;
+        imagen: dato.imagen;
+        tiene-imagen: dato.tiene-imagen;
+    }
+    VerticalLayout {
+        y: parent.height - 76px;
+        height: 76px;
+        padding: 12px;
+        spacing: 3px;
+        Etiqueta {
+            text: dato.etiqueta;
+            color: dato.tono;
+            overflow: elide;
+        }
+        Text {
+            text: dato.nombre;
+            color: Tema.texto;
+            font-size: 14px;
+            overflow: elide;
+        }
+        Etiqueta { text: dato.fecha; }
+    }
+    zona := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Estado.abrir-detalle(dato.id); }
+    }
+}
+
+export component PantallaArchivos inherits HorizontalLayout {
+    spacing: 22px;
+
+    // Misiones
+    Tarjeta {
+        width: 320px;
+        VerticalLayout {
+            padding: 20px;
+            spacing: 12px;
+            Titulo { text: "Misiones"; }
+            HorizontalLayout {
+                spacing: 14px;
+                alignment: start;
+                Pastilla { texto: "activa"; tono: Tema.exito; }
+                Pastilla { texto: "planificada"; tono: Tema.acento; }
+                Pastilla { texto: "cerrada"; tono: #777777; }
+            }
+            Flickable {
+                vertical-stretch: 1;
+                content-height: lista.preferred-height;
+                lista := VerticalLayout {
+                    alignment: start;
+                    spacing: 8px;
+                    for m in Estado.archivos-misiones: FilaMision { dato: m; }
+                }
+            }
+        }
+    }
+
+    // Rejilla
+    VerticalLayout {
+        spacing: 22px;
+        horizontal-stretch: 1;
+        Tarjeta {
+            height: 76px;
+            HorizontalLayout {
+                padding-left: 24px;
+                padding-right: 20px;
+                spacing: 10px;
+                VerticalLayout {
+                    alignment: center;
+                    HorizontalLayout {
+                        spacing: 8px;
+                        Pestana { texto: "OBJETOS"; valor: "objetos"; }
+                        Pestana { texto: "PERSONAS"; valor: "personas"; }
+                        Pestana { texto: "POIs"; valor: "puntos_interes"; }
+                    }
+                }
+                Rectangle { horizontal-stretch: 1; }
+                VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        width: 280px;
+                        height: 36px;
+                        border-radius: Tema.radio-medio;
+                        background: #00000059;
+                        border-width: 1px;
+                        border-color: busqueda.has-focus ? Tema.borde-holo : Tema.borde-tenue;
+                        Text {
+                            x: 14px;
+                            visible: busqueda.text == "";
+                            text: "Buscar por nombre o descripción…";
+                            color: #ffffff40;
+                            font-size: 13px;
+                        }
+                        busqueda := TextInput {
+                            x: 14px;
+                            width: parent.width - 28px;
+                            color: Tema.texto;
+                            font-size: 13px;
+                            vertical-alignment: center;
+                            text <=> Estado.archivos-busqueda;
+                            accepted => { Estado.cargar-archivos(); }
+                        }
+                    }
+                }
+                VerticalLayout {
+                    alignment: center;
+                    Boton {
+                        principal: true;
+                        texto: Estado.pendientes-identidad > 0 ? "COMPARADOR (" + Estado.pendientes-identidad + ")" : "COMPARADOR";
+                        pulsado => { Estado.abrir-comparador(); }
+                    }
+                }
+            }
+        }
+
+        rejilla := Flickable {
+            vertical-stretch: 1;
+            property <length> hueco: 18px;
+            property <int> columnas: max(1, floor((self.width + hueco) / (230px + hueco)));
+            property <length> ancho: (self.width - (columnas - 1) * hueco) / columnas;
+            property <length> alto: ancho * 0.72 + 76px;
+            property <int> filas: ceil(Estado.archivos.length / columnas);
+            content-height: filas * (alto + hueco) + (Estado.archivos-hay-mas ? 70px : 0);
+            for h[i] in Estado.archivos: Ficha {
+                dato: h;
+                x: (i - floor(i / rejilla.columnas) * rejilla.columnas) * (rejilla.ancho + rejilla.hueco);
+                y: floor(i / rejilla.columnas) * (rejilla.alto + rejilla.hueco);
+                width: rejilla.ancho;
+                height: rejilla.alto;
+            }
+            if Estado.archivos.length == 0: Text {
+                y: 40px;
+                height: 40px;
+                text: Estado.archivos-cargando ? "Cargando…" : "Nada archivado aquí todavía.";
+                color: Tema.texto-tenue;
+                font-size: Tema.t-pequeno;
+                horizontal-alignment: center;
+            }
+            if Estado.archivos-hay-mas: Boton {
+                x: (rejilla.width - self.width) / 2;
+                y: rejilla.filas * (rejilla.alto + rejilla.hueco) + 10px;
+                width: 200px;
+                texto: Estado.archivos-cargando ? "CARGANDO…" : "CARGAR MÁS";
+                activo: !Estado.archivos-cargando;
+                pulsado => { Estado.mas-archivos(); }
+            }
+        }
+    }
+}
+
+export component ModalDetalle inherits Rectangle {
+    callback cerrar;
+    property <bool> confirmar-borrado;
+    in-out property <string> nombre: Estado.detalle.nombre;
+    in-out property <string> texto: Estado.detalle.texto;
+    in-out property <string> notas: Estado.detalle.notas;
+    in-out property <string> nivel: Estado.detalle.nivel;
+    in-out property <string> estado-poi: Estado.detalle.estado;
+    in-out property <bool> compartido: Estado.detalle.compartido;
+    in-out property <int> categoria: Estado.detalle.categoria;
+    in-out property <int> subcategoria: Estado.detalle.subcategoria;
+    property <string> tipo: Estado.detalle.tipo;
+
+    width: 1060px;
+    height: 640px;
+    border-radius: Tema.radio-grande;
+    background: #111316f8;
+    border-width: 1px;
+    border-color: Tema.borde-holo-sutil;
+    drop-shadow-blur: 40px;
+    drop-shadow-color: #000000cc;
+    TouchArea { }
+
+    HorizontalLayout {
+        padding: 34px;
+        spacing: 34px;
+        VerticalLayout {
+            width: 460px;
+            spacing: 14px;
+            Rectangle {
+                vertical-stretch: 1;
+                border-radius: Tema.radio-tarjeta;
+                border-width: 1px;
+                border-color: Tema.borde-holo;
+                clip: true;
+                Foto {
+                    imagen: Estado.detalle.imagen;
+                    tiene-imagen: Estado.detalle.tiene-imagen;
+                    vacio: "SIN FOTO";
+                }
+            }
+            Text {
+                text: Estado.detalle.datos;
+                color: Tema.texto-tenue;
+                font-size: 12px;
+                wrap: word-wrap;
+            }
+        }
+        VerticalLayout {
+            spacing: 16px;
+            Text {
+                text: tipo == "personas" ? "EDITAR PERSONA" : tipo == "puntos_interes" ? "EDITAR PUNTO DE INTERÉS" : "EDITAR OBJETO";
+                color: Tema.texto;
+                font-size: 22px;
+                letter-spacing: 2px;
+            }
+            Campo {
+                etiqueta: "IDENTIFICADOR / NOMBRE";
+                texto <=> root.nombre;
+            }
+            if tipo == "objetos": HorizontalLayout {
+                spacing: 16px;
+                VerticalLayout {
+                    spacing: Tema.espacio-sm;
+                    Etiqueta { text: "CATEGORÍA"; color: Tema.texto-tenue; }
+                    ComboBox {
+                        model: Estado.categorias;
+                        current-index <=> root.categoria;
+                        selected => {
+                            root.subcategoria = 0;
+                            Estado.elegir-categoria(self.current-index);
+                        }
+                    }
+                }
+                VerticalLayout {
+                    spacing: Tema.espacio-sm;
+                    Etiqueta { text: "SUBCATEGORÍA"; color: Tema.texto-tenue; }
+                    ComboBox {
+                        model: Estado.subcategorias;
+                        current-index <=> root.subcategoria;
+                        enabled: root.categoria > 0;
+                    }
+                }
+            }
+            if tipo == "personas": Opciones {
+                etiqueta: "HOSTILIDAD";
+                valor <=> root.nivel;
+                opciones: [
+                    { valor: "aliado", texto: "ALIADO", tono: Tema.exito },
+                    { valor: "neutral", texto: "NEUTRAL", tono: Tema.acento },
+                    { valor: "hostil", texto: "HOSTIL", tono: Tema.peligro },
+                    { valor: "desconocido", texto: "DESCONOCIDO", tono: #999999 },
+                ];
+            }
+            if tipo == "puntos_interes": Opciones {
+                etiqueta: "NIVEL DE RIESGO";
+                valor <=> root.nivel;
+                opciones: [
+                    { valor: "bajo", texto: "BAJO", tono: Tema.exito },
+                    { valor: "medio", texto: "MEDIO", tono: Tema.aviso },
+                    { valor: "alto", texto: "ALTO", tono: #FF8844 },
+                    { valor: "critico", texto: "CRÍTICO", tono: Tema.peligro },
+                ];
+            }
+            if tipo == "puntos_interes": Opciones {
+                etiqueta: "ESTADO";
+                valor <=> root.estado-poi;
+                opciones: [
+                    { valor: "activo", texto: "ACTIVO", tono: Tema.acento },
+                    { valor: "verificado", texto: "VERIFICADO", tono: Tema.exito },
+                    { valor: "inactivo", texto: "INACTIVO", tono: #999999 },
+                ];
+            }
+            CampoTexto {
+                etiqueta: tipo == "personas" ? "RASGOS FÍSICOS" : "DESCRIPCIÓN";
+                alto: tipo == "personas" ? 64px : 90px;
+                texto <=> root.texto;
+            }
+            if tipo == "personas": CampoTexto {
+                etiqueta: "NOTAS DE CAMPO";
+                alto: 64px;
+                texto <=> root.notas;
+            }
+            if tipo != "personas": Opciones {
+                etiqueta: "VISIBILIDAD";
+                valor: root.compartido ? "compartido" : "privado";
+                opciones: [
+                    { valor: "privado", texto: "PRIVADO", tono: #999999 },
+                    { valor: "compartido", texto: "COMPARTIDO CON EXPLORADORES", tono: Tema.acento },
+                ];
+                changed valor => { root.compartido = self.valor == "compartido"; }
+            }
+            Rectangle { vertical-stretch: 1; }
+            if Estado.detalle-error != "": Text {
+                text: Estado.detalle-error;
+                color: Tema.peligro;
+                font-size: 12px;
+                wrap: word-wrap;
+            }
+            HorizontalLayout {
+                spacing: 12px;
+                Boton {
+                    height: 44px;
+                    texto: root.confirmar-borrado ? "¿ELIMINAR DE VERDAD?" : "ELIMINAR";
+                    activo: !Estado.detalle-guardando;
+                    pulsado => {
+                        if root.confirmar-borrado {
+                            Estado.eliminar-detalle(Estado.detalle.id);
+                        } else {
+                            root.confirmar-borrado = true;
+                        }
+                    }
+                }
+                Rectangle { horizontal-stretch: 1; }
+                Boton {
+                    height: 44px;
+                    texto: "CERRAR";
+                    pulsado => { root.cerrar(); }
+                }
+                Boton {
+                    height: 44px;
+                    width: 220px;
+                    principal: true;
+                    texto: Estado.detalle-guardando ? "GUARDANDO…" : "GUARDAR CAMBIOS";
+                    activo: !Estado.detalle-guardando && root.nombre != "";
+                    pulsado => {
+                        Estado.guardar-detalle({
+                            id: Estado.detalle.id,
+                            tipo: root.tipo,
+                            nombre: root.nombre,
+                            texto: root.texto,
+                            notas: root.notas,
+                            nivel: root.nivel,
+                            estado: root.estado-poi,
+                            compartido: root.compartido,
+                            categoria: root.categoria,
+                            subcategoria: root.subcategoria,
+                        });
+                    }
+                }
+            }
+        }
+    }
+}
+
+component Miniatura inherits Rectangle {
+    in property <Candidato> dato;
+    in property <bool> activa;
+    callback pulsada;
+    width: 76px;
+    height: 76px;
+    border-radius: Tema.radio-medio;
+    border-width: activa ? 2px : 1px;
+    border-color: activa ? Tema.acento : Tema.borde-tenue;
+    clip: true;
+    Foto {
+        imagen: dato.imagen;
+        tiene-imagen: dato.tiene-imagen;
+        vacio: "";
+    }
+    TouchArea {
+        mouse-cursor: pointer;
+        clicked => { pulsada(); }
+    }
+}
+
+component Retrato inherits VerticalLayout {
+    in property <string> titulo;
+    in property <Candidato> dato;
+    in property <color> tono: Tema.acento;
+    spacing: 10px;
+    Etiqueta { text: titulo; color: tono; }
+    Rectangle {
+        vertical-stretch: 1;
+        border-radius: Tema.radio-tarjeta;
+        border-width: 1px;
+        border-color: tono.with-alpha(0.6);
+        clip: true;
+        Foto {
+            imagen: dato.imagen;
+            tiene-imagen: dato.tiene-imagen;
+        }
+    }
+    Text { text: dato.nombre; color: Tema.texto; font-size: 17px; overflow: elide; }
+    Etiqueta { text: dato.fecha; }
+}
+
+export component Comparador inherits Rectangle {
+    callback cerrar;
+    property <bool> hay-persona: Estado.comparador-persona < Estado.comparador-personas.length;
+    property <bool> hay-candidato: Estado.comparador-candidato < Estado.comparador-candidatos.length;
+    property <Candidato> persona: hay-persona ? Estado.comparador-personas[Estado.comparador-persona] : { };
+    property <Candidato> candidato: hay-candidato ? Estado.comparador-candidatos[Estado.comparador-candidato] : { };
+
+    width: 1240px;
+    height: 760px;
+    border-radius: Tema.radio-grande;
+    background: #111316f8;
+    border-width: 1px;
+    border-color: Tema.borde-holo-sutil;
+    drop-shadow-blur: 40px;
+    drop-shadow-color: #000000cc;
+    TouchArea { }
+
+    HorizontalLayout {
+        padding: 30px;
+        spacing: 28px;
+        // Personas por identificar
+        VerticalLayout {
+            width: 250px;
+            spacing: 12px;
+            Titulo { text: "Por identificar"; }
+            Etiqueta {
+                text: Estado.comparador-personas.length + " CON PARECIDOS DEL 60 AL 78 %";
+            }
+            Flickable {
+                vertical-stretch: 1;
+                content-height: lista.preferred-height;
+                lista := VerticalLayout {
+                    alignment: start;
+                    spacing: 8px;
+                    for p[i] in Estado.comparador-personas: Rectangle {
+                        height: 64px;
+                        border-radius: Tema.radio-medio;
+                        background: i == Estado.comparador-persona ? Tema.superficie-activa : zona.has-hover ? Tema.superficie-hover : transparent;
+                        border-width: 1px;
+                        border-color: i == Estado.comparador-persona ? Tema.acento-borde : transparent;
+                        HorizontalLayout {
+                            padding: 6px;
+                            spacing: 10px;
+                            Rectangle {
+                                width: 52px;
+                                border-radius: 8px;
+                                clip: true;
+                                Foto { imagen: p.imagen; tiene-imagen: p.tiene-imagen; vacio: ""; }
+                            }
+                            VerticalLayout {
+                                alignment: center;
+                                spacing: 3px;
+                                Text { text: p.nombre; color: Tema.texto; font-size: 13px; overflow: elide; }
+                                Etiqueta { text: p.fecha; }
+                            }
+                        }
+                        zona := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => { Estado.elegir-persona(i); }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Comparación
+        VerticalLayout {
+            spacing: 18px;
+            horizontal-stretch: 1;
+            HorizontalLayout {
+                Titulo { text: "Comparador de identidades"; }
+                Rectangle { horizontal-stretch: 1; }
+                Boton {
+                    texto: "✕  CERRAR";
+                    pulsado => { root.cerrar(); }
+                }
+            }
+            if Estado.comparador-cargando: Text {
+                vertical-stretch: 1;
+                text: "Buscando parecidos…";
+                color: Tema.texto-tenue;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+            if !Estado.comparador-cargando && !hay-persona: Text {
+                vertical-stretch: 1;
+                text: "No hay personas pendientes: todo identificado.";
+                color: Tema.texto-tenue;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+            if !Estado.comparador-cargando && hay-persona: HorizontalLayout {
+                vertical-stretch: 1;
+                spacing: 24px;
+                Retrato {
+                    horizontal-stretch: 1;
+                    titulo: "AVISTAMIENTO";
+                    dato: root.persona;
+                }
+                VerticalLayout {
+                    width: 120px;
+                    alignment: center;
+                    spacing: 6px;
+                    Text {
+                        text: hay-candidato ? round(root.candidato.similitud * 100) + "%" : "—";
+                        color: Tema.acento;
+                        font-size: 34px;
+                        font-weight: Tema.peso-negrita;
+                        horizontal-alignment: center;
+                    }
+                    Etiqueta {
+                        text: "PARECIDO";
+                        horizontal-alignment: center;
+                    }
+                }
+                if hay-candidato: Retrato {
+                    horizontal-stretch: 1;
+                    titulo: "¿ES ESTA IDENTIDAD?";
+                    dato: root.candidato;
+                    tono: Tema.aviso;
+                }
+                if !hay-candidato: Text {
+                    horizontal-stretch: 1;
+                    text: "Sin más candidatos para esta persona.";
+                    color: Tema.texto-tenue;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+            if hay-persona: HorizontalLayout {
+                spacing: 10px;
+                height: 76px;
+                alignment: start;
+                for c[i] in Estado.comparador-candidatos: Miniatura {
+                    dato: c;
+                    activa: i == Estado.comparador-candidato;
+                    pulsada => { Estado.comparador-candidato = i; }
+                }
+            }
+            if hay-persona: HorizontalLayout {
+                spacing: 12px;
+                Boton {
+                    height: 44px;
+                    texto: "NO ES LA MISMA";
+                    activo: hay-candidato;
+                    pulsado => { Estado.comparador-candidato += 1; }
+                }
+                Boton {
+                    height: 44px;
+                    texto: "SIGUIENTE PERSONA";
+                    activo: Estado.comparador-persona + 1 < Estado.comparador-personas.length;
+                    pulsado => { Estado.elegir-persona(Estado.comparador-persona + 1); }
+                }
+                Rectangle { horizontal-stretch: 1; }
+                Boton {
+                    height: 44px;
+                    width: 260px;
+                    principal: true;
+                    texto: "VINCULAR IDENTIDAD";
+                    activo: hay-candidato;
+                    pulsado => { Estado.vincular(root.persona.id, root.candidato.id); }
+                }
+            }
+        }
+    }
+}

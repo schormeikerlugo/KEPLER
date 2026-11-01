@@ -102,6 +102,23 @@ impl Cliente {
         }
     }
 
+    /// Bytes de una ruta con sesión (fotos).
+    pub async fn get_bytes(&self, ruta: &str) -> Resultado<Vec<u8>> {
+        self.renovar_si_toca().await?;
+        let token = self.token().await?;
+        let r = self
+            .http
+            .get(format!("{}{ruta}", self.base))
+            .bearer_auth(token)
+            .send()
+            .await
+            .map_err(red)?;
+        if !r.status().is_success() {
+            return Err(Error::Servidor(r.status().to_string()));
+        }
+        Ok(r.bytes().await.map_err(red)?.to_vec())
+    }
+
     /// POST con sesión (mismo reintento que `get`).
     pub async fn post<T: DeserializeOwned>(&self, ruta: &str, cuerpo: &Value) -> Resultado<T> {
         self.renovar_si_toca().await?;
