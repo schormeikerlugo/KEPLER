@@ -986,6 +986,108 @@ async fn punta_a_punta() {
     ok("captura con datos inválidos: rechazada sin tumbar el lote");
     vaciar(&mut cc).await;
 
+    // --- archivos e imágenes
+    let (s, a) = api.get(&yo, "/v1/archivos?tipo=personas").await;
+    assert_eq!(s, StatusCode::OK, "{a}");
+    let personas = a["items"].as_array().unwrap();
+    assert!(personas.iter().any(|p| p["nombre"] == "Conductor"));
+    assert!(
+        personas
+            .iter()
+            .all(|p| p.get("embedding").is_none() && p.get("posicion").is_none())
+    );
+    assert!(personas.iter().any(|p| p["tiene_embedding"] == true));
+    let (_, a) = api
+        .get(&yo, "/v1/archivos?tipo=objetos&q=autob&limite=1")
+        .await;
+    assert_eq!(a["items"].as_array().unwrap().len(), 1, "{a}");
+    assert_eq!(a["items"][0]["nombre"], "Autobús");
+    let (s, _) = api.get(&yo, "/v1/archivos?tipo=objetos&mision=xyz").await;
+    assert_eq!(s, StatusCode::UNPROCESSABLE_ENTITY);
+    let imagen = |c: &Cuenta, ruta: &str| {
+        http.get(format!("{}/v1/imagenes/{ruta}", api.base))
+            .bearer_auth(&c.token)
+            .send()
+    };
+    let r = imagen(&yo, &fotos_capturas[0]).await.unwrap();
+    assert_eq!(r.status(), StatusCode::OK);
+    assert!(
+        r.headers()["cache-control"]
+            .to_str()
+            .unwrap()
+            .contains("immutable")
+    );
+    assert_eq!(r.bytes().await.unwrap().len(), foto.len());
+    assert_eq!(
+        imagen(&otro, &fotos_capturas[0]).await.unwrap().status(),
+        StatusCode::NOT_FOUND,
+        "foto privada de otro"
+    );
+    assert_eq!(
+        imagen(&otro, &foto_hostil).await.unwrap().status(),
+        StatusCode::OK,
+        "foto de alerta compartida"
+    );
+    ok(
+        "archivos: listado propio sin embeddings, búsqueda; imágenes vía servidor con RLS de Storage",
+    );
+
+    // --- comparador: dos personas parecidas (similitud 0.70) por debajo del Re-ID automático
+    let mut eje = vec![0f32; 512];
+    eje[0] = 1.0;
+    let mut mezcla = vec![0f32; 512];
+    mezcla[0] = 0.7;
+    mezcla[1] = (1.0f32 - 0.49).sqrt();
+    let sospechoso_a = kepler_core::nuevo_id();
+    let sospechoso_b = kepler_core::nuevo_id();
+    let (_, r) = api
+        .post(
+            &yo,
+            "/v1/sync/subir",
+            json!({ "personas": [
+                con_meta(json!({ "id": sospechoso_a, "nombre": "Persona 21:10", "embedding": eje })),
+                con_meta(json!({ "id": sospechoso_b, "nombre": "El Tuerto", "embedding": mezcla })),
+            ]}),
+        )
+        .await;
+    assert!(r["rechazados"].as_array().unwrap().is_empty(), "{r}");
+    let (_, pend) = api.get(&yo, "/v1/identidades/pendientes").await;
+    let fila_a = pend
+        .as_array()
+        .unwrap_or_else(|| panic!("pendientes: {pend}"))
+        .iter()
+        .find(|p| p["id"] == json!(sospechoso_a))
+        .unwrap_or_else(|| panic!("A pendiente: {pend}"));
+    assert_eq!(fila_a["candidatos"][0]["id"], json!(sospechoso_b));
+    assert!((fila_a["candidatos"][0]["similitud"].as_f64().unwrap() - 0.7).abs() < 0.01);
+    let ruta = format!("/v1/personas/{sospechoso_a}/vincular");
+    let (s, v) = api.post(&yo, &ruta, json!({ "con": sospechoso_b })).await;
+    assert_eq!(s, StatusCode::OK, "{v}");
+    assert_eq!(
+        (v["nombre"].as_str(), &v["identidad_id"]),
+        (Some("El Tuerto"), &json!(sospechoso_b))
+    );
+    let (_, pend) = api.get(&yo, "/v1/identidades/pendientes").await;
+    assert!(
+        !pend
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|p| p["id"] == json!(sospechoso_a) || p["id"] == json!(sospechoso_b)),
+        "ya vinculadas: {pend}"
+    );
+    let (s, _) = api.post(&otro, &ruta, json!({ "con": sospechoso_b })).await;
+    assert_eq!(s, StatusCode::NOT_FOUND, "el otro no ve mis personas");
+    let (_, v) = api
+        .post(
+            &yo,
+            &format!("/v1/personas/{sospechoso_a}/desvincular"),
+            json!({}),
+        )
+        .await;
+    assert!(v["identidad_id"].is_null());
+    ok("comparador: pendiente con candidato al 70 %, vincular (nombre e identidad), desvincular");
+
     // Mapas offline con Range (lo que usa MapLibre)
     let (_, mapas) = api.get(&yo, "/v1/mapas").await;
     if let Some(region) = mapas.as_array().and_then(|m| m.first()) {
@@ -1034,7 +1136,12 @@ async fn punta_a_punta() {
     let (s, b) = api.get(&yo, "/v1/notificaciones?limite=200").await;
     assert_eq!(s, StatusCode::OK, "{b}");
     let propias = mensajes(&b);
-    for esperado in ["iniciada", "completada", "Re-ID: persona vinculada"] {
+    for esperado in [
+        "iniciada",
+        "completada",
+        "Re-ID: persona vinculada",
+        "Identidad vinculada: «El Tuerto»",
+    ] {
         assert!(
             propias.iter().any(|m| m.contains(esperado)),
             "falta «{esperado}» en {propias:?}"

@@ -36,6 +36,10 @@ Solo el autor edita; los demás suben `confirmaciones` (`vigente` / `no_vigente`
 | POST | `/v1/sync/subir` | `{ "<tabla>": [filas] }` con resolución de conflictos |
 | GET | `/v1/notificaciones?limite=&antes=&tipo=&solo_no_leidas=` | Bitácora (más reciente primero) + total de no leídas |
 | POST | `/v1/notificaciones/leer` | `{ids: [...]}` o `{todas: true}` |
+| GET | `/v1/archivos?tipo=objetos\|personas\|puntos_interes&mision=&q=&limite=&antes=` | Hallazgos propios para revisar (sin embeddings, con `tiene_embedding`); editar/borrar va por `/v1/sync/subir` |
+| GET | `/v1/imagenes/{ruta}` | Foto de Storage leída como el usuario (RLS de Storage); sin rate limit, caché inmutable |
+| GET | `/v1/identidades/pendientes` | Personas sueltas con parecidos ≥ 0,6 (por debajo del Re-ID automático): comparador |
+| POST | `/v1/personas/{id}/vincular` · `/desvincular` | `{con}`: pasa a la identidad (y nombre) de otra persona, con sus avistamientos |
 | GET | `/v1/dashboard?zona=` | Conteos, recientes, alertas y distancia de los últimos 7 días |
 | GET | `/v1/explorador?lat=&lng=` | Desgaste del calzado, resistencia y clima actual |
 | POST | `/v1/explorador/calzado` | Calzado nuevo (el desgaste vuelve a 0) |
@@ -62,6 +66,7 @@ La escribe la base de datos (migración `0006`), así funciona igual en línea q
 | POI compartido nuevo de riesgo alto o crítico | Todos los demás | warning / critical |
 | Persona hostil nueva (rasgos, sin nombre) | Todos los demás | critical |
 | Captura que coincide por Re-ID (la escribe kepler-server) | El explorador | info |
+| Identidad vinculada desde el comparador | El explorador | success |
 
 ### Visión (`crates/kepler-vision`)
 

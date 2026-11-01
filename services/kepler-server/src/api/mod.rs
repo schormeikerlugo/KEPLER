@@ -1,3 +1,4 @@
+mod archivos;
 mod capturas;
 mod catalogos;
 mod dashboard;
@@ -62,6 +63,10 @@ pub fn router(estado: Estado) -> Router {
         .route("/sync/subir", post(sync::subir))
         .route("/notificaciones", get(notificaciones::listar))
         .route("/notificaciones/leer", post(notificaciones::leer))
+        .route("/archivos", get(archivos::listar))
+        .route("/identidades/pendientes", get(archivos::pendientes))
+        .route("/personas/{id}/vincular", post(archivos::vincular))
+        .route("/personas/{id}/desvincular", post(archivos::desvincular))
         .route("/dashboard", get(dashboard::resumen))
         .route("/explorador", get(explorador::estado))
         .route("/explorador/calzado", post(explorador::reset_calzado))
@@ -86,6 +91,8 @@ pub fn router(estado: Estado) -> Router {
 
     let v1 = rest
         .route("/en-vivo", get(en_vivo::conectar))
+        // Las rejillas piden muchas fotos a la vez: sin rate limit (con sesión)
+        .route("/imagenes/{*ruta}", get(archivos::imagen))
         .merge(archivos_mapas);
 
     let mut app = Router::new()
