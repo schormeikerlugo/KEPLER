@@ -98,6 +98,7 @@ final class Camara: NSObject, ObservableObject {
     }
 
     nonisolated private static let contexto = CIContext()
+    nonisolated(unsafe) static var contador = 0
 
     private func configurar() -> Bool {
         guard let camara = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
@@ -189,6 +190,12 @@ extension Camara: AVCaptureVideoDataOutputSampleBufferDelegate {
         // Teléfono en vertical: el sensor entrega apaisado, girado 90° a la derecha
         let (w, h) = (CVPixelBufferGetWidth(buffer), CVPixelBufferGetHeight(buffer))
         let d = detector.detectar(buffer: buffer)
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["KEPLER_TRAZA"] == "1" {
+            Camara.contador += 1
+            if Camara.contador % 60 == 0 { Banco.compararConVision(buffer, propio: d) }
+        }
+        #endif
         // Retiene solo el último búfer (el que se recortaría al capturar)
         let imagen = CIImage(cvPixelBuffer: buffer).oriented(.right)
         Task { await publicar(d, imagen: imagen, tamano: CGSize(width: h, height: w), desde: inicio) }

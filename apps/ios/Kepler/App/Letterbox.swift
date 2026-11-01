@@ -59,8 +59,9 @@ final class Letterbox {
             }
             vImageScale_ARGB8888(&origen, &intermedio!, nil, vImage_Flags(kvImageNoFlags))
             var fondo: [UInt8] = [0, 0, 0, 0]
-            // kRotate270DegreesClockwise en vImage = 90° en sentido horario de la imagen
-            vImageRotate90_ARGB8888(&intermedio!, &zona, UInt8(kRotate270DegreesClockwise), &fondo,
+            // 90° en sentido horario: lo mismo que `.right` en Vision (comprobado con
+            // fotogramas reales de la cámara, KEPLER_TRAZA=1)
+            vImageRotate90_ARGB8888(&intermedio!, &zona, UInt8(kRotate90DegreesClockwise), &fondo,
                                     vImage_Flags(kvImageNoFlags))
         } else {
             vImageScale_ARGB8888(&origen, &zona, nil, vImage_Flags(kvImageNoFlags))
