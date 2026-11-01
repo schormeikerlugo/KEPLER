@@ -2,7 +2,8 @@
 //!
 //! `KEPLER_SERVIDOR` cambia la URL de kepler-server (por defecto cortex en la LAN).
 
-mod api;
+use kepler_cliente as api;
+
 mod archivos;
 mod bitacora;
 mod cortex;

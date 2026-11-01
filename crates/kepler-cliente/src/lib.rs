@@ -1,14 +1,32 @@
-//! Cliente HTTP de kepler-server. Los tokens solo viven en memoria (como el
-//! `sessionStorage` de la v0.7): cerrar la app o 15 min sin actividad = volver al login.
+//! Cliente HTTP de kepler-server, compartido por el Centro de Control y el
+//! núcleo del iPhone. Los tokens viven en memoria; el escritorio no los guarda
+//! (como el `sessionStorage` de la v0.7) y el iPhone guarda el de renovación en
+//! el Llavero vía [`Cliente::al_renovar`].
 
 use std::time::{Duration, Instant};
 
 use reqwest::{Client, StatusCode};
+use serde::Deserialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 use tokio::sync::RwLock;
 
-use crate::modelos::{Salud, Tokens};
+#[derive(Debug, Clone, Deserialize)]
+pub struct Tokens {
+    pub access_token: String,
+    pub refresh_token: String,
+    pub expires_in: i64,
+    pub usuario: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Salud {
+    pub estado: String,
+}
+
+/// Se llama cada vez que cambian los tokens (Auth rota el refresh token en cada
+/// renovación): el iPhone lo guarda en el Llavero para reabrir la sesión.
+pub type AlRenovar = Box<dyn Fn(&Tokens) + Send + Sync>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -31,6 +49,7 @@ pub struct Cliente {
     http: Client,
     base: String,
     sesion: RwLock<Option<Sesion>>,
+    al_renovar: std::sync::Mutex<Option<AlRenovar>>,
 }
 
 impl Cliente {
@@ -38,14 +57,31 @@ impl Cliente {
         let http = Client::builder()
             .timeout(Duration::from_secs(15))
             .connect_timeout(Duration::from_secs(4))
-            .user_agent(concat!("kepler-centro/", env!("CARGO_PKG_VERSION")))
+            .user_agent(concat!("kepler/", env!("CARGO_PKG_VERSION")))
             .build()
             .expect("cliente HTTP");
         Self {
             http,
             base: base.trim_end_matches('/').to_owned(),
             sesion: RwLock::new(None),
+            al_renovar: std::sync::Mutex::new(None),
         }
+    }
+
+    /// Aviso de tokens nuevos (entrar, renovar, restaurar).
+    pub fn al_renovar(&self, f: AlRenovar) {
+        *self.al_renovar.lock().expect("al_renovar") = Some(f);
+    }
+
+    /// Reabre una sesión guardada con su refresh token.
+    pub async fn restaurar(&self, refresh_token: &str) -> Resultado<String> {
+        let cuerpo = json!({ "refresh_token": refresh_token });
+        let tokens: Tokens = self
+            .publicar_sin_sesion("/v1/sesion/renovar", &cuerpo)
+            .await?;
+        let usuario = tokens.usuario.clone();
+        self.guardar(tokens).await;
+        Ok(usuario)
     }
 
     pub fn base(&self) -> &str {
@@ -88,6 +124,13 @@ impl Cliente {
             .map_err(red)?;
         let salud = leer(r).await?;
         Ok((salud, inicio.elapsed()))
+    }
+
+    /// `GET /health` completo y lo que tardó.
+    pub async fn salud_detalle_con_latencia(&self) -> Resultado<(Value, Duration)> {
+        let inicio = Instant::now();
+        let v = self.salud_detalle().await?;
+        Ok((v, inicio.elapsed()))
     }
 
     /// `GET /health` completo (base de datos, IA, visión, sesiones en vivo).
@@ -350,6 +393,9 @@ impl Cliente {
     }
 
     async fn guardar(&self, tokens: Tokens) {
+        if let Some(f) = self.al_renovar.lock().expect("al_renovar").as_ref() {
+            f(&tokens);
+        }
         let caduca = Instant::now() + Duration::from_secs(tokens.expires_in.max(60) as u64);
         *self.sesion.write().await = Some(Sesion { tokens, caduca });
     }

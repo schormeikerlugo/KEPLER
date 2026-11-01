@@ -1,0 +1,41 @@
+[package]
+name = "kepler-movil"
+description = "Núcleo Rust de la Unidad de Campo (iPhone), expuesto a Swift con UniFFI"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[lib]
+crate-type = ["lib", "staticlib", "cdylib"]
+
+[[bin]]
+# Genera los bindings de Swift: `cargo run -p kepler-movil --bin uniffi-bindgen -- generate --library ...`
+name = "uniffi-bindgen"
+path = "src/bin/uniffi-bindgen.rs"
+required-features = ["bindgen"]
+
+[features]
+bindgen = ["uniffi/cli"]
+
+[dependencies]
+kepler-cliente.workspace = true
+kepler-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { version = "1.54.1", features = ["rt-multi-thread", "sync", "time"] }
+uniffi = { version = "0.32.2", features = ["tokio"] }
+
+[build-dependencies]
+serde_json.workspace = true
+
+[lints.rust]
+# Lo que genera UniFFI necesita `unsafe` (FFI): deny en vez del forbid del workspace
+unsafe_code = "deny"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }

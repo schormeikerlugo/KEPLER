@@ -6,14 +6,6 @@ use serde::Deserialize;
 use serde_json::Value;
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct Tokens {
-    pub access_token: String,
-    pub refresh_token: String,
-    pub expires_in: i64,
-    pub usuario: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
 pub struct Perfil {
     pub nombre_usuario: Option<String>,
     pub nombre_visible: Option<String>,
@@ -26,11 +18,6 @@ pub struct Perfil {
     pub bio: Option<String>,
     #[serde(default)]
     pub ubicacion: Option<String>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct Salud {
-    pub estado: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]

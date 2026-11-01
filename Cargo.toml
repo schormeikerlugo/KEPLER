@@ -17,6 +17,7 @@ kepler-core = { path = "crates/kepler-core" }
 kepler-proto = { path = "crates/kepler-proto" }
 kepler-vision = { path = "crates/kepler-vision" }
 kepler-ai = { path = "crates/kepler-ai" }
+kepler-cliente = { path = "crates/kepler-cliente" }
 
 chrono = { version = "0.4.45", default-features = false, features = ["std", "clock", "serde"] }
 prost = "0.14.4"
