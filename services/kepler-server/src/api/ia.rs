@@ -480,6 +480,58 @@ pub async fn analizar(
     Ok(ndjson(rx))
 }
 
+/// `POST /v1/ia/documentar/{mision_id}` — Cortex redacta el reporte de una
+/// misión con sus datos reales y lo guarda en `misiones.descripcion_ia`.
+pub async fn documentar(
+    State(estado): State<Estado>,
+    sesion: Sesion,
+    Path(id): Path<Uuid>,
+) -> ApiResult<Json<Value>> {
+    let codigo: Option<String> = {
+        let mut tx = estado.db.como_usuario(&sesion).await?;
+        let c = sqlx::query_scalar(
+            "select codigo from public.misiones where id = $1 and eliminado_en is null",
+        )
+        .bind(id)
+        .fetch_optional(&mut *tx)
+        .await?;
+        tx.commit().await?;
+        c
+    };
+    let codigo = codigo.ok_or(ApiError::NoEncontrado("misión no encontrada"))?;
+    let datos = herramientas::ejecutar(
+        &estado,
+        &sesion,
+        "detalle_mision",
+        &json!({ "mision": codigo }),
+    )
+    .await;
+    let pedido = format!(
+        "Redacta el reporte de esta misión de exploración con sus datos reales (JSON):\n{datos}\n\n\
+         Formato Markdown, conciso, en tono táctico: ### Resumen (2-3 frases: dónde, cuánto, cuánto tiempo, \
+         clima al despegar), ### Hallazgos (viñetas; si no hubo, dilo) y ### Observaciones (riesgos, \
+         recomendaciones para volver). No inventes nada fuera de los datos."
+    );
+    let texto = estado
+        .ia
+        .completar(&[Mensaje::sistema(PERSONA), Mensaje::usuario(pedido)])
+        .await
+        .map_err(|e| ApiError::Interno(e.to_string()))?;
+    if texto.is_empty() {
+        return Err(ApiError::Interno("la IA no devolvió texto".into()));
+    }
+    let mut tx = estado.db.como_usuario(&sesion).await?;
+    sqlx::query("update public.misiones set descripcion_ia = $2 where id = $1")
+        .bind(id)
+        .bind(&texto)
+        .execute(&mut *tx)
+        .await?;
+    tx.commit().await?;
+    Ok(Json(
+        json!({ "descripcion_ia": texto, "modelo": estado.ia.modelo() }),
+    ))
+}
+
 /// Respuesta NDJSON alimentada por un canal.
 fn ndjson(rx: mpsc::Receiver<Value>) -> Response {
     let flujo = futures_util::stream::unfold(rx, |mut rx| async move {

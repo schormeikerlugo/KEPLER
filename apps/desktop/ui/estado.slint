@@ -17,6 +17,7 @@ export struct Conteo {
 }
 
 export struct FilaMision {
+    id: string,
     codigo: string,
     titulo: string,
     estado: string,
@@ -398,6 +399,22 @@ export global Estado {
     in property <[FilaSistema]> sis-filas;
     in property <bool> sis-cargando;
     callback sis-abrir();
+
+    // Misiones
+    in-out property <bool> mision-abierta;
+    in property <string> mision-id;
+    in property <string> mision-titulo;
+    in property <string> mision-codigo;
+    in property <string> mision-estado;
+    in property <string> mision-datos;
+    in property <string> mision-hallazgos;
+    in property <[LineaMd]> mision-reporte;
+    in property <bool> mision-ocupada;
+    in property <string> mision-mensaje;
+    in-out property <bool> nueva-mision-abierta;
+    callback abrir-mision(string);
+    callback mision-accion(string);
+    callback crear-mision(string, string, string, string, string);
 
     callback refrescar();
     callback ir(Pantalla);

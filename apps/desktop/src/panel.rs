@@ -19,7 +19,7 @@ use crate::api::{Cliente, Error};
 use crate::en_vivo::{self, Evento};
 use crate::modelos::{Aire, Clima, Dashboard, Explorador, Perfil, UbicacionIp};
 use crate::{AppWindow, Atencion, Conteo, DatoIndicador, DiaSemana, Estado, FilaMision, Pantalla};
-use crate::{archivos, bitacora, cortex, imagenes, perfil, tarjetas, vista_mapa, vivo};
+use crate::{archivos, bitacora, cortex, imagenes, misiones, perfil, tarjetas, vista_mapa, vivo};
 
 /// Igual que el session guard de la v0.7.
 const INACTIVIDAD: Duration = Duration::from_secs(15 * 60);
@@ -269,6 +269,21 @@ pub fn conectar(ui: &AppWindow, rt: Handle, cliente: Arc<Cliente>) {
         let objeto = ui.global::<Estado>().get_detalle().id.to_string();
         let c2 = c.clone();
         c.rt.spawn(async move { archivos::alternar_etiqueta(&c2, objeto, id.to_string()).await });
+    });
+    let c = ctx.clone();
+    estado.on_abrir_mision(move |id| misiones::abrir(&c, id.to_string()));
+    let c = ctx.clone();
+    estado.on_mision_accion(move |a| misiones::accion(&c, &a, |p| ir(&c, p)));
+    let c = ctx.clone();
+    estado.on_crear_mision(move |t, o, z, te, d| {
+        misiones::crear(
+            &c,
+            t.to_string(),
+            o.to_string(),
+            z.to_string(),
+            te.to_string(),
+            d.to_string(),
+        );
     });
     let c = ctx.clone();
     estado.on_cerrar_toast(move |id| {
@@ -761,6 +776,7 @@ impl VistaDashboard {
             .misiones
             .iter()
             .map(|m| FilaMision {
+                id: m.id.as_str().into(),
                 codigo: m.codigo.as_str().into(),
                 titulo: m
                     .titulo

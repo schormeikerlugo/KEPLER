@@ -1,5 +1,5 @@
 import { Tema } from "tema.slint";
-import { Tarjeta, Etiqueta, Titulo, Indicador, Barra, Pastilla } from "componentes.slint";
+import { Tarjeta, Etiqueta, Titulo, Indicador, Barra, Pastilla, Boton } from "componentes.slint";
 import { Foto } from "perfil.slint";
 import { TarjetaObjetos, TarjetaPois, TarjetaPersonas, TarjetaRutas, TarjetaConsejo, TarjetaNovedades } from "tarjetas.slint";
 import { Estado, Atencion, FilaMision } from "estado.slint";
@@ -59,7 +59,16 @@ component TablaMisiones inherits Tarjeta {
         padding-right: Tema.relleno-tarjeta-h;
         spacing: 6px;
         alignment: start;
-        Titulo { text: "Misiones"; }
+        HorizontalLayout {
+            Titulo { text: "Misiones"; vertical-alignment: center; }
+            Rectangle { horizontal-stretch: 1; }
+            Boton {
+                height: 26px;
+                principal: true;
+                texto: "+ NUEVA";
+                pulsado => { Estado.nueva-mision-abierta = true; }
+            }
+        }
         Rectangle { height: 10px; }
         HorizontalLayout {
             padding-left: 10px;
@@ -70,6 +79,12 @@ component TablaMisiones inherits Tarjeta {
         }
         for m in Estado.misiones: Rectangle {
             height: 42px;
+            border-radius: 6px;
+            background: fila-mision.has-hover ? Tema.superficie-hover : transparent;
+            fila-mision := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { Estado.abrir-mision(m.id); }
+            }
             Rectangle {
                 y: parent.height - 1px;
                 height: 1px;

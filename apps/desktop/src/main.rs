@@ -9,6 +9,7 @@ mod cortex;
 mod en_vivo;
 mod imagenes;
 mod mapa;
+mod misiones;
 mod modelos;
 mod panel;
 mod perfil;

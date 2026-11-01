@@ -35,6 +35,10 @@ pub struct Memoria {
     plan: Vec<(f64, f64)>,
     /// Seguridad sugerida por el último análisis del corredor.
     plan_seguridad: Option<&'static str>,
+    /// Último rastro dibujado: se repite si el mapa aún no estaba listo.
+    rastro: Option<String>,
+    /// Misión a marcar en el desplegable cuando se cargue la lista.
+    pendiente: Option<String>,
 }
 
 #[derive(Clone, Copy)]
@@ -212,6 +216,9 @@ async fn preparar(c: &Arc<Contexto>) {
     let _ = tx.send(Orden::Camara(m.camara()));
     m.orden = Some(tx);
     m.enviar_elementos();
+    if let Some(r) = m.rastro.clone() {
+        m.enviar(Orden::Rastro(r));
+    }
     let zoom = m.camara().zoom as f32;
     c.ui.upgrade_in_event_loop(move |ui| ui.global::<Estado>().set_mapa_zoom(zoom))
         .ok();
@@ -244,13 +251,28 @@ async fn cargar_misiones(c: &Arc<Contexto>) {
         nombres.push(titulo.to_owned());
         ids.push(m["id"].as_str().unwrap_or_default().to_owned());
     }
-    c.mapa.lock().expect("mapa").misiones = ids;
+    let elegida = {
+        let mut m = c.mapa.lock().expect("mapa");
+        m.misiones = ids;
+        m.pendiente
+            .take()
+            .and_then(|p| m.misiones.iter().position(|i| *i == p))
+    };
     c.ui.upgrade_in_event_loop(move |ui| {
         let modelo: Vec<SharedString> = nombres.into_iter().map(Into::into).collect();
-        ui.global::<Estado>()
-            .set_mapa_misiones(ModelRc::new(VecModel::from(modelo)));
+        let e = ui.global::<Estado>();
+        e.set_mapa_misiones(ModelRc::new(VecModel::from(modelo)));
+        if let Some(i) = elegida {
+            e.set_mapa_mision(i as i32);
+        }
     })
     .ok();
+}
+
+/// Desde el detalle de una misión: ir al mapa con su rastro.
+pub fn ver_mision(c: &Arc<Contexto>, id: String) {
+    c.mapa.lock().expect("mapa").pendiente = Some(id.clone());
+    mostrar_rastro(c, id);
 }
 
 // --- Llamadas desde la UI (hilo de Slint) --------------------------------------
@@ -706,6 +728,11 @@ pub fn elegir_mision(c: &Arc<Contexto>, indice: i32) {
             .cloned()
             .unwrap_or_default()
     };
+    mostrar_rastro(c, id);
+}
+
+/// Dibuja el rastro de la misión `id` ("" = ninguno) y encuadra la cámara.
+pub fn mostrar_rastro(c: &Arc<Contexto>, id: String) {
     let info = |c: &Arc<Contexto>, texto: String| {
         c.ui.upgrade_in_event_loop(move |ui| {
             ui.global::<Estado>().set_mapa_rastro_info(texto.into())
@@ -713,9 +740,11 @@ pub fn elegir_mision(c: &Arc<Contexto>, indice: i32) {
         .ok();
     };
     if id.is_empty() {
-        c.mapa.lock().expect("mapa").enviar(Orden::Rastro(
-            json!({ "type": "FeatureCollection", "features": [] }).to_string(),
-        ));
+        let mut m = c.mapa.lock().expect("mapa");
+        let vacio = json!({ "type": "FeatureCollection", "features": [] }).to_string();
+        m.rastro = Some(vacio.clone());
+        m.enviar(Orden::Rastro(vacio));
+        drop(m);
         info(c, String::new());
         return;
     }
@@ -747,8 +776,15 @@ pub fn elegir_mision(c: &Arc<Contexto>, indice: i32) {
         let geojson = json!({ "type": "Feature", "properties": {},
                               "geometry": { "type": "LineString", "coordinates": linea } });
         let mut m = c2.mapa.lock().expect("mapa");
+        m.rastro = Some(geojson.to_string());
         m.enviar(Orden::Rastro(geojson.to_string()));
-        let camara = encuadrar(&coords, m.tamano);
+        // Si el mapa aún no tiene tamaño (se abre desde otra pestaña), uno típico
+        let tamano = if m.tamano.0 > 0.0 {
+            m.tamano
+        } else {
+            (1500.0, 800.0)
+        };
+        let camara = encuadrar(&coords, tamano);
         m.camara = Some(camara);
         m.enviar(Orden::Camara(camara));
         drop(m);

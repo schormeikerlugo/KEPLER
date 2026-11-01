@@ -87,6 +87,7 @@ pub fn router(estado: Estado) -> Router {
         )
         .route("/ia/reporte", get(ia::reporte))
         .route("/ia/analizar", post(ia::analizar))
+        .route("/ia/documentar/{id}", post(ia::documentar))
         .route("/dashboard", get(dashboard::resumen))
         .route("/explorador", get(explorador::estado))
         .route("/explorador/calzado", post(explorador::reset_calzado))

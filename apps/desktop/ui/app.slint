@@ -12,6 +12,7 @@ import { PantallaMapa } from "mapa.slint";
 import { PantallaVivo } from "vivo.slint";
 import { PantallaCortex, VentanaIA } from "cortex.slint";
 import { VentanaPerfil, VentanaTaxonomia, VentanaSistema } from "perfil.slint";
+import { VentanaMision, VentanaNuevaMision } from "misiones.slint";
 
 export { Estado, Pantalla }
 
@@ -123,6 +124,18 @@ export component AppWindow inherits Window {
         background: #000000b3;
         TouchArea { clicked => { Estado.sis-abierto = false; } }
         VentanaSistema { cerrar => { Estado.sis-abierto = false; } }
+    }
+
+    if Estado.mision-abierta && Estado.pantalla != Pantalla.login: Rectangle {
+        background: #000000b3;
+        TouchArea { clicked => { Estado.mision-abierta = false; } }
+        VentanaMision { cerrar => { Estado.mision-abierta = false; } }
+    }
+
+    if Estado.nueva-mision-abierta && Estado.pantalla != Pantalla.login: Rectangle {
+        background: #000000b3;
+        TouchArea { }
+        VentanaNuevaMision { cerrar => { Estado.nueva-mision-abierta = false; } }
     }
 
     if root.acerca-abierto: Rectangle {

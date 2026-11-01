@@ -1107,6 +1107,10 @@ async fn punta_a_punta() {
         )
         .await;
     assert_eq!(s, StatusCode::NOT_FOUND);
+    let (s, _) = api
+        .post(&otro, &format!("/v1/ia/documentar/{mision}"), json!({}))
+        .await;
+    assert_eq!(s, StatusCode::NOT_FOUND, "misión ajena");
     ok("Cortex: validación del mensaje, conversación ajena o inexistente → 404");
 
     // --- mapa

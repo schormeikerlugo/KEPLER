@@ -69,6 +69,7 @@ pub struct Recientes {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Mision {
+    pub id: String,
     pub codigo: String,
     pub titulo: Option<String>,
     pub estado: String,

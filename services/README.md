@@ -48,6 +48,7 @@ Solo el autor edita; los demás suben `confirmaciones` (`vigente` / `no_vigente`
 | POST | `/v1/ia/chat` | `{chat_id?, mensaje, lat?, lng?}` → Cortex responde en streaming NDJSON (`estado`, `token`, `reiniciar`, `fin`, `error`) y guarda la conversación (título automático) |
 | GET / DELETE | `/v1/ia/chats` · `/v1/ia/chats/{id}` | Conversaciones / una conversación / borrado lógico |
 | GET | `/v1/ia/reporte?lat=&lng=&forzar=` | «Novedades de Cortex» en Markdown (tiempo y estado, hallazgos, sugerencia), caché 1 h |
+| POST | `/v1/ia/documentar/{mision_id}` | Cortex redacta el reporte de la misión con sus datos y lo guarda en `descripcion_ia` |
 | POST | `/v1/ia/analizar` | `{notificacion_id, lat?, lng?}` → Deep-Dive de una entrada de la bitácora (streaming) |
 | GET | `/v1/dashboard?zona=` | Conteos, recientes, alertas, distancia de los últimos 7 días, objetos por categoría y más vistos, POIs por categoría (propios/compartidos) |
 | GET | `/v1/explorador?lat=&lng=` | Desgaste del calzado, resistencia y clima actual |

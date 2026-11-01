@@ -1,0 +1,167 @@
+// Detalle de misión (ciclo de vida, rastro, hallazgos, reporte de Cortex) y nueva misión.
+import { Tema } from "tema.slint";
+import { Etiqueta, Titulo, Boton, Campo, CampoTexto, Opciones, Pastilla } from "componentes.slint";
+import { Estado } from "estado.slint";
+import { Markdown } from "cortex.slint";
+
+component Ventana inherits Rectangle {
+    border-radius: Tema.radio-grande;
+    background: #111316f8;
+    border-width: 1px;
+    border-color: Tema.borde-holo-sutil;
+    drop-shadow-blur: 40px;
+    drop-shadow-color: #000000cc;
+    TouchArea { }
+}
+
+export component VentanaMision inherits Ventana {
+    callback cerrar;
+    property <bool> confirmar-abortar;
+    property <color> tono: Estado.mision-estado == "activa" ? Tema.exito : Estado.mision-estado == "planificada" ? Tema.acento : Estado.mision-estado == "abortada" ? Tema.peligro : #999999;
+    width: 860px;
+    height: min(780px, cuerpo.preferred-height);
+    cuerpo := VerticalLayout {
+        padding: 30px;
+        spacing: 14px;
+        HorizontalLayout {
+            spacing: 14px;
+            VerticalLayout {
+                horizontal-stretch: 1;
+                spacing: 4px;
+                Titulo { text: Estado.mision-titulo; }
+                Etiqueta { text: Estado.mision-codigo; }
+            }
+            VerticalLayout { alignment: center; Pastilla { texto: Estado.mision-estado; tono: root.tono; } }
+        }
+        Text {
+            text: Estado.mision-datos;
+            color: Tema.texto-secundario;
+            font-size: 13px;
+            wrap: word-wrap;
+        }
+        Text {
+            text: Estado.mision-hallazgos;
+            color: Tema.acento;
+            font-size: 13px;
+        }
+        HorizontalLayout {
+            spacing: 10px;
+            alignment: start;
+            Boton { texto: "VER RASTRO EN EL MAPA"; pulsado => { Estado.mision-accion("mapa"); } }
+            Boton { texto: "VER HALLAZGOS"; pulsado => { Estado.mision-accion("hallazgos"); } }
+        }
+        Rectangle { height: 1px; background: Tema.borde-sutil; }
+        HorizontalLayout {
+            Titulo { text: "Reporte de Cortex"; vertical-alignment: center; }
+            Rectangle { horizontal-stretch: 1; }
+            if Estado.mision-estado == "completada": Boton {
+                principal: true;
+                texto: Estado.mision-ocupada ? "CORTEX ESTÁ ESCRIBIENDO…" : Estado.mision-reporte.length > 0 ? "REESCRIBIR CON CORTEX" : "DOCUMENTAR CON CORTEX";
+                activo: !Estado.mision-ocupada;
+                pulsado => { Estado.mision-accion("documentar"); }
+            }
+        }
+        Flickable {
+            min-height: Estado.mision-reporte.length > 0 ? 160px : 40px;
+            max-height: 360px;
+            preferred-height: reporte.preferred-height;
+            content-height: reporte.preferred-height;
+            reporte := Markdown { lineas: Estado.mision-reporte; }
+            if Estado.mision-reporte.length == 0: Text {
+                text: Estado.mision-estado == "completada" ? "Sin documentar todavía." : "Se documenta al completarla.";
+                color: Tema.texto-tenue;
+                font-size: 12.5px;
+            }
+        }
+        if Estado.mision-mensaje != "": Text {
+            text: Estado.mision-mensaje;
+            color: Tema.acento;
+            font-size: 12px;
+            wrap: word-wrap;
+        }
+        HorizontalLayout {
+            spacing: 10px;
+            if Estado.mision-estado == "planificada": Boton {
+                height: 42px;
+                principal: true;
+                texto: "INICIAR";
+                activo: !Estado.mision-ocupada;
+                pulsado => { Estado.mision-accion("iniciar"); }
+            }
+            if Estado.mision-estado == "activa": Boton {
+                height: 42px;
+                principal: true;
+                texto: "COMPLETAR";
+                activo: !Estado.mision-ocupada;
+                pulsado => { Estado.mision-accion("completar"); }
+            }
+            if Estado.mision-estado == "activa" || Estado.mision-estado == "planificada": Boton {
+                height: 42px;
+                texto: root.confirmar-abortar ? "¿ABORTAR DE VERDAD?" : "ABORTAR";
+                activo: !Estado.mision-ocupada;
+                pulsado => {
+                    if root.confirmar-abortar {
+                        Estado.mision-accion("abortar");
+                        root.confirmar-abortar = false;
+                    } else {
+                        root.confirmar-abortar = true;
+                    }
+                }
+            }
+            Rectangle { horizontal-stretch: 1; }
+            Boton { height: 42px; texto: "CERRAR"; pulsado => { root.cerrar(); } }
+        }
+    }
+}
+
+export component VentanaNuevaMision inherits Ventana {
+    callback cerrar;
+    property <string> terreno: "tierra";
+    property <string> dificultad: "moderada";
+    width: 640px;
+    height: cuerpo.preferred-height;
+    cuerpo := VerticalLayout {
+        padding: 30px;
+        spacing: 14px;
+        Titulo { text: "Nueva misión"; }
+        Etiqueta { text: "QUEDA PLANIFICADA: LA UNIDAD DE CAMPO LA INICIA AL SALIR"; }
+        titulo := Campo { etiqueta: "TÍTULO"; marcador: "p. ej. Reconocimiento del valle"; }
+        zona := Campo { etiqueta: "ZONA"; marcador: "p. ej. El Ávila"; }
+        objetivo := CampoTexto { etiqueta: "OBJETIVO"; alto: 64px; }
+        Opciones {
+            etiqueta: "TERRENO";
+            valor <=> root.terreno;
+            opciones: [
+                { valor: "llano", texto: "LLANO", tono: Tema.exito },
+                { valor: "asfalto", texto: "ASFALTO", tono: Tema.exito },
+                { valor: "tierra", texto: "TIERRA", tono: Tema.aviso },
+                { valor: "barro", texto: "BARRO", tono: Tema.aviso },
+                { valor: "rocoso", texto: "ROCOSO", tono: Tema.peligro },
+                { valor: "montana", texto: "MONTAÑA", tono: Tema.peligro },
+            ];
+        }
+        Opciones {
+            etiqueta: "DIFICULTAD";
+            valor <=> root.dificultad;
+            opciones: [
+                { valor: "baja", texto: "BAJA", tono: Tema.exito },
+                { valor: "moderada", texto: "MODERADA", tono: Tema.aviso },
+                { valor: "alta", texto: "ALTA", tono: Tema.peligro },
+            ];
+        }
+        if Estado.mision-mensaje != "": Text { text: Estado.mision-mensaje; color: Tema.peligro; font-size: 12px; }
+        HorizontalLayout {
+            spacing: 10px;
+            alignment: end;
+            Boton { height: 42px; texto: "CERRAR"; pulsado => { root.cerrar(); } }
+            Boton {
+                height: 42px;
+                width: 200px;
+                principal: true;
+                texto: "CREAR MISIÓN";
+                activo: titulo.texto != "" && !Estado.mision-ocupada;
+                pulsado => { Estado.crear-mision(titulo.texto, objetivo.texto, zona.texto, root.terreno, root.dificultad); }
+            }
+        }
+    }
+}
