@@ -2,18 +2,22 @@ import Accelerate
 import CoreVideo
 
 /// Letterbox de YOLO sin Vision (que tarda ~10 ms en escalar): el fotograma
-/// apaisado del sensor se reduce con vImage, se gira 90° y se centra en un
-/// cuadrado de 640×640 relleno de gris 114, igual que en el entrenamiento.
+/// apaisado del sensor se reduce con vImage, se gira 90° y se centra en la
+/// entrada del modelo (576×1024 vertical: la cámara 9:16 la llena sin bandas)
+/// rellena de gris 114, igual que en el entrenamiento.
 /// Reutiliza los búferes: un objeto por hilo.
 final class Letterbox {
-    static let lado = 640
+    let ancho: Int
+    let alto: Int
     let salida: CVPixelBuffer
     private var intermedio: vImage_Buffer?
     private var tamanoIntermedio = (0, 0)
 
-    init() {
+    init(ancho: Int, alto: Int) {
+        self.ancho = ancho
+        self.alto = alto
         var b: CVPixelBuffer?
-        CVPixelBufferCreate(nil, Letterbox.lado, Letterbox.lado, kCVPixelFormatType_32BGRA,
+        CVPixelBufferCreate(nil, ancho, alto, kCVPixelFormatType_32BGRA,
                             [kCVPixelBufferIOSurfacePropertiesKey: [:]] as CFDictionary, &b)
         salida = b!
     }
@@ -26,8 +30,9 @@ final class Letterbox {
     func preparar(_ buffer: CVPixelBuffer, girar: Bool) -> (ancho: Int, alto: Int) {
         let (w, h) = (CVPixelBufferGetWidth(buffer), CVPixelBufferGetHeight(buffer))
         let (ow, oh) = girar ? (h, w) : (w, h)
-        let escala = min(Double(Letterbox.lado) / Double(ow), Double(Letterbox.lado) / Double(oh))
-        let (dw, dh) = (max(1, Int((Double(ow) * escala).rounded())), max(1, Int((Double(oh) * escala).rounded())))
+        let escala = min(Double(ancho) / Double(ow), Double(alto) / Double(oh))
+        let dw = min(ancho, max(1, Int((Double(ow) * escala).rounded())))
+        let dh = min(alto, max(1, Int((Double(oh) * escala).rounded())))
         // Tamaño reducido antes de girar
         let (sw, sh) = girar ? (dh, dw) : (dw, dh)
 
@@ -41,13 +46,13 @@ final class Letterbox {
                                    width: vImagePixelCount(w), rowBytes: CVPixelBufferGetBytesPerRow(buffer))
         let filaSalida = CVPixelBufferGetBytesPerRow(salida)
         let base = CVPixelBufferGetBaseAddress(salida)!
-        var destino = vImage_Buffer(data: base, height: vImagePixelCount(Letterbox.lado),
-                                    width: vImagePixelCount(Letterbox.lado), rowBytes: filaSalida)
+        var destino = vImage_Buffer(data: base, height: vImagePixelCount(alto),
+                                    width: vImagePixelCount(ancho), rowBytes: filaSalida)
         var gris: [UInt8] = [114, 114, 114, 255]
         vImageBufferFill_ARGB8888(&destino, &gris, vImage_Flags(kvImageNoFlags))
 
         // Zona centrada donde va la imagen
-        let (x0, y0) = ((Letterbox.lado - dw) / 2, (Letterbox.lado - dh) / 2)
+        let (x0, y0) = ((ancho - dw) / 2, (alto - dh) / 2)
         var zona = vImage_Buffer(data: base.advanced(by: y0 * filaSalida + x0 * 4), height: vImagePixelCount(dh),
                                  width: vImagePixelCount(dw), rowBytes: filaSalida)
         if girar {

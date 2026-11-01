@@ -20,6 +20,8 @@ targets:
     sources:
       - path: Kepler
       # YOLO para CoreML (models/export/exportar_coreml.py; no versionado)
+      - path: ../../models/coreml/yolo26s_vertical.mlpackage
+      # Cuadrado 640×640: solo para comparar con el vertical (KEPLER_TRAZA); se quitará
       - path: ../../models/coreml/yolo26s.mlpackage
       - path: ../../design/fonts
         buildPhase: resources

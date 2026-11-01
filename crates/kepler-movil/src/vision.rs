@@ -1,12 +1,10 @@
 //! Detección en el iPhone: CoreML ejecuta YOLO26s (salida end-to-end
-//! `[1, 300, 6]`: x1, y1, x2, y2 en píxeles de la entrada 640×640, confianza,
-//! clase) y aquí se interpreta: deshacer el letterbox, filtrar, nombrar y
-//! elegir el objetivo que guardará la captura rápida.
+//! `[1, 300, 6]`: x1, y1, x2, y2 en píxeles de la entrada, confianza, clase)
+//! y aquí se interpreta: deshacer el letterbox, filtrar, nombrar y elegir el
+//! objetivo que guardará la captura rápida. La entrada es vertical (576×1024,
+//! la proporción de la cámara) o cuadrada (640×640).
 
 use kepler_core::coco;
-
-/// Lado de la entrada del modelo.
-pub const LADO: f32 = 640.0;
 
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct Deteccion {
@@ -23,12 +21,21 @@ pub struct Deteccion {
 }
 
 /// Salida del modelo → detecciones sobre una imagen de `ancho`×`alto` (ya
-/// orientada) que se escaló centrada dentro del cuadrado de 640 (letterbox).
+/// orientada) que se escaló centrada dentro de la entrada de
+/// `entrada_ancho`×`entrada_alto` (letterbox).
 #[uniffi::export]
-pub fn interpretar_yolo(salida: Vec<f32>, ancho: u32, alto: u32, umbral: f32) -> Vec<Deteccion> {
+pub fn interpretar_yolo(
+    salida: Vec<f32>,
+    ancho: u32,
+    alto: u32,
+    entrada_ancho: u32,
+    entrada_alto: u32,
+    umbral: f32,
+) -> Vec<Deteccion> {
     let (w, h) = (ancho.max(1) as f32, alto.max(1) as f32);
-    let escala = (LADO / w).min(LADO / h);
-    let (dx, dy) = ((LADO - w * escala) / 2.0, (LADO - h * escala) / 2.0);
+    let (ew, eh) = (entrada_ancho as f32, entrada_alto as f32);
+    let escala = (ew / w).min(eh / h);
+    let (dx, dy) = ((ew - w * escala) / 2.0, (eh - h * escala) / 2.0);
     let mut v: Vec<Deteccion> = salida
         .as_chunks::<6>()
         .0
@@ -84,7 +91,7 @@ mod tests {
             300.0, 300.0, 340.0, 340.0, 0.2, 5.0, // bajo el umbral
             0.0, 0.0, 10.0, 10.0, 0.8, 99.0, // clase inexistente
         ];
-        let d = interpretar_yolo(salida, 1080, 1920, 0.4);
+        let d = interpretar_yolo(salida, 1080, 1920, 640, 640, 0.4);
         assert_eq!(d.len(), 1);
         assert_eq!(
             (d[0].clase.as_str(), d[0].nombre.as_str()),
@@ -95,6 +102,23 @@ mod tests {
                 && (d[0].ancho - 1.0).abs() < 1e-5
                 && (d[0].alto - 1.0).abs() < 1e-5
         );
+    }
+
+    #[test]
+    fn entrada_vertical_sin_relleno() {
+        // 1080×1920 en 576×1024: escala exacta, sin bandas
+        let d = interpretar_yolo(
+            vec![288.0, 512.0, 576.0, 1024.0, 0.8, 39.0],
+            1080,
+            1920,
+            576,
+            1024,
+            0.4,
+        );
+        assert_eq!(d[0].nombre, "Botella");
+        for v in [d[0].x, d[0].y, d[0].ancho, d[0].alto] {
+            assert!((v - 0.5).abs() < 1e-5, "{v}");
+        }
     }
 
     #[test]

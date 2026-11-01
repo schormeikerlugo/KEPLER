@@ -29,6 +29,11 @@ final class Camara: NSObject, ObservableObject {
     private var cuenta = 0
     private var ventana = Date()
     @Published private(set) var imagenFija: UIImage?
+    /// Aumentos que ofrece la cámara (1× y, con teleobjetivo, 3× en el 13 Pro Max).
+    @Published private(set) var zoomsDisponibles: [Double] = [1]
+    @Published private(set) var zoom: Double = 1
+    private var dispositivo: AVCaptureDevice?
+    private var baseZoom: CGFloat = 1
 
     let sesion = AVCaptureSession()
     nonisolated static let umbral: Float = 0.35
@@ -100,8 +105,40 @@ final class Camara: NSObject, ObservableObject {
     nonisolated private static let contexto = CIContext()
     nonisolated(unsafe) static var contador = 0
 
+    /// Cámara virtual con teleobjetivo si la hay (el sistema cambia de lente según
+    /// el zoom); si no, la gran angular.
+    private func elegirCamara() -> AVCaptureDevice? {
+        let tipos: [AVCaptureDevice.DeviceType] = [.builtInTripleCamera, .builtInDualCamera, .builtInWideAngleCamera]
+        let candidatas = AVCaptureDevice.DiscoverySession(deviceTypes: tipos, mediaType: .video, position: .back).devices
+        for tipo in tipos {
+            if let c = candidatas.first(where: { $0.deviceType == tipo }), formato60(c) != nil { return c }
+        }
+        return AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)
+    }
+
+    /// Zoom del dispositivo para «1×» y los aumentos disponibles (1× y el del teleobjetivo).
+    private func niveles(_ c: AVCaptureDevice) -> (base: CGFloat, aumentos: [Double]) {
+        let cambios = c.virtualDeviceSwitchOverVideoZoomFactors.map { CGFloat($0.doubleValue) }
+        let lentes = c.constituentDevices.map(\.deviceType)
+        // Con ultra gran angular, el zoom 1.0 del dispositivo es ella (0.5×): «1×» es el primer cambio
+        let base = lentes.contains(.builtInUltraWideCamera) ? (cambios.first ?? 1) : 1
+        var aumentos: [Double] = [1]
+        if lentes.contains(.builtInTelephotoCamera), let tele = cambios.last {
+            aumentos.append(Double(tele / base))
+        }
+        return (base, aumentos)
+    }
+
+    func cambiarZoom(_ aumento: Double) {
+        guard let c = dispositivo, (try? c.lockForConfiguration()) != nil else { return }
+        let destino = min(max(baseZoom * CGFloat(aumento), c.minAvailableVideoZoomFactor), c.maxAvailableVideoZoomFactor)
+        c.ramp(toVideoZoomFactor: destino, withRate: 12)
+        c.unlockForConfiguration()
+        zoom = aumento
+    }
+
     private func configurar() -> Bool {
-        guard let camara = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
+        guard let camara = elegirCamara(),
               let entrada = try? AVCaptureDeviceInput(device: camara) else {
             estado = .sinCamara
             return false
@@ -115,6 +152,16 @@ final class Camara: NSObject, ObservableObject {
         }
         sesion.addInput(entrada)
         fijar60fps(camara)
+        dispositivo = camara
+        (baseZoom, zoomsDisponibles) = niveles(camara)
+        if (try? camara.lockForConfiguration()) != nil {
+            camara.videoZoomFactor = baseZoom
+            camara.unlockForConfiguration()
+        }
+        registro.notice("Cámara \(camara.deviceType.rawValue): aumentos \(self.zoomsDisponibles)")
+        #if DEBUG
+        print("TRAZA cámara \(camara.deviceType.rawValue) · aumentos \(zoomsDisponibles) · base \(baseZoom) · formato \(camara.activeFormat)")
+        #endif
         let salida = AVCaptureVideoDataOutput()
         salida.alwaysDiscardsLateVideoFrames = true
         salida.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
@@ -125,15 +172,18 @@ final class Camara: NSObject, ObservableObject {
         return true
     }
 
-    /// 1080p a 60 fps (el preset de 1080p trae 30). YOLO tarda ~7 ms: sobra margen.
-    private func fijar60fps(_ camara: AVCaptureDevice) {
-        let formato = camara.formats.first { f in
+    private func formato60(_ camara: AVCaptureDevice) -> AVCaptureDevice.Format? {
+        camara.formats.first { f in
             let d = CMVideoFormatDescriptionGetDimensions(f.formatDescription)
             return d.width == 1920 && d.height == 1080
                 && CMFormatDescriptionGetMediaSubType(f.formatDescription) == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange
                 && f.videoSupportedFrameRateRanges.contains { $0.maxFrameRate >= 60 }
         }
-        guard let formato, (try? camara.lockForConfiguration()) != nil else {
+    }
+
+    /// 1080p a 60 fps (el preset de 1080p trae 30). YOLO vertical tarda ~12 ms: cabe.
+    private func fijar60fps(_ camara: AVCaptureDevice) {
+        guard let formato = formato60(camara), (try? camara.lockForConfiguration()) != nil else {
             registro.notice("Sin formato 1080p a 60 fps: se queda el del preset")
             return
         }
@@ -159,9 +209,11 @@ final class Camara: NSObject, ObservableObject {
         }
     }
 
-    nonisolated private func publicar(_ d: [Deteccion], imagen: CIImage, tamano: CGSize, desde: Date) async {
+    nonisolated private func publicar(_ d: [Deteccion], imagen: CIImage, tamano: CGSize, desde: Date,
+                                      deteccion: TimeInterval? = nil) async {
         ultimo = imagen
-        let t = Date().timeIntervalSince(desde)
+        // Latencia = lo que tarda la detección (sin la espera al hilo principal)
+        let t = deteccion ?? Date().timeIntervalSince(desde)
         await MainActor.run {
             self.detecciones = d
             self.tamanoImagen = tamano
@@ -172,7 +224,10 @@ final class Camara: NSObject, ObservableObject {
                 self.fps = Double(self.cuenta) / pasado
                 #if DEBUG
                 if ProcessInfo.processInfo.environment["KEPLER_TRAZA"] == "1" {
-                    print(String(format: "TRAZA %.1f fps · %.1f ms · %d obj", self.fps, self.latenciaMs, d.count))
+                    let lente = self.dispositivo?.activePrimaryConstituent?.deviceType.rawValue
+                        .replacingOccurrences(of: "AVCaptureDeviceTypeBuiltIn", with: "") ?? "-"
+                    print(String(format: "TRAZA %.1f fps · %.1f ms · %d obj · %.0f× · %@", self.fps, self.latenciaMs,
+                                 d.count, self.zoom, lente))
                 }
                 #endif
                 self.cuenta = 0
@@ -190,37 +245,40 @@ extension Camara: AVCaptureVideoDataOutputSampleBufferDelegate {
         // Teléfono en vertical: el sensor entrega apaisado, girado 90° a la derecha
         let (w, h) = (CVPixelBufferGetWidth(buffer), CVPixelBufferGetHeight(buffer))
         let d = detector.detectar(buffer: buffer)
+        let duracion = Date().timeIntervalSince(inicio)
         #if DEBUG
-        if ProcessInfo.processInfo.environment["KEPLER_TRAZA"] == "1" {
+        if ProcessInfo.processInfo.environment["KEPLER_COMPARAR"] == "1" {
             Camara.contador += 1
-            if Camara.contador % 60 == 0 { Banco.compararConVision(buffer, propio: d) }
+            if Camara.contador % 60 == 0 { Banco.compararConCuadrado(buffer, vertical: d) }
         }
         #endif
         // Retiene solo el último búfer (el que se recortaría al capturar)
         let imagen = CIImage(cvPixelBuffer: buffer).oriented(.right)
-        Task { await publicar(d, imagen: imagen, tamano: CGSize(width: h, height: w), desde: inicio) }
+        Task { await publicar(d, imagen: imagen, tamano: CGSize(width: h, height: w), desde: inicio, deteccion: duracion) }
     }
 }
 
-/// YOLO26s en CoreML, sin Vision: letterbox propio con vImage (~1.7 ms) y el
-/// modelo en el Neural Engine (~5.6 ms) → ~7 ms por fotograma en el iPhone 13 Pro Max.
+/// YOLO26s en CoreML, sin Vision: letterbox propio con vImage y el modelo en
+/// el Neural Engine. Entrada vertical 576×1024 (la cámara la llena sin bandas:
+/// los objetos llegan 1.6× más grandes que con 640×640).
 final class Detector: @unchecked Sendable {
     private let modelo: MLModel?
     private let salida: String
-    private let letterbox = Letterbox()
+    private let letterbox: Letterbox
 
-    init() {
+    init(vertical: Bool = true) {
         let config = MLModelConfiguration()
         config.computeUnits = .all
+        var m: MLModel?
         do {
-            let m = try yolo26s(configuration: config).model
-            modelo = m
-            salida = m.modelDescription.outputDescriptionsByName.keys.first ?? ""
+            m = vertical ? try yolo26s_vertical(configuration: config).model : try yolo26s(configuration: config).model
         } catch {
             registro.error("No se pudo cargar YOLO: \(error.localizedDescription)")
-            modelo = nil
-            salida = ""
         }
+        modelo = m
+        salida = m?.modelDescription.outputDescriptionsByName.keys.first ?? ""
+        let entrada = m?.modelDescription.inputDescriptionsByName["image"]?.imageConstraint
+        letterbox = Letterbox(ancho: entrada?.pixelsWide ?? 576, alto: entrada?.pixelsHigh ?? 1024)
     }
 
     /// Fotograma del sensor (apaisado); `girar`: teléfono en vertical.
@@ -244,7 +302,9 @@ final class Detector: @unchecked Sendable {
         default:
             for i in 0..<n { valores[i] = matriz[i].floatValue }
         }
-        return interpretarYolo(salida: valores, ancho: UInt32(ancho), alto: UInt32(alto), umbral: Camara.umbral)
+        return interpretarYolo(salida: valores, ancho: UInt32(ancho), alto: UInt32(alto),
+                               entradaAncho: UInt32(letterbox.ancho), entradaAlto: UInt32(letterbox.alto),
+                               umbral: Camara.umbral)
     }
 
     /// Foto fija (simulador): se pasa a un búfer BGRA y se detecta sin girar.

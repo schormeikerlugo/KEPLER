@@ -37,6 +37,7 @@ struct MisionView: View {
                         .overlay(Capsule().stroke(aviso.tono.opacity(0.4), lineWidth: 1))
                         .transition(.opacity)
                 }
+                if camara.zoomsDisponibles.count > 1 { selectorZoom }
                 controles
             }
             .padding(.horizontal, Tema.Espacio.lg)
@@ -78,6 +79,28 @@ struct MisionView: View {
                 .background(.black.opacity(0.6), in: Capsule())
         }
         .padding(.top, Tema.Espacio.sm)
+    }
+
+    /// 1× / 3× (teleobjetivo), como en la cámara del iPhone.
+    private var selectorZoom: some View {
+        HStack(spacing: Tema.Espacio.sm) {
+            ForEach(camara.zoomsDisponibles, id: \.self) { z in
+                let activo = abs(camara.zoom - z) < 0.01
+                Button {
+                    UISelectionFeedbackGenerator().selectionChanged()
+                    camara.cambiarZoom(z)
+                } label: {
+                    Text(z == z.rounded() ? "\(Int(z))×" : String(format: "%.1f×", z))
+                        .font(Jura.fuente(activo ? 13 : 11, .bold))
+                        .foregroundStyle(activo ? Tema.Color.aviso : Tema.Color.texto)
+                        .frame(width: activo ? 42 : 34, height: activo ? 42 : 34)
+                        .background(.black.opacity(0.6), in: Circle())
+                }
+            }
+        }
+        .padding(4)
+        .background(.black.opacity(0.35), in: Capsule())
+        .animation(.easeOut(duration: Tema.Movimiento.rapido), value: camara.zoom)
     }
 
     private var controles: some View {
@@ -183,7 +206,12 @@ struct MisionView: View {
     #if DEBUG
     /// Pruebas en el simulador: `KEPLER_DEMO_SECCION=mision-captura|mision-poi|mision-poi-guardar`.
     private func demo() async {
-        let s = ProcessInfo.processInfo.environment["KEPLER_DEMO_SECCION"] ?? ""
+        let entorno = ProcessInfo.processInfo.environment
+        if let z = entorno["KEPLER_DEMO_ZOOM"].flatMap(Double.init) {
+            try? await Task.sleep(for: .seconds(8))
+            camara.cambiarZoom(z)
+        }
+        let s = entorno["KEPLER_DEMO_SECCION"] ?? ""
         guard s.hasPrefix("mision-") else { return }
         try? await Task.sleep(for: .seconds(3))
         if s == "mision-captura" { await capturar() }
