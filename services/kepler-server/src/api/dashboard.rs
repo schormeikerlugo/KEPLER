@@ -33,6 +33,8 @@ struct Conteos {
     personas: i64,
     puntos_interes: i64,
     rutas: i64,
+    /// Peligros y alertas activos reportados por otros exploradores.
+    reportes_compartidos: i64,
 }
 
 /// Lo que el dashboard marca como "requiere atención".
@@ -57,7 +59,7 @@ const RECIENTES: &[(&str, &str)] = &[
     ),
     (
         "objetos",
-        "select to_jsonb(t) - 'posicion' - 'embedding' from public.objetos t where eliminado_en is null order by capturado_en desc limit 5",
+        "select to_jsonb(t) - 'posicion' - 'embedding' from public.objetos t where user_id = (select auth.uid()) and eliminado_en is null order by capturado_en desc limit 5",
     ),
     (
         "personas",
@@ -65,7 +67,7 @@ const RECIENTES: &[(&str, &str)] = &[
     ),
     (
         "puntos_interes",
-        "select to_jsonb(t) - 'posicion' - 'embedding' from public.puntos_interes t where eliminado_en is null order by capturado_en desc limit 5",
+        "select to_jsonb(t) - 'posicion' - 'embedding' from public.puntos_interes t where user_id = (select auth.uid()) and eliminado_en is null order by capturado_en desc limit 5",
     ),
     (
         "rutas",
@@ -86,10 +88,14 @@ pub async fn resumen(
         "select
             (select count(*) from public.misiones where eliminado_en is null) as misiones,
             (select count(*) from public.misiones where eliminado_en is null and estado = 'activa') as misiones_activas,
-            (select count(*) from public.objetos where eliminado_en is null) as objetos,
+            (select count(*) from public.objetos where user_id = (select auth.uid()) and eliminado_en is null) as objetos,
             (select count(*) from public.personas where eliminado_en is null) as personas,
-            (select count(*) from public.puntos_interes where eliminado_en is null) as puntos_interes,
-            (select count(*) from public.rutas where eliminado_en is null) as rutas",
+            (select count(*) from public.puntos_interes where user_id = (select auth.uid()) and eliminado_en is null) as puntos_interes,
+            (select count(*) from public.rutas where eliminado_en is null) as rutas,
+            (select count(*) from public.puntos_interes
+              where user_id <> (select auth.uid()) and eliminado_en is null and estado <> 'inactivo')
+            + (select count(*) from public.alertas_personas where user_id <> (select auth.uid()))
+              as reportes_compartidos",
     )
     .fetch_one(&mut *tx)
     .await?;
@@ -97,13 +103,13 @@ pub async fn resumen(
     let alertas: Alertas = sqlx::query_as(
         "select
             (select count(*) from public.puntos_interes
-              where eliminado_en is null and nivel_riesgo in ('alto', 'critico') and estado <> 'inactivo') as pois_riesgo_alto,
+              where user_id = (select auth.uid()) and eliminado_en is null and nivel_riesgo in ('alto', 'critico') and estado <> 'inactivo') as pois_riesgo_alto,
             (select count(*) from public.personas
               where eliminado_en is null and hostilidad = 'hostil') as personas_hostiles,
             (select count(*) from public.misiones
               where eliminado_en is null and estado = 'completada' and coalesce(descripcion_ia, '') = '') as misiones_sin_reporte,
             (select count(*) from public.objetos
-              where eliminado_en is null and confianza < 0.5) as objetos_baja_confianza",
+              where user_id = (select auth.uid()) and eliminado_en is null and confianza < 0.5) as objetos_baja_confianza",
     )
     .fetch_one(&mut *tx)
     .await?;

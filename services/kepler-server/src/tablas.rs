@@ -1,7 +1,8 @@
 //! Tablas que participan en la sincronización offline (lista cerrada).
 
 use kepler_core::modelos::{
-    ChatSesion, Mision, Notificacion, Objeto, Persona, PuntoInteres, PuntoRastro, Ruta,
+    ChatSesion, Confirmacion, Mision, Notificacion, Objeto, Persona, PuntoInteres, PuntoRastro,
+    Ruta,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -20,6 +21,7 @@ pub enum Tabla {
     PuntosInteres,
     Notificaciones,
     ChatSesiones,
+    Confirmaciones,
 }
 
 impl Tabla {
@@ -33,6 +35,8 @@ impl Tabla {
         Self::PuntosInteres,
         Self::Notificaciones,
         Self::ChatSesiones,
+        // Después de los hallazgos: puede confirmar uno subido en el mismo lote.
+        Self::Confirmaciones,
     ];
 
     pub const fn nombre(self) -> &'static str {
@@ -45,6 +49,7 @@ impl Tabla {
             Self::PuntosInteres => "puntos_interes",
             Self::Notificaciones => "notificaciones",
             Self::ChatSesiones => "chat_sesiones",
+            Self::Confirmaciones => "confirmaciones",
         }
     }
 
@@ -56,13 +61,13 @@ impl Tabla {
     /// (`now()`), nunca el reloj del dispositivo, para que el cursor sea fiable.
     pub const fn columna_cursor(self) -> &'static str {
         match self {
-            Self::RastroGps => "creado_en",
+            Self::RastroGps | Self::Confirmaciones => "creado_en",
             _ => "actualizado_en",
         }
     }
 
     pub const fn solo_insercion(self) -> bool {
-        matches!(self, Self::RastroGps)
+        matches!(self, Self::RastroGps | Self::Confirmaciones)
     }
 
     pub const fn tiene_embedding(self) -> bool {
@@ -97,6 +102,7 @@ impl Tabla {
             Self::PuntosInteres => via::<PuntoInteres>(fila, user_id),
             Self::Notificaciones => via::<Notificacion>(fila, user_id),
             Self::ChatSesiones => via::<ChatSesion>(fila, user_id),
+            Self::Confirmaciones => via::<Confirmacion>(fila, user_id),
         }
     }
 }

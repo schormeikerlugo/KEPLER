@@ -4,7 +4,7 @@ use serde_json::Value;
 use uuid::Uuid;
 
 use super::sincronizable;
-use crate::{Coordenada, EstadoPoi, Hostilidad, Meta, NivelRiesgo};
+use crate::{Coordenada, EstadoPoi, Hostilidad, Meta, NivelRiesgo, Visibilidad};
 
 /// `objetos`: hallazgo genérico detectado por YOLO.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -30,6 +30,9 @@ pub struct Objeto {
         skip_serializing_if = "Option::is_none"
     )]
     pub embedding: Option<Vec<f32>>,
+    /// Privado por defecto; el explorador puede compartirlo.
+    #[serde(default)]
+    pub visibilidad: Visibilidad,
     #[serde(default)]
     pub atributos: Value,
     #[serde(default)]
@@ -94,6 +97,9 @@ pub struct PuntoInteres {
     pub nivel_riesgo: NivelRiesgo,
     #[serde(default)]
     pub estado: EstadoPoi,
+    /// Compartido por defecto: asentamientos, peligros y zonas de riesgo son de todos.
+    #[serde(default = "compartido")]
+    pub visibilidad: Visibilidad,
     pub clase_yolo: Option<String>,
     pub lat: Option<f64>,
     pub lng: Option<f64>,
@@ -112,6 +118,26 @@ pub struct PuntoInteres {
 }
 
 sincronizable!(PuntoInteres, "puntos_interes");
+
+fn compartido() -> Visibilidad {
+    Visibilidad::Compartido
+}
+
+/// `alertas_personas`: persona hostil reportada por cualquier explorador.
+/// Se comparte la descripción y la foto, nunca el nombre, el alias ni el embedding.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AlertaPersona {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub autor: Option<String>,
+    pub rasgos_fisicos: Option<String>,
+    pub contexto: Option<String>,
+    pub lat: Option<f64>,
+    pub lng: Option<f64>,
+    pub imagen_path: Option<String>,
+    pub capturado_en: DateTime<Utc>,
+    pub actualizado_en: DateTime<Utc>,
+}
 
 /// `etiquetas`
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

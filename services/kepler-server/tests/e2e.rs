@@ -526,13 +526,35 @@ async fn punta_a_punta() {
             .extend(meta.as_object().unwrap().clone());
         v
     };
+    // Fotos en Storage: una de la persona hostil (se compartirá) y una privada
+    let auth = var("KEPLER_E2E_AUTH");
+    let anon = var("KEPLER_E2E_ANON");
+    let yo_id = perfil["id"].as_str().unwrap().to_owned();
+    let foto_hostil = format!("{yo_id}/persona/{}.jpg", kepler_core::nuevo_id());
+    let foto_privada = format!("{yo_id}/objeto/{}.jpg", kepler_core::nuevo_id());
+    for foto in [&foto_hostil, &foto_privada] {
+        let r = http
+            .post(format!("{auth}/storage/v1/object/capturas/{foto}"))
+            .header("apikey", &anon)
+            .bearer_auth(&yo.token)
+            .header("content-type", "image/jpeg")
+            .body(vec![0xffu8, 0xd8, 0xff, 0xe0])
+            .send()
+            .await
+            .unwrap();
+        assert!(r.status().is_success(), "subida {foto}: {}", r.status());
+    }
+
+    let poi_id = kepler_core::nuevo_id();
+    let hostil_id = kepler_core::nuevo_id();
     let poi = con_meta(
-        json!({ "id": kepler_core::nuevo_id(), "nombre": "Derrumbe", "nivel_riesgo": "critico",
-                               "lat": 10.5005, "lng": -66.8000, "metadata": {} }),
+        json!({ "id": poi_id, "nombre": "Derrumbe", "nivel_riesgo": "critico",
+                "lat": 10.5005, "lng": -66.8000, "metadata": {} }),
     );
     let hostil = con_meta(
-        json!({ "id": kepler_core::nuevo_id(), "nombre": "Vigía", "hostilidad": "hostil",
-                                  "lat": 10.5000, "lng": -66.7995 }),
+        json!({ "id": hostil_id, "nombre": "Vigía", "hostilidad": "hostil",
+                "rasgos_fisicos": "Chaqueta roja, barba", "imagen_path": foto_hostil,
+                "lat": 10.5000, "lng": -66.7995 }),
     );
     let mut ruta = con_meta(
         json!({ "id": kepler_core::nuevo_id(), "nombre": "Paso del cóndor", "origen": "registrada",
@@ -547,6 +569,27 @@ async fn punta_a_punta() {
         )
         .await;
     assert!(r["rechazados"].as_array().unwrap().is_empty(), "{r}");
+    let poi_servidor = r["aplicados"]["puntos_interes"][0].clone();
+    assert_eq!(
+        poi_servidor["visibilidad"], "compartido",
+        "POIs compartidos por defecto"
+    );
+
+    // Aviso en vivo: lo recibe el otro explorador, no el autor
+    let mut avisos = Vec::new();
+    for _ in 0..2 {
+        if let Some(Contenido::Reporte(rep)) = recibir(&mut ajeno).await.and_then(|e| e.contenido) {
+            assert_eq!(rep.autor, u1);
+            avisos.push(rep.nivel);
+        }
+    }
+    avisos.sort();
+    assert_eq!(avisos, ["critico", "hostil"]);
+    assert!(
+        nada_en(&mut cc, 300).await,
+        "el autor no recibe su propio aviso"
+    );
+    ok("aviso en vivo de peligro nuevo al otro explorador (POI crítico + persona hostil)");
 
     let trazado = json!({ "waypoints": [[10.49, -66.80], [10.51, -66.80]], "corredor_m": 200 });
     let (s, a) = api.post(&yo, "/v1/rutas/analizar", trazado.clone()).await;
@@ -566,12 +609,103 @@ async fn punta_a_punta() {
         (Some("critico"), Some(30))
     );
     assert!((a["distancia_km"].as_f64().unwrap() - 2.21).abs() < 0.05);
-    let (_, a_otro) = api.post(&otro, "/v1/rutas/analizar", trazado).await;
-    assert_eq!(a_otro["riesgo"]["puntuacion"], 0);
     ok(&format!(
-        "análisis de ruta ({} km): riesgo crítico 30; el otro usuario no ve nada",
+        "análisis de ruta propio ({} km): riesgo crítico 30",
         a["distancia_km"]
     ));
+
+    // El otro explorador ve el POI y la alerta, pero no la ruta (privada)
+    let (_, a_otro) = api.post(&otro, "/v1/rutas/analizar", trazado.clone()).await;
+    assert_eq!(a_otro["puntos_interes"][0]["propio"], false);
+    assert_eq!(a_otro["puntos_interes"][0]["autor"], u1);
+    assert_eq!(a_otro["puntos_interes"][0]["vigencia"], "vigente");
+    let alerta = &a_otro["personas"][0];
+    assert_eq!(alerta["nombre"], "Persona hostil", "sin el nombre real");
+    assert_eq!(alerta["descripcion"], "Chaqueta roja, barba");
+    assert_eq!(alerta["imagen_path"], json!(foto_hostil));
+    assert!(
+        a_otro["rutas"].as_array().unwrap().is_empty(),
+        "las rutas son privadas"
+    );
+    assert_eq!(
+        (
+            a_otro["riesgo"]["nivel"].as_str(),
+            a_otro["riesgo"]["puntuacion"].as_u64()
+        ),
+        (Some("alto"), Some(25))
+    );
+    ok("el otro explorador ve POI y alerta (con autor, descripción y foto), no la ruta: riesgo 25");
+
+    // Fotos: la de la alerta se comparte, la privada no
+    let ver = |foto: String| {
+        http.get(format!(
+            "{auth}/storage/v1/object/authenticated/capturas/{foto}"
+        ))
+        .header("apikey", anon.clone())
+        .bearer_auth(otro.token.clone())
+        .send()
+    };
+    assert_eq!(
+        ver(foto_hostil.clone()).await.unwrap().status(),
+        StatusCode::OK
+    );
+    assert_ne!(
+        ver(foto_privada.clone()).await.unwrap().status(),
+        StatusCode::OK
+    );
+    ok("foto de la alerta visible para el otro; foto privada no");
+
+    // Solo el autor edita lo compartido
+    let mut pisado = poi_servidor.clone();
+    pisado["nombre"] = json!("Despejado");
+    pisado["version"] = json!(poi_servidor["version"].as_i64().unwrap() + 1);
+    let (_, r) = api
+        .post(
+            &otro,
+            "/v1/sync/subir",
+            json!({ "puntos_interes": [pisado] }),
+        )
+        .await;
+    assert!(
+        r["rechazados"][0]["motivo"]
+            .as_str()
+            .unwrap()
+            .contains("otro explorador"),
+        "{r}"
+    );
+    ok("el otro explorador no puede editar el POI compartido");
+
+    // Lo que baja el otro al sincronizar
+    let (_, c_otro) = api.get(&otro, "/v1/sync/cambios").await;
+    assert!(
+        c_otro["tablas"]["puntos_interes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|p| p["id"] == json!(poi_id))
+    );
+    assert!(c_otro["tablas"]["rutas"].as_array().unwrap().is_empty());
+    assert!(
+        c_otro["tablas"]["objetos"].as_array().unwrap().is_empty(),
+        "objetos privados por defecto"
+    );
+    let alertas = c_otro["alertas_personas"].as_array().unwrap();
+    assert_eq!(alertas.len(), 1);
+    assert!(alertas[0].get("nombre").is_none() && alertas[0].get("embedding").is_none());
+    assert!(
+        c_otro["exploradores"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|e| e["nombre_usuario"] == u1)
+    );
+    let (_, d_otro) = api.get(&otro, "/v1/dashboard").await;
+    assert_eq!(d_otro["conteos"]["reportes_compartidos"], 2);
+    assert_eq!(
+        d_otro["conteos"]["puntos_interes"], 0,
+        "el dashboard cuenta solo lo propio"
+    );
+    ok("sync del otro: POI compartido y alerta sin nombre; sin rutas ni objetos privados");
 
     let (_, c) = api
         .get(&yo, "/v1/alertas/cercanas?lat=10.5&lng=-66.8&radio_m=300")
@@ -588,6 +722,46 @@ async fn punta_a_punta() {
             + c["rutas"].as_array().unwrap().len(),
         c["riesgo"]["nivel"]
     ));
+
+    // Confirmaciones del otro explorador
+    let confirmacion = |entidad: &str, registro, tipo: &str| {
+        json!({ "id": kepler_core::nuevo_id(), "entidad": entidad, "registro_id": registro,
+                "tipo": tipo, "creado_en": chrono::Utc::now() })
+    };
+    let (_, r) = api
+        .post(
+            &otro,
+            "/v1/sync/subir",
+            json!({ "confirmaciones": [
+            confirmacion("poi", poi_id, "vigente"),
+            confirmacion("persona", hostil_id, "no_vigente"),
+            confirmacion("poi", objeto_id, "vigente"), // objeto privado: no se puede
+        ] }),
+        )
+        .await;
+    assert_eq!(
+        r["aplicados"]["confirmaciones"].as_array().unwrap().len(),
+        2,
+        "{r}"
+    );
+    assert_eq!(r["rechazados"].as_array().unwrap().len(), 1, "{r}");
+    let (_, a) = api.post(&yo, "/v1/rutas/analizar", trazado).await;
+    assert_eq!(a["personas"][0]["vigencia"], "retirado");
+    assert_eq!(
+        (
+            a["riesgo"]["nivel"].as_str(),
+            a["riesgo"]["puntuacion"].as_u64()
+        ),
+        (Some("alto"), Some(20))
+    );
+    let (_, c) = api
+        .get(&yo, "/v1/alertas/cercanas?lat=10.5&lng=-66.8&radio_m=300")
+        .await;
+    assert!(
+        c["personas"].as_array().unwrap().is_empty(),
+        "lo retirado no aparece en alertas"
+    );
+    ok("confirmaciones: POI confirmado, persona retirada (riesgo 30 → 20), privado rechazado");
 
     // Mapas offline con Range (lo que usa MapLibre)
     let (_, mapas) = api.get(&yo, "/v1/mapas").await;
@@ -624,6 +798,15 @@ async fn punta_a_punta() {
         Some(Contenido::Error(_))
     ));
     ok("mensaje de texto en WebSocket → Error");
+
+    for foto in [&foto_hostil, &foto_privada] {
+        http.delete(format!("{auth}/storage/v1/object/capturas/{foto}"))
+            .header("apikey", &anon)
+            .bearer_auth(&yo.token)
+            .send()
+            .await
+            .unwrap();
+    }
 
     println!("\nE2E completo.");
 }

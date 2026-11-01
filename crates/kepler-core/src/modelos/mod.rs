@@ -4,6 +4,7 @@
 
 mod catalogos;
 mod chat;
+mod confirmacion;
 mod hallazgos;
 mod mision;
 mod notificacion;
@@ -12,7 +13,8 @@ mod ruta;
 
 pub use catalogos::{Categoria, PoiCategoria, Subcategoria};
 pub use chat::{ChatSesion, MensajeChat};
-pub use hallazgos::{Etiqueta, Objeto, ObjetoEtiqueta, Persona, PuntoInteres};
+pub use confirmacion::Confirmacion;
+pub use hallazgos::{AlertaPersona, Etiqueta, Objeto, ObjetoEtiqueta, Persona, PuntoInteres};
 pub use mision::{Mision, PuntoRastro, ResumenRastro};
 pub use notificacion::Notificacion;
 pub use perfil::Perfil;

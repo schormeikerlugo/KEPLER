@@ -134,6 +134,17 @@ enum_texto! {
 }
 
 enum_texto! {
+    /// Quién puede ver un hallazgo. Las rutas y las personas no se comparten.
+    #[derive(Default)]
+    Visibilidad { #[default] Privado => "privado", Compartido => "compartido" }
+}
+
+enum_texto! {
+    /// Lo que otro explorador dice de un reporte compartido.
+    TipoConfirmacion { Vigente => "vigente", NoVigente => "no_vigente" }
+}
+
+enum_texto! {
     RolChat { Usuario => "user", Asistente => "assistant" }
 }
 

@@ -103,6 +103,7 @@ en_contenido! {
     Ping => Ping,
     Pong => Pong,
     Suscripcion => Suscripcion,
+    ReporteCompartido => Reporte,
 }
 
 #[cfg(test)]

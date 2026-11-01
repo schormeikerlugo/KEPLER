@@ -64,6 +64,16 @@ impl Difusor {
         }
     }
 
+    /// A todos los usuarios conectados menos `excluir` (avisos compartidos).
+    pub fn publicar_a_otros(&self, excluir: Uuid, relevo: Relevo) {
+        let relevo = std::sync::Arc::new(relevo);
+        for (user, tx) in self.canales.lock().expect("difusor").iter() {
+            if *user != excluir {
+                let _ = tx.send(relevo.clone());
+            }
+        }
+    }
+
     pub fn sesiones(&self) -> usize {
         self.sesiones.load(Ordering::Relaxed)
     }
@@ -91,6 +101,17 @@ mod tests {
         );
         assert_eq!(rx_yo.recv().await.unwrap().bytes, vec![1, 2]);
         assert!(rx_otro.try_recv().is_err());
+
+        d.publicar_a_otros(
+            yo,
+            Relevo {
+                origen: None,
+                clase: Clase::Otro,
+                bytes: vec![3],
+            },
+        );
+        assert_eq!(rx_otro.recv().await.unwrap().bytes, vec![3]);
+        assert!(rx_yo.try_recv().is_err());
 
         drop(rx_yo);
         d.desuscribir(yo);

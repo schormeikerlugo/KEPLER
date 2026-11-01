@@ -8,6 +8,17 @@ API REST + WebSocket en vivo en Rust (axum + sqlx), desplegada en cortex como `k
 - Cada petición abre una transacción con el rol `authenticated` y los claims del usuario: **RLS se aplica también al servidor**.
 - Sin `SERVICE_ROLE_KEY`: el servidor no puede ver datos de otros usuarios aunque tenga un bug.
 
+### Datos compartidos
+
+| Dato | Visibilidad |
+|---|---|
+| Puntos de interés | **Compartidos por defecto** (`visibilidad`), el autor puede hacerlos privados |
+| Objetos | Privados por defecto, el autor puede compartirlos |
+| Personas hostiles | Alerta compartida con descripción y foto (`alertas_personas`), sin nombre ni embedding |
+| Rutas, misiones, rastro GPS, notificaciones, chat, perfil | Siempre privados |
+
+Solo el autor edita; los demás suben `confirmaciones` (`vigente` / `no_vigente`). Un reporte sin confirmar en 30 días queda *sin verificar* (pesa la mitad en el riesgo) y uno marcado como `no_vigente` después de su última confirmación queda *retirado* (no cuenta). Un POI de riesgo alto/crítico o una persona hostil nuevos se avisan en vivo (`ReporteCompartido`) a los demás exploradores conectados.
+
 ### Endpoints
 
 | Método | Ruta | Descripción |

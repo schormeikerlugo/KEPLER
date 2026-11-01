@@ -7,6 +7,7 @@
 //!
 //! Subir: `POST /v1/sync/subir` con `{ "<tabla>": [filas] }`. Cada fila se
 //! valida con `kepler-core` y se resuelve con [`kepler_core::resolver_conflicto`].
+//! Lo que otro explorador comparte se baja pero no se puede editar.
 
 use std::collections::BTreeMap;
 
@@ -19,8 +20,12 @@ use serde_json::Value;
 use sqlx::{Acquire, AssertSqlSafe};
 use uuid::Uuid;
 
+use kepler_proto::v1::{Entidad as ProtoEntidad, ReporteCompartido};
+use kepler_proto::{Emisor, codificar, uuid_a_bytes};
+
 use crate::auth::Sesion;
 use crate::db::{Tx, leer_json};
+use crate::difusor::{Clase, Relevo};
 use crate::error::{ApiError, ApiResult};
 use crate::escritura;
 use crate::estado::Estado;
@@ -46,6 +51,11 @@ pub struct Cambios {
     /// `false` si alguna tabla se cortó por el límite: volver a llamar ya.
     completo: bool,
     tablas: BTreeMap<&'static str, Vec<Value>>,
+    /// Personas hostiles reportadas por otros. Lista completa en cada llamada:
+    /// reemplaza la caché (una alerta desaparece si deja de ser hostil).
+    alertas_personas: Vec<Value>,
+    /// Directorio de exploradores, para mostrar el autor de cada reporte.
+    exploradores: Vec<Value>,
 }
 
 /// `GET /v1/sync/cambios`
@@ -99,11 +109,23 @@ pub async fn cambios(
         }
         tablas.insert(tabla.nombre(), filas);
     }
+    let alertas_personas: Vec<Value> = sqlx::query_scalar(
+        "select to_jsonb(a) - 'posicion' from public.alertas_personas a
+         where a.user_id <> (select auth.uid()) order by a.actualizado_en",
+    )
+    .fetch_all(&mut *tx)
+    .await?;
+    let exploradores: Vec<Value> =
+        sqlx::query_scalar("select to_jsonb(e) from public.exploradores e order by nombre_usuario")
+            .fetch_all(&mut *tx)
+            .await?;
     tx.commit().await?;
     Ok(Json(Cambios {
         cursor,
         completo,
         tablas,
+        alertas_personas,
+        exploradores,
     }))
 }
 
@@ -149,6 +171,7 @@ pub async fn subir(
     }
 
     let mut resultado = ResultadoSubida::default();
+    let mut avisos: Vec<(Tabla, Value)> = Vec::new();
     let mut tx = estado.db.como_usuario(&sesion).await?;
 
     // En orden de dependencias (rutas → misiones → hallazgos)
@@ -178,8 +201,11 @@ pub async fn subir(
             // Savepoint: una fila rechazada por la base no aborta el resto del lote.
             let mut sp = tx.begin().await?;
             match aplicar_fila(&estado, &mut sp, tabla, id, &fila).await {
-                Ok((final_, conflicto)) => {
+                Ok((final_, conflicto, nuevo)) => {
                     sp.commit().await?;
+                    if nuevo && es_peligro_compartido(tabla, &final_) {
+                        avisos.push((tabla, final_.clone()));
+                    }
                     resultado
                         .aplicados
                         .entry(tabla.nombre())
@@ -204,20 +230,103 @@ pub async fn subir(
             }
         }
     }
+    let autor: Option<String> = if avisos.is_empty() {
+        None
+    } else {
+        sqlx::query_scalar("select nombre_usuario from public.perfiles where id = $1")
+            .bind(sesion.user_id)
+            .fetch_optional(&mut *tx)
+            .await?
+    };
     tx.commit().await?;
+
+    for (tabla, fila) in avisos {
+        avisar(
+            &estado,
+            &sesion,
+            tabla,
+            &fila,
+            autor.as_deref().unwrap_or_default(),
+        );
+    }
     Ok(Json(resultado))
 }
 
-/// Devuelve la fila final y, si hubo conflicto, quién ganó.
+/// POI compartido de riesgo alto/crítico o persona hostil.
+fn es_peligro_compartido(tabla: Tabla, fila: &Value) -> bool {
+    match tabla {
+        Tabla::PuntosInteres => {
+            fila["visibilidad"] == "compartido"
+                && matches!(fila["nivel_riesgo"].as_str(), Some("alto" | "critico"))
+        }
+        Tabla::Personas => fila["hostilidad"] == "hostil",
+        _ => false,
+    }
+}
+
+fn avisar(estado: &Estado, sesion: &Sesion, tabla: Tabla, fila: &Value, autor: &str) {
+    let es_persona = tabla == Tabla::Personas;
+    let Some(id) = fila["id"].as_str().and_then(|s| s.parse::<Uuid>().ok()) else {
+        return;
+    };
+    let (Some(lat), Some(lng)) = (fila["lat"].as_f64(), fila["lng"].as_f64()) else {
+        return; // sin ubicación no se puede avisar por cercanía
+    };
+    let reporte = ReporteCompartido {
+        entidad: if es_persona {
+            ProtoEntidad::Persona
+        } else {
+            ProtoEntidad::Poi
+        }
+        .into(),
+        id: uuid_a_bytes(id),
+        // De una persona no se comparte el nombre
+        nombre: if es_persona {
+            "Persona hostil".into()
+        } else {
+            fila["nombre"].as_str().unwrap_or_default().to_owned()
+        },
+        nivel: if es_persona {
+            "hostil".into()
+        } else {
+            fila["nivel_riesgo"].as_str().unwrap_or_default().to_owned()
+        },
+        lat,
+        lng,
+        autor: autor.to_owned(),
+        imagen_path: fila["imagen_path"].as_str().map(str::to_owned),
+    };
+    let envoltura = Emisor::default().envolver(reporte, Utc::now().timestamp_millis());
+    estado.difusor.publicar_a_otros(
+        sesion.user_id,
+        Relevo {
+            origen: None,
+            clase: Clase::Otro,
+            bytes: codificar(&envoltura),
+        },
+    );
+}
+
+/// Devuelve la fila final, quién ganó si hubo conflicto y si se creó ahora.
 async fn aplicar_fila(
     estado: &Estado,
     tx: &mut Tx<'_>,
     tabla: Tabla,
     id: Uuid,
     fila: &Value,
-) -> ApiResult<(Value, Option<&'static str>)> {
+) -> ApiResult<(Value, Option<&'static str>, bool)> {
     let db = &estado.db;
-    let conflicto = match leer_json(tx, tabla, id).await? {
+    let existente = leer_json(tx, tabla, id).await?;
+    // Lo compartido por otro se ve pero no se edita (se confirma o se retira).
+    if let Some(servidor) = &existente
+        && servidor["user_id"] != fila["user_id"]
+    {
+        return Err(ApiError::Conflicto(
+            "pertenece a otro explorador: usa confirmaciones".into(),
+        ));
+    }
+    let nuevo = existente.is_none();
+    let conflicto = match existente {
         None => {
             if !escritura::insertar(db, tx, tabla, fila).await? {
                 return Err(ApiError::Conflicto("el id ya está en uso".into()));
@@ -246,7 +355,7 @@ async fn aplicar_fila(
     let final_ = leer_json(tx, tabla, id)
         .await?
         .ok_or(ApiError::NoEncontrado("fila no visible"))?;
-    Ok((final_, conflicto))
+    Ok((final_, conflicto, nuevo))
 }
 
 fn meta_de(fila: &Value) -> ApiResult<Meta> {

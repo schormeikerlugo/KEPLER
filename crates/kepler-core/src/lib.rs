@@ -14,10 +14,11 @@ pub mod riesgo;
 mod sync;
 mod usuario;
 pub mod vector_pg;
+pub mod vigencia;
 
 pub use enums::{
     Dificultad, Entidad, EstadoMision, EstadoPoi, Hostilidad, NivelRiesgo, OrigenRuta, Rol,
-    RolChat, Seguridad, TipoNotificacion, TipoTerreno,
+    RolChat, Seguridad, TipoConfirmacion, TipoNotificacion, TipoTerreno, Visibilidad,
 };
 pub use error::{Error, Resultado};
 pub use geo::{Coordenada, RADIO_TIERRA_M};

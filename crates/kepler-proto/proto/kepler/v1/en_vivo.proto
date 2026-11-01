@@ -35,6 +35,7 @@ message Envoltura {
     Ping ping = 20;
     Pong pong = 21;
     Suscripcion suscripcion = 22;
+    ReporteCompartido reporte = 23;
   }
 }
 
@@ -224,4 +225,18 @@ message EventoMision {
   bytes mision_id = 1;
   TipoEventoMision tipo = 2;
   string codigo = 3;
+}
+
+// Otro explorador reportó un peligro (POI de riesgo alto/crítico o persona
+// hostil). Se envía a todos los demás; el cliente filtra por distancia.
+message ReporteCompartido {
+  Entidad entidad = 1;
+  bytes id = 2;
+  string nombre = 3;
+  // nivel_riesgo del POI, o "hostil"
+  string nivel = 4;
+  double lat = 5;
+  double lng = 6;
+  string autor = 7;
+  optional string imagen_path = 8;
 }

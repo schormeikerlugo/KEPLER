@@ -38,6 +38,7 @@ Consumo en reposo: ~860 MB de RAM (kepler-server: ~2 MB).
 | `migrations/0002_storage.sql` | Buckets `capturas` (privado) y `avatares` (público), permisos por carpeta `<user_id>/` |
 | `migrations/0003_usuarios.sql` | Cuentas por nombre de usuario (formato y perfil desde el email interno) |
 | `migrations/0004_explorador_y_rutas.sql` | `perfiles.calzado_reset_en` y `rutas.trazado` calculado desde los waypoints |
+| `migrations/0005_compartidos.sql` | Visibilidad, lectura de lo compartido, vistas `exploradores` y `alertas_personas`, fotos compartidas y `confirmaciones` |
 | `seed/0001_catalogos.sql` | Taxonomía de objetos y categorías de POI |
 
 Las migraciones aplicadas se registran en `kepler_meta.migraciones`. Para cambiar el esquema se añade un archivo nuevo numerado; nunca se edita uno ya aplicado.
