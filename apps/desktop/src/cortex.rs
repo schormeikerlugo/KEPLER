@@ -125,7 +125,8 @@ pub fn borrar(c: &Arc<Contexto>, id: String) {
         {
             let abierta = c2.cortex.lock().expect("cortex").chat.as_deref() == Some(id.as_str());
             if abierta {
-                nuevo(&c2);
+                let c3 = c2.clone();
+                c2.ui.upgrade_in_event_loop(move |_| nuevo(&c3)).ok();
             }
             cargar_lista(&c2).await;
         }

@@ -477,6 +477,21 @@ pub async fn abrir_detalle(c: &Arc<Contexto>, id: String, tipo: String) {
         };
         (detalle, subs, f["imagen_path"].as_str().map(str::to_owned))
     };
+    // Objetos: mis etiquetas, marcadas las que lleva
+    if tipo == "objetos" {
+        let puestas: Vec<String> = {
+            let m = c.archivos.lock().await;
+            m.filas
+                .get(&id)
+                .and_then(|f| f["etiquetas"].as_array().cloned())
+                .unwrap_or_default()
+                .iter()
+                .filter_map(|e| e["id"].as_str().map(str::to_owned))
+                .collect()
+        };
+        let todas = crate::perfil::cargar_etiquetas(c).await;
+        pintar_etiquetas(c, &todas, &puestas);
+    }
     let nombres = subcategorias.into_iter().map(|(_, n)| n).collect();
     c.ui.upgrade_in_event_loop(move |ui| {
         let e = ui.global::<Estado>();
@@ -501,6 +516,66 @@ pub async fn abrir_detalle(c: &Arc<Contexto>, id: String, tipo: String) {
         })
         .ok();
     }
+}
+
+fn pintar_etiquetas(c: &Contexto, todas: &[Value], puestas: &[String]) {
+    let datos: Vec<(Value, bool)> = todas
+        .iter()
+        .map(|t| {
+            (
+                t.clone(),
+                puestas.iter().any(|p| t["id"].as_str() == Some(p)),
+            )
+        })
+        .collect();
+    c.ui.upgrade_in_event_loop(move |ui| {
+        let filas: Vec<_> = datos
+            .iter()
+            .map(|(t, activa)| crate::perfil::etiqueta(t, *activa))
+            .collect();
+        ui.global::<Estado>()
+            .set_detalle_etiquetas(ModelRc::new(VecModel::from(filas)));
+    })
+    .ok();
+}
+
+/// Pone o quita una etiqueta al objeto `objeto` (el abierto en el detalle).
+pub async fn alternar_etiqueta(c: &Arc<Contexto>, objeto: String, etiqueta: String) {
+    let ui_id = objeto;
+    let mut puestas: Vec<String> = {
+        let m = c.archivos.lock().await;
+        m.filas
+            .get(&ui_id)
+            .and_then(|f| f["etiquetas"].as_array().cloned())
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|e| e["id"].as_str().map(str::to_owned))
+            .collect()
+    };
+    if let Some(i) = puestas.iter().position(|p| *p == etiqueta) {
+        puestas.remove(i);
+    } else {
+        puestas.push(etiqueta);
+    }
+    let ruta = format!("/v1/objetos/{ui_id}/etiquetas");
+    let Ok(nuevas) = c
+        .cliente
+        .put::<Value>(&ruta, &json!({ "etiquetas": puestas }))
+        .await
+    else {
+        return;
+    };
+    let ids: Vec<String> = nuevas
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|e| e["id"].as_str().map(str::to_owned))
+        .collect();
+    if let Some(f) = c.archivos.lock().await.filas.get_mut(&ui_id) {
+        f["etiquetas"] = nuevas;
+    }
+    let todas = crate::perfil::cargar_etiquetas(c).await;
+    pintar_etiquetas(c, &todas, &ids);
 }
 
 /// Línea informativa bajo la foto del detalle.
@@ -617,7 +692,9 @@ async fn subir(c: &Arc<Contexto>, tipo: &str, id: &str, mut fila: Value) {
     fila["version"] = json!(fila["version"].as_i64().unwrap_or(1) + 1);
     fila["actualizado_en"] = json!(Utc::now());
     if let Some(o) = fila.as_object_mut() {
+        // Campos calculados por el listado, no columnas de la tabla
         o.remove("tiene_embedding");
+        o.remove("etiquetas");
     }
     let r = c
         .cliente
@@ -665,6 +742,9 @@ async fn subir(c: &Arc<Contexto>, tipo: &str, id: &str, mut fila: Value) {
                 "tiene_embedding".into(),
                 anterior["tiene_embedding"].clone(),
             );
+            if !anterior["etiquetas"].is_null() {
+                o.insert("etiquetas".into(), anterior["etiquetas"].clone());
+            }
         }
         let nueva = ficha(&m, tipo, &f);
         if borrado {

@@ -20,6 +20,12 @@ pub struct Perfil {
     pub rol: String,
     #[serde(default)]
     pub avatar_ia: Option<String>,
+    #[serde(default)]
+    pub avatar_path: Option<String>,
+    #[serde(default)]
+    pub bio: Option<String>,
+    #[serde(default)]
+    pub ubicacion: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -87,6 +93,10 @@ pub struct Dia {
 pub struct Explorador {
     pub desgaste_calzado: f64,
     pub resistencia: f64,
+    #[serde(default)]
+    pub misiones_completadas: u64,
+    #[serde(default)]
+    pub distancia_total_km: f64,
     pub clima: Option<Disponible<Clima>>,
 }
 

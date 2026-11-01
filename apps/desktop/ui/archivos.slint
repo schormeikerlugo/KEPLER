@@ -207,6 +207,13 @@ export component PantallaArchivos inherits HorizontalLayout {
                 VerticalLayout {
                     alignment: center;
                     Boton {
+                        texto: "TAXONOMÍA";
+                        pulsado => { Estado.tax-abrir(); }
+                    }
+                }
+                VerticalLayout {
+                    alignment: center;
+                    Boton {
                         principal: true;
                         texto: Estado.pendientes-identidad > 0 ? "COMPARADOR (" + Estado.pendientes-identidad + ")" : "COMPARADOR";
                         pulsado => { Estado.abrir-comparador(); }
@@ -362,6 +369,31 @@ export component ModalDetalle inherits Rectangle {
                     { valor: "verificado", texto: "VERIFICADO", tono: Tema.exito },
                     { valor: "inactivo", texto: "INACTIVO", tono: #999999 },
                 ];
+            }
+            if tipo == "objetos": VerticalLayout {
+                spacing: Tema.espacio-sm;
+                Etiqueta { text: Estado.etiquetas.length == 0 ? "ETIQUETAS · CRÉALAS EN TAXONOMÍA" : "ETIQUETAS"; color: Tema.texto-tenue; }
+                HorizontalLayout {
+                    spacing: 6px;
+                    alignment: start;
+                    for t in Estado.detalle-etiquetas: Rectangle {
+                        height: 28px;
+                        width: nombre-etiqueta.preferred-width + 24px;
+                        border-radius: 14px;
+                        background: t.activa ? t.tono.with-alpha(0.18) : transparent;
+                        border-width: 1px;
+                        border-color: t.activa ? t.tono : Tema.borde-tenue;
+                        nombre-etiqueta := Text {
+                            text: t.nombre;
+                            color: t.activa ? t.tono : Tema.texto-tenue;
+                            font-size: 11.5px;
+                        }
+                        TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => { Estado.detalle-etiqueta(t.id); }
+                        }
+                    }
+                }
             }
             CampoTexto {
                 etiqueta: tipo == "personas" ? "RASGOS FÍSICOS" : "DESCRIPCIÓN";

@@ -450,6 +450,8 @@ mod tests {
         let e = Explorador {
             desgaste_calzado: 85.0,
             resistencia: 90.0,
+            misiones_completadas: 0,
+            distancia_total_km: 0.0,
             clima: None,
         };
         assert!(consejo(None, Some(&e), None).contains("calzado"));

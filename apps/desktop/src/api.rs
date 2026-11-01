@@ -90,6 +90,47 @@ impl Cliente {
         Ok((salud, inicio.elapsed()))
     }
 
+    /// `GET /health` completo (base de datos, IA, visión, sesiones en vivo).
+    pub async fn salud_detalle(&self) -> Resultado<Value> {
+        let r = self
+            .http
+            .get(format!("{}/health", self.base))
+            .send()
+            .await
+            .map_err(red)?;
+        leer(r).await
+    }
+
+    /// PATCH con sesión.
+    pub async fn patch<T: DeserializeOwned>(&self, ruta: &str, cuerpo: &Value) -> Resultado<T> {
+        self.renovar_si_toca().await?;
+        let token = self.token().await?;
+        let r = self
+            .http
+            .patch(format!("{}{ruta}", self.base))
+            .bearer_auth(token)
+            .json(cuerpo)
+            .send()
+            .await
+            .map_err(red)?;
+        leer(r).await
+    }
+
+    /// PUT con sesión.
+    pub async fn put<T: DeserializeOwned>(&self, ruta: &str, cuerpo: &Value) -> Resultado<T> {
+        self.renovar_si_toca().await?;
+        let token = self.token().await?;
+        let r = self
+            .http
+            .put(format!("{}{ruta}", self.base))
+            .bearer_auth(token)
+            .json(cuerpo)
+            .send()
+            .await
+            .map_err(red)?;
+        leer(r).await
+    }
+
     /// GET con sesión; si el token caducó, se renueva una vez y se reintenta.
     pub async fn get<T: DeserializeOwned>(&self, ruta: &str) -> Resultado<T> {
         self.renovar_si_toca().await?;
@@ -342,6 +383,10 @@ fn red(e: reqwest::Error) -> Error {
 /// Errores de la API: `{"error": "<codigo>", "mensaje": "..."}`.
 async fn leer<T: DeserializeOwned>(r: reqwest::Response) -> Resultado<T> {
     let estado = r.status();
+    if estado == StatusCode::NO_CONTENT {
+        return serde_json::from_value(Value::Null)
+            .map_err(|e| Error::Servidor(format!("respuesta vacía: {e}")));
+    }
     if estado.is_success() {
         return r
             .json()

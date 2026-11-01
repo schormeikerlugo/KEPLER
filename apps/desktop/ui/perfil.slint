@@ -1,0 +1,334 @@
+// Perfil del explorador, taxonomía con etiquetas y estado del sistema.
+import { Tema } from "tema.slint";
+import { Logo, Etiqueta, Titulo, Boton, Campo, CampoTexto, Pastilla } from "componentes.slint";
+import { Estado, EtiquetaSel, CategoriaTax, FilaSistema } from "estado.slint";
+
+export component Foto inherits Rectangle {
+    in property <length> letra: 14px;
+    border-radius: self.width / 2;
+    border-width: 2px;
+    border-color: #ffffff2a;
+    background: @linear-gradient(160deg, #2a3a4a 0%, #0d1218 100%);
+    clip: true;
+    if Estado.tiene-foto: Image {
+        width: parent.width;
+        height: parent.height;
+        source: Estado.foto;
+        image-fit: cover;
+    }
+    if !Estado.tiene-foto: Text {
+        text: Estado.iniciales;
+        color: Tema.texto-secundario;
+        font-size: root.letra;
+        font-weight: Tema.peso-semi;
+    }
+}
+
+component Ventana inherits Rectangle {
+    border-radius: Tema.radio-grande;
+    background: #111316f8;
+    border-width: 1px;
+    border-color: Tema.borde-holo-sutil;
+    drop-shadow-blur: 40px;
+    drop-shadow-color: #000000cc;
+    TouchArea { }
+}
+
+component Seccion inherits Etiqueta {
+    color: Tema.acento;
+    font-size: 11px;
+}
+
+export component VentanaPerfil inherits Ventana {
+    callback cerrar;
+    property <string> avatar-ia: Estado.perfil-avatar-ia;
+    property <bool> confirmar-calzado;
+    width: 920px;
+    height: cuerpo.preferred-height;
+    cuerpo := HorizontalLayout {
+        padding: 32px;
+        spacing: 34px;
+        VerticalLayout {
+            width: 230px;
+            spacing: 16px;
+            alignment: start;
+            HorizontalLayout {
+                alignment: center;
+                Foto { width: 140px; height: 170px; letra: 36px; }
+            }
+            Boton {
+                texto: "CAMBIAR FOTO";
+                activo: !Estado.perfil-ocupado;
+                pulsado => { Estado.perfil-foto(); }
+            }
+            Text {
+                text: Estado.perfil-datos;
+                color: Tema.texto-tenue;
+                font-size: 12px;
+                wrap: word-wrap;
+                horizontal-alignment: center;
+            }
+            Rectangle { height: 1px; background: Tema.borde-sutil; }
+            Seccion { text: "CALZADO"; }
+            Text {
+                text: "Si estrenaste calzado, el desgaste vuelve a 0 %.";
+                color: Tema.texto-tenue;
+                font-size: 12px;
+                wrap: word-wrap;
+            }
+            Boton {
+                texto: root.confirmar-calzado ? "¿CONFIRMAS?" : "ESTRENÉ CALZADO";
+                activo: !Estado.perfil-ocupado;
+                pulsado => {
+                    if root.confirmar-calzado {
+                        Estado.perfil-calzado();
+                        root.confirmar-calzado = false;
+                    } else {
+                        root.confirmar-calzado = true;
+                    }
+                }
+            }
+        }
+        VerticalLayout {
+            spacing: 14px;
+            horizontal-stretch: 1;
+            Titulo { text: "Perfil del explorador"; }
+            nombre := Campo { etiqueta: "NOMBRE VISIBLE"; texto: Estado.perfil-nombre; }
+            ubicacion := Campo { etiqueta: "BASE DE OPERACIONES"; marcador: "p. ej. Caracas"; texto: Estado.perfil-ubicacion; }
+            bio := CampoTexto { etiqueta: "BIO"; alto: 70px; texto: Estado.perfil-bio; }
+            Seccion { text: "AVATAR DE CORTEX"; }
+            HorizontalLayout {
+                spacing: 8px;
+                alignment: start;
+                for e in ["🤖", "🛰️", "🧠", "👁️", "🦉", "⚡", "🌌", "🧭"]: Rectangle {
+                    width: 42px;
+                    height: 42px;
+                    border-radius: 21px;
+                    background: root.avatar-ia == e ? Tema.acento-suave : zona.has-hover ? Tema.superficie-hover : transparent;
+                    border-width: 1px;
+                    border-color: root.avatar-ia == e ? Tema.acento : Tema.borde-tenue;
+                    Text { text: e; font-size: 20px; }
+                    zona := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => { root.avatar-ia = e; }
+                    }
+                }
+            }
+            Rectangle { height: 1px; background: Tema.borde-sutil; }
+            Seccion { text: "CONTRASEÑA"; }
+            HorizontalLayout {
+                spacing: 10px;
+                actual := Campo { etiqueta: "ACTUAL"; secreto: true; }
+                nueva := Campo { etiqueta: "NUEVA (MÍN. 8)"; secreto: true; }
+                VerticalLayout {
+                    alignment: end;
+                    Boton {
+                        height: 44px;
+                        texto: "CAMBIAR";
+                        activo: actual.texto != "" && nueva.texto != "" && !Estado.perfil-ocupado;
+                        pulsado => {
+                            Estado.perfil-contrasena(actual.texto, nueva.texto);
+                            actual.texto = "";
+                            nueva.texto = "";
+                        }
+                    }
+                }
+            }
+            if Estado.perfil-mensaje != "": Text {
+                text: Estado.perfil-mensaje;
+                color: Tema.acento;
+                font-size: 12px;
+                wrap: word-wrap;
+            }
+            HorizontalLayout {
+                spacing: 12px;
+                alignment: end;
+                Boton { height: 44px; texto: "CERRAR"; pulsado => { root.cerrar(); } }
+                Boton {
+                    height: 44px;
+                    width: 200px;
+                    principal: true;
+                    texto: Estado.perfil-ocupado ? "GUARDANDO…" : "GUARDAR";
+                    activo: !Estado.perfil-ocupado && nombre.texto != "";
+                    pulsado => { Estado.perfil-guardar(nombre.texto, bio.texto, ubicacion.texto, root.avatar-ia); }
+                }
+            }
+        }
+    }
+}
+
+export component VentanaTaxonomia inherits Ventana {
+    callback cerrar;
+    property <string> color-nuevo: "#3FA8FF";
+    width: 980px;
+    height: 640px;
+    HorizontalLayout {
+        padding: 30px;
+        spacing: 30px;
+        VerticalLayout {
+            spacing: 12px;
+            horizontal-stretch: 3;
+            Titulo { text: "Taxonomía"; }
+            Etiqueta { text: "CATEGORÍAS DE OBJETOS (COMUNES A TODOS LOS EXPLORADORES) · CUÁNTOS TIENES"; }
+            Flickable {
+                vertical-stretch: 1;
+                content-height: lista.preferred-height;
+                lista := VerticalLayout {
+                    alignment: start;
+                    spacing: 4px;
+                    for k in Estado.tax-categorias: Rectangle {
+                        height: fila.preferred-height + 14px;
+                        border-radius: 8px;
+                        background: #ffffff05;
+                        fila := HorizontalLayout {
+                            x: 12px;
+                            width: parent.width - 24px;
+                            spacing: 12px;
+                            Rectangle {
+                                width: 10px;
+                                height: 10px;
+                                y: (parent.height - self.height) / 2;
+                                border-radius: 5px;
+                                background: k.tono;
+                            }
+                            VerticalLayout {
+                                horizontal-stretch: 1;
+                                alignment: center;
+                                spacing: 2px;
+                                Text { text: k.nombre; color: Tema.texto; font-size: 13.5px; }
+                                if k.subcategorias != "": Text {
+                                    text: k.subcategorias;
+                                    color: Tema.texto-tenue;
+                                    font-size: 11.5px;
+                                    wrap: word-wrap;
+                                }
+                            }
+                            Text {
+                                text: k.objetos;
+                                color: k.objetos > 0 ? Tema.acento : Tema.texto-etiqueta;
+                                font-size: 14px;
+                                font-weight: Tema.peso-semi;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        VerticalLayout {
+            spacing: 12px;
+            horizontal-stretch: 2;
+            Titulo { text: "Mis etiquetas"; }
+            Etiqueta { text: "SE PONEN EN EL DETALLE DE CADA OBJETO"; }
+            Flickable {
+                vertical-stretch: 1;
+                content-height: etiquetas.preferred-height;
+                etiquetas := VerticalLayout {
+                    alignment: start;
+                    spacing: 6px;
+                    for t in Estado.etiquetas: Rectangle {
+                        height: 40px;
+                        border-radius: 20px;
+                        background: t.tono.with-alpha(0.10);
+                        border-width: 1px;
+                        border-color: t.tono.with-alpha(0.5);
+                        HorizontalLayout {
+                            padding-left: 16px;
+                            padding-right: 12px;
+                            spacing: 10px;
+                            Text { text: t.nombre; color: Tema.texto; font-size: 13px; vertical-alignment: center; horizontal-stretch: 1; }
+                            Text { text: t.objetos + (t.objetos == 1 ? " objeto" : " objetos"); color: Tema.texto-tenue; font-size: 11px; vertical-alignment: center; }
+                            Text {
+                                text: "✕";
+                                color: borrar.has-hover ? Tema.peligro : Tema.texto-tenue;
+                                vertical-alignment: center;
+                                borrar := TouchArea {
+                                    mouse-cursor: pointer;
+                                    clicked => { Estado.etiqueta-borrar(t.id); }
+                                }
+                            }
+                        }
+                    }
+                    if Estado.etiquetas.length == 0: Text {
+                        text: "Aún no tienes etiquetas.";
+                        color: Tema.texto-tenue;
+                        font-size: 12px;
+                    }
+                }
+            }
+            nueva := Campo { etiqueta: "NUEVA ETIQUETA"; marcador: "p. ej. Peligro"; }
+            HorizontalLayout {
+                spacing: 8px;
+                alignment: start;
+                for c in ["#3FA8FF", "#00D4AA", "#FFBB33", "#FF8844", "#FF4444", "#B57BFF", "#CCCCCC"]: Rectangle {
+                    width: 26px;
+                    height: 26px;
+                    border-radius: 13px;
+                    background: c == "#3FA8FF" ? #3FA8FF : c == "#00D4AA" ? #00D4AA : c == "#FFBB33" ? #FFBB33 : c == "#FF8844" ? #FF8844 : c == "#FF4444" ? #FF4444 : c == "#B57BFF" ? #B57BFF : #CCCCCC;
+                    border-width: root.color-nuevo == c ? 3px : 0;
+                    border-color: white;
+                    TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => { root.color-nuevo = c; }
+                    }
+                }
+            }
+            if Estado.tax-mensaje != "": Text { text: Estado.tax-mensaje; color: Tema.peligro; font-size: 12px; wrap: word-wrap; }
+            HorizontalLayout {
+                spacing: 10px;
+                Boton {
+                    horizontal-stretch: 1;
+                    principal: true;
+                    texto: "CREAR ETIQUETA";
+                    activo: nueva.texto != "";
+                    pulsado => {
+                        Estado.etiqueta-crear(nueva.texto, root.color-nuevo);
+                        nueva.texto = "";
+                    }
+                }
+                Boton { texto: "CERRAR"; pulsado => { root.cerrar(); } }
+            }
+        }
+    }
+}
+
+export component VentanaSistema inherits Ventana {
+    callback cerrar;
+    width: 620px;
+    height: cuerpo.preferred-height;
+    cuerpo := VerticalLayout {
+        padding: 30px;
+        spacing: 10px;
+        Titulo { text: "Estado del sistema"; }
+        if Estado.sis-cargando: Text { text: "Consultando…"; color: Tema.texto-tenue; font-size: 13px; }
+        for f in Estado.sis-filas: Rectangle {
+            height: 52px;
+            Rectangle { y: parent.height - 1px; height: 1px; background: Tema.borde-sutil; }
+            HorizontalLayout {
+                spacing: 14px;
+                Rectangle {
+                    width: 10px;
+                    height: 10px;
+                    y: (parent.height - self.height) / 2;
+                    border-radius: 5px;
+                    background: f.estado == 0 ? Tema.exito : f.estado == 1 ? Tema.aviso : Tema.peligro;
+                    drop-shadow-blur: 6px;
+                    drop-shadow-color: (f.estado == 0 ? Tema.exito : f.estado == 1 ? Tema.aviso : Tema.peligro).with-alpha(0.6);
+                }
+                VerticalLayout {
+                    alignment: center;
+                    spacing: 2px;
+                    Text { text: f.nombre; color: Tema.texto; font-size: 13.5px; }
+                    Text { text: f.detalle; color: Tema.texto-tenue; font-size: 12px; overflow: elide; }
+                }
+            }
+        }
+        HorizontalLayout {
+            alignment: end;
+            padding-top: 10px;
+            spacing: 10px;
+            Boton { texto: "ACTUALIZAR"; activo: !Estado.sis-cargando; pulsado => { Estado.sis-abrir(); } }
+            Boton { principal: true; texto: "CERRAR"; pulsado => { root.cerrar(); } }
+        }
+    }
+}

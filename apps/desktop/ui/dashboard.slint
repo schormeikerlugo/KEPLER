@@ -1,6 +1,6 @@
 import { Tema } from "tema.slint";
 import { Tarjeta, Etiqueta, Titulo, Indicador, Barra, Pastilla } from "componentes.slint";
-import { Avatar } from "cabecera.slint";
+import { Foto } from "perfil.slint";
 import { TarjetaObjetos, TarjetaPois, TarjetaPersonas, TarjetaRutas, TarjetaConsejo, TarjetaNovedades } from "tarjetas.slint";
 import { Estado, Atencion, FilaMision } from "estado.slint";
 
@@ -206,11 +206,10 @@ component TarjetaExplorador inherits Tarjeta {
         alignment: start;
         HorizontalLayout {
             alignment: center;
-            Avatar {
+            Foto {
                 width: 72px;
                 height: 100px;
                 letra: 22px;
-                iniciales: Estado.iniciales;
                 drop-shadow-blur: 18px;
                 drop-shadow-color: #3FA8FF40;
             }

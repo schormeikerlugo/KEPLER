@@ -19,7 +19,7 @@ use crate::api::{Cliente, Error};
 use crate::en_vivo::{self, Evento};
 use crate::modelos::{Aire, Clima, Dashboard, Explorador, Perfil, UbicacionIp};
 use crate::{AppWindow, Atencion, Conteo, DatoIndicador, DiaSemana, Estado, FilaMision, Pantalla};
-use crate::{archivos, bitacora, cortex, imagenes, tarjetas, vista_mapa, vivo};
+use crate::{archivos, bitacora, cortex, imagenes, perfil, tarjetas, vista_mapa, vivo};
 
 /// Igual que el session guard de la v0.7.
 const INACTIVIDAD: Duration = Duration::from_secs(15 * 60);
@@ -40,6 +40,7 @@ pub struct Contexto {
     pub mapa: vista_mapa::Compartida,
     pub vivo: vivo::Vivo,
     pub cortex: cortex::Compartida,
+    pub perfil: perfil::Compartida,
     /// Consejo del día: uno por sesión.
     consejo: std::sync::Mutex<Option<String>>,
     /// ¿Quiere el Centro de Control el vídeo de las unidades? (vista en vivo abierta)
@@ -79,6 +80,7 @@ pub fn conectar(ui: &AppWindow, rt: Handle, cliente: Arc<Cliente>) {
         mapa: std::sync::Mutex::default(),
         vivo: vivo::Vivo::default(),
         cortex: std::sync::Mutex::default(),
+        perfil: std::sync::Mutex::default(),
         consejo: std::sync::Mutex::new(None),
         fotogramas: tokio::sync::watch::channel(false).0,
         en_vivo: std::sync::Mutex::new(None),
@@ -234,6 +236,41 @@ pub fn conectar(ui: &AppWindow, rt: Handle, cliente: Arc<Cliente>) {
     let c = ctx.clone();
     estado.on_plan_guardar(move |n| vista_mapa::plan_guardar(&c, n.to_string()));
     let c = ctx.clone();
+    estado.on_perfil_abrir(move || perfil::abrir(&c));
+    let c = ctx.clone();
+    estado.on_perfil_guardar(move |n, b, u, a| {
+        perfil::guardar(
+            &c,
+            n.to_string(),
+            b.to_string(),
+            u.to_string(),
+            a.to_string(),
+        );
+    });
+    let c = ctx.clone();
+    estado.on_perfil_foto(move || perfil::foto(&c));
+    let c = ctx.clone();
+    estado.on_perfil_calzado(move || perfil::calzado(&c));
+    let c = ctx.clone();
+    estado.on_perfil_contrasena(move |a, n| perfil::contrasena(&c, a.to_string(), n.to_string()));
+    let c = ctx.clone();
+    estado.on_tax_abrir(move || perfil::taxonomia(&c));
+    let c = ctx.clone();
+    estado.on_etiqueta_crear(move |n, col| {
+        perfil::crear_etiqueta(&c, n.to_string(), col.to_string())
+    });
+    let c = ctx.clone();
+    estado.on_etiqueta_borrar(move |id| perfil::borrar_etiqueta(&c, id.to_string()));
+    let c = ctx.clone();
+    estado.on_sis_abrir(move || perfil::sistema(&c));
+    let c = ctx.clone();
+    estado.on_detalle_etiqueta(move |id| {
+        let Some(ui) = c.ui.upgrade() else { return };
+        let objeto = ui.global::<Estado>().get_detalle().id.to_string();
+        let c2 = c.clone();
+        c.rt.spawn(async move { archivos::alternar_etiqueta(&c2, objeto, id.to_string()).await });
+    });
+    let c = ctx.clone();
     estado.on_cerrar_toast(move |id| {
         if let Some(ui) = c.ui.upgrade() {
             bitacora::cerrar_toast(&ui.global::<Estado>(), &id);
@@ -291,6 +328,7 @@ fn salir(ctx: &Arc<Contexto>, motivo: &'static str) {
         bitacora::olvidar(&e);
         vivo::olvidar(ctx, &e);
         cortex::olvidar(ctx, &e);
+        perfil::olvidar(ctx, &e);
         archivos::olvidar(&e);
     }
     let c = ctx.clone();
@@ -526,6 +564,9 @@ async fn cargar(c: &Arc<Contexto>) {
     .unwrap_or_default();
 
     let tarjetas = dashboard.as_ref().ok().map(tarjetas::construir);
+    if let Ok(p) = &perfil {
+        perfil::recordar(c, p.clone());
+    }
     let consejo = {
         let mut guardado = c.consejo.lock().expect("consejo");
         if guardado.is_none() && dashboard.is_ok() {
@@ -888,7 +929,7 @@ fn nombre_categoria(c: CategoriaClima) -> &'static str {
     }
 }
 
-fn iniciales(nombre: &str) -> String {
+pub fn iniciales(nombre: &str) -> String {
     nombre
         .split_whitespace()
         .filter_map(|p| p.chars().next())

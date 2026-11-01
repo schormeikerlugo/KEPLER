@@ -20,9 +20,11 @@ kepler-proto.workspace = true
 # Mapa: MapLibre Native (C++, se compila la primera vez; necesita cmake). OpenGL/EGL como Slint
 maplibre_native = { version = "0.10.0", default-features = false, features = ["opengl", "json"] }
 
+base64 = "0.22"
 chrono.workspace = true
 futures-util = { version = "0.3.34", default-features = false, features = ["sink", "std"] }
 image = { version = "0.25.10", default-features = false, features = ["jpeg", "png"] }
+rfd = "0.17.2"
 reqwest = { version = "0.13.5", default-features = false, features = ["json", "query", "rustls", "http2"] }
 serde.workspace = true
 serde_json.workspace = true

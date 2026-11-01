@@ -1,21 +1,7 @@
 import { Tema } from "tema.slint";
 import { Tarjeta, Logo, Etiqueta, Boton, Pastilla } from "componentes.slint";
 import { Estado, Pantalla } from "estado.slint";
-
-export component Avatar inherits Rectangle {
-    in property <string> iniciales;
-    in property <length> letra: 14px;
-    border-radius: self.width / 2;
-    border-width: 2px;
-    border-color: #ffffff2a;
-    background: @linear-gradient(160deg, #2a3a4a 0%, #0d1218 100%);
-    Text {
-        text: iniciales;
-        color: Tema.texto-secundario;
-        font-size: letra;
-        font-weight: Tema.peso-semi;
-    }
-}
+import { Foto } from "perfil.slint";
 
 component Pestana inherits Rectangle {
     in property <string> texto;
@@ -137,6 +123,10 @@ export component Cabecera inherits Tarjeta {
             Pastilla {
                 texto: Estado.en-linea ? "SERVIDOR · " + Estado.enlace : "SIN CONEXIÓN";
                 tono: Estado.en-linea ? Tema.exito : Tema.peligro;
+                TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => { Estado.sis-abrir(); }
+                }
             }
             Pastilla {
                 texto: Estado.en-vivo ? "EN VIVO" : "EN VIVO · RECONECTANDO";
@@ -169,20 +159,27 @@ export component Cabecera inherits Tarjeta {
             alignment: center;
             Text {
                 text: Estado.nombre-visible;
-                color: Tema.texto;
+                color: perfil.has-hover ? Tema.acento : Tema.texto;
                 font-size: 15px;
                 horizontal-alignment: right;
+                perfil := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => { Estado.perfil-abrir(); }
+                }
             }
             Etiqueta {
                 text: "@" + Estado.usuario;
                 horizontal-alignment: right;
             }
         }
-        Avatar {
+        Foto {
             width: 46px;
             height: 58px;
             y: (parent.height - self.height) / 2;
-            iniciales: Estado.iniciales;
+            TouchArea {
+                mouse-cursor: pointer;
+                clicked => { Estado.perfil-abrir(); }
+            }
         }
         VerticalLayout {
             alignment: center;

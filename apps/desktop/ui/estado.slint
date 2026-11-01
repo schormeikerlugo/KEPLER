@@ -162,6 +162,28 @@ export struct ChatFila {
     fecha: string,
 }
 
+export struct EtiquetaSel {
+    id: string,
+    nombre: string,
+    tono: color,
+    objetos: int,
+    activa: bool,
+}
+
+export struct CategoriaTax {
+    nombre: string,
+    tono: color,
+    objetos: int,
+    subcategorias: string,
+}
+
+export struct FilaSistema {
+    nombre: string,
+    detalle: string,
+    // 0 bien · 1 aviso · 2 fallo
+    estado: int,
+}
+
 export enum Pantalla { login, dashboard, envivo, mapa, archivos, cortex, bitacora }
 
 export global Estado {
@@ -341,6 +363,41 @@ export global Estado {
     in property <bool> ia-regenerable;
     callback ia-reporte(bool);
     callback ia-analizar(string);
+
+    // Perfil
+    in-out property <bool> perfil-abierto;
+    in property <string> perfil-nombre;
+    in property <string> perfil-bio;
+    in property <string> perfil-ubicacion;
+    in property <string> perfil-avatar-ia: "🤖";
+    in property <string> perfil-datos;
+    in property <string> perfil-mensaje;
+    in property <bool> perfil-ocupado;
+    in property <image> foto;
+    in property <bool> tiene-foto;
+    callback perfil-abrir();
+    callback perfil-guardar(string, string, string, string);
+    callback perfil-foto();
+    callback perfil-calzado();
+    callback perfil-contrasena(string, string);
+
+    // Taxonomía y etiquetas
+    in-out property <bool> tax-abierta;
+    in property <[CategoriaTax]> tax-categorias;
+    in property <[EtiquetaSel]> etiquetas;
+    in property <string> tax-mensaje;
+    callback tax-abrir();
+    callback etiqueta-crear(string, string);
+    callback etiqueta-borrar(string);
+    // Etiquetas del objeto abierto en el detalle
+    in property <[EtiquetaSel]> detalle-etiquetas;
+    callback detalle-etiqueta(string);
+
+    // Estado del sistema
+    in-out property <bool> sis-abierto;
+    in property <[FilaSistema]> sis-filas;
+    in property <bool> sis-cargando;
+    callback sis-abrir();
 
     callback refrescar();
     callback ir(Pantalla);
