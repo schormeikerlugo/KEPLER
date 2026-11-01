@@ -413,6 +413,26 @@ fn describir(p: &Value) -> (String, String, Color) {
     }
 }
 
+/// Unidades de Campo en vivo (solo si el mapa ya está listo).
+pub fn unidades(c: &Contexto, geojson: String) {
+    c.mapa
+        .lock()
+        .expect("mapa")
+        .enviar(Orden::Unidades(geojson));
+}
+
+/// Lleva la cámara a un punto (p. ej. la posición de una Unidad de Campo).
+pub fn centrar_en(c: &Contexto, lat: f64, lng: f64) {
+    let mut m = c.mapa.lock().expect("mapa");
+    let camara = Camara {
+        lat,
+        lng,
+        zoom: m.camara().zoom.max(15.0),
+    };
+    m.camara = Some(camara);
+    m.enviar(Orden::Camara(camara));
+}
+
 pub fn centrar(c: &Arc<Contexto>) {
     let c2 = c.clone();
     c.rt.spawn(async move {

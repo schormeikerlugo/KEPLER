@@ -97,7 +97,24 @@ export struct SeleccionMapa {
     tiene-imagen: bool,
 }
 
-export enum Pantalla { login, dashboard, mapa, archivos, bitacora }
+export struct UnidadVivo {
+    id: string,
+    nombre: string,
+    detalle: string,
+    activa: bool,
+}
+
+// Caja de detección normalizada a [0, 1] respecto al fotograma
+export struct CajaVivo {
+    x: float,
+    y: float,
+    ancho: float,
+    alto: float,
+    etiqueta: string,
+    tono: color,
+}
+
+export enum Pantalla { login, dashboard, envivo, mapa, archivos, bitacora }
 
 export global Estado {
     in-out property <Pantalla> pantalla: Pantalla.login;
@@ -205,6 +222,23 @@ export global Estado {
     callback mapa-elegir-mision(int);
     callback mapa-centrar();
     callback mapa-cerrar-seleccion();
+
+    // En vivo (Unidades de Campo)
+    in property <[UnidadVivo]> vivo-unidades;
+    in property <int> vivo-activas;
+    in property <bool> vivo-elegida-activa;
+    in-out property <string> vivo-seleccion;
+    in property <image> vivo-imagen;
+    in property <bool> vivo-hay-imagen;
+    in property <float> vivo-aspecto: 1.333;
+    in property <[CajaVivo]> vivo-cajas;
+    in property <string> vivo-pie;
+    in property <float> vivo-bateria: -1;
+    in property <[DatoIndicador]> vivo-datos;
+    in property <string> vivo-coordenadas;
+    in property <string> vivo-mision;
+    callback vivo-elegir(string);
+    callback vivo-ver-en-mapa();
 
     callback refrescar();
     callback ir(Pantalla);

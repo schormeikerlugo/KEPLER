@@ -105,6 +105,11 @@ export component Cabecera inherits Tarjeta {
                 pulsada => { Estado.ir(Pantalla.dashboard); }
             }
             Pestana {
+                texto: Estado.vivo-activas > 0 ? "● EN VIVO" : "EN VIVO";
+                activa: Estado.pantalla == Pantalla.envivo;
+                pulsada => { Estado.ir(Pantalla.envivo); }
+            }
+            Pestana {
                 texto: "MAPA";
                 activa: Estado.pantalla == Pantalla.mapa;
                 pulsada => { Estado.ir(Pantalla.mapa); }

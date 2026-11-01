@@ -103,6 +103,8 @@ pub enum Orden {
     Camara(Camara),
     Elementos(String),
     Rastro(String),
+    /// Posición y recorrido de las Unidades de Campo en vivo.
+    Unidades(String),
 }
 
 pub type Fotograma = SharedPixelBuffer<Rgba8Pixel>;
@@ -163,6 +165,7 @@ fn bucle(
                 Orden::Camara(c) => camara = Some(c),
                 Orden::Elementos(g) => poner_geojson(&mut r, "kepler", &g),
                 Orden::Rastro(g) => poner_geojson(&mut r, "rastro", &g),
+                Orden::Unidades(g) => poner_geojson(&mut r, "unidades", &g),
             }
         }
         let Some(c) = camara else { continue };
@@ -214,7 +217,8 @@ fn preparar_estilo(pmtiles: &Path, datos: &Path) -> Result<String, String> {
     let vacio =
         json!({ "type": "geojson", "data": { "type": "FeatureCollection", "features": [] } });
     estilo["sources"]["kepler"] = vacio.clone();
-    estilo["sources"]["rastro"] = vacio;
+    estilo["sources"]["rastro"] = vacio.clone();
+    estilo["sources"]["unidades"] = vacio;
     let capas = estilo["layers"].as_array_mut().ok_or("estilo sin capas")?;
     capas.extend(capas_kepler());
     serde_json::to_string(&estilo).map_err(|e| e.to_string())
@@ -275,6 +279,17 @@ fn capas_kepler() -> Vec<Value> {
         json!({ "id": "kepler-puntos", "type": "circle", "source": "kepler",
                 "paint": { "circle-color": color, "circle-radius": 5.5,
                            "circle-stroke-color": "#0a0f14", "circle-stroke-width": 1.5 } }),
+        json!({ "id": "unidades-recorrido", "type": "line", "source": "unidades",
+                "filter": ["==", ["geometry-type"], "LineString"],
+                "layout": { "line-cap": "round", "line-join": "round" },
+                "paint": { "line-color": "#00D4AA", "line-width": 2.5, "line-dasharray": [1, 1.5] } }),
+        json!({ "id": "unidades-halo", "type": "circle", "source": "unidades",
+                "filter": ["==", ["geometry-type"], "Point"],
+                "paint": { "circle-color": "#00D4AA", "circle-radius": 18, "circle-opacity": 0.25, "circle-blur": 0.6 } }),
+        json!({ "id": "unidades-punto", "type": "circle", "source": "unidades",
+                "filter": ["==", ["geometry-type"], "Point"],
+                "paint": { "circle-color": "#00D4AA", "circle-radius": 7,
+                           "circle-stroke-color": "#FFFFFF", "circle-stroke-width": 2 } }),
         json!({ "id": "kepler-nombres", "type": "symbol", "source": "kepler", "minzoom": 14,
                 "layout": { "text-field": ["get", "nombre"], "text-font": ["Noto Sans Regular"],
                             "text-size": 11, "text-offset": [0, 1.3], "text-anchor": "top" },

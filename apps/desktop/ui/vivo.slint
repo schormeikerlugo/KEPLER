@@ -1,0 +1,199 @@
+// Vista en vivo de la Unidad de Campo: vídeo con detecciones y telemetría.
+import { Tema } from "tema.slint";
+import { Tarjeta, Etiqueta, Titulo, Boton, Indicador, Barra } from "componentes.slint";
+import { Estado, UnidadVivo, CajaVivo } from "estado.slint";
+
+component Unidad inherits Rectangle {
+    in property <UnidadVivo> dato;
+    property <bool> elegida: Estado.vivo-seleccion == dato.id;
+    height: 44px;
+    width: fila.preferred-width + 24px;
+    border-radius: 22px;
+    background: elegida ? Tema.superficie-activa : zona.has-hover ? Tema.superficie-hover : #ffffff06;
+    border-width: 1px;
+    border-color: elegida ? Tema.acento-borde : Tema.borde-tenue;
+    fila := HorizontalLayout {
+        x: 14px;
+        spacing: 10px;
+        Rectangle {
+            width: 9px;
+            height: 9px;
+            y: (parent.height - self.height) / 2;
+            border-radius: 4.5px;
+            background: dato.activa ? Tema.exito : #555555;
+            drop-shadow-blur: dato.activa ? 8px : 0;
+            drop-shadow-color: Tema.glow-exito;
+        }
+        VerticalLayout {
+            alignment: center;
+            Text { text: dato.nombre; color: Tema.texto; font-size: 13px; }
+            Etiqueta { text: dato.detalle; }
+        }
+    }
+    zona := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Estado.vivo-elegir(dato.id); }
+    }
+}
+
+component Video inherits Rectangle {
+    // Rectángulo donde cabe el fotograma sin deformarlo
+    property <length> ancho-img: min(self.width, self.height * Estado.vivo-aspecto);
+    property <length> alto-img: self.ancho-img / Estado.vivo-aspecto;
+    property <length> x-img: (self.width - self.ancho-img) / 2;
+    property <length> y-img: (self.height - self.alto-img) / 2;
+    background: #05070a;
+    border-radius: Tema.radio-tarjeta;
+    clip: true;
+
+    if Estado.vivo-hay-imagen: Image {
+        x: root.x-img;
+        y: root.y-img;
+        width: root.ancho-img;
+        height: root.alto-img;
+        source: Estado.vivo-imagen;
+        image-fit: fill;
+    }
+    for c in Estado.vivo-cajas: Rectangle {
+        x: root.x-img + c.x * root.ancho-img;
+        y: root.y-img + c.y * root.alto-img;
+        width: c.ancho * root.ancho-img;
+        height: c.alto * root.alto-img;
+        border-width: 2px;
+        border-radius: 4px;
+        border-color: c.tono;
+        background: c.tono.with-alpha(0.08);
+        Rectangle {
+            x: -2px;
+            y: -20px;
+            width: etiqueta.preferred-width + 12px;
+            height: 18px;
+            border-radius: 3px;
+            background: c.tono;
+            etiqueta := Text {
+                text: c.etiqueta;
+                color: #05070a;
+                font-size: 11px;
+                font-weight: Tema.peso-negrita;
+            }
+        }
+    }
+    if !Estado.vivo-hay-imagen: Text {
+        text: Estado.vivo-unidades.length == 0 ? "Sin señal" : "Esperando vídeo…";
+        color: Tema.texto-tenue;
+        font-size: 14px;
+    }
+    if Estado.vivo-hay-imagen && !Estado.vivo-elegida-activa: Rectangle {
+        background: #000000a0;
+        Text {
+            text: "SEÑAL PERDIDA · ÚLTIMO FOTOGRAMA RECIBIDO";
+            color: Tema.peligro;
+            font-size: 14px;
+            letter-spacing: 2px;
+        }
+    }
+    // Esquinas de visor
+    for esquina[i] in 4: Rectangle {
+        x: i == 0 || i == 2 ? 14px : parent.width - 34px;
+        y: i < 2 ? 14px : parent.height - 34px;
+        width: 20px;
+        height: 20px;
+        Rectangle { x: i == 0 || i == 2 ? 0 : 18px; width: 2px; background: Tema.acento.with-alpha(0.7); }
+        Rectangle { y: i < 2 ? 0 : 18px; height: 2px; background: Tema.acento.with-alpha(0.7); }
+    }
+    Rectangle {
+        x: 18px;
+        y: parent.height - 46px;
+        width: pie.preferred-width + 20px;
+        height: 26px;
+        border-radius: 13px;
+        background: #000000a0;
+        visible: Estado.vivo-pie != "";
+        pie := Etiqueta { text: Estado.vivo-pie; color: Tema.texto-secundario; }
+    }
+}
+
+export component PantallaVivo inherits VerticalLayout {
+    spacing: 18px;
+
+    if Estado.vivo-unidades.length == 0: Tarjeta {
+        vertical-stretch: 1;
+        VerticalLayout {
+            alignment: center;
+            spacing: 12px;
+            Text {
+                text: "Ninguna Unidad de Campo conectada";
+                color: Tema.texto;
+                font-size: 20px;
+                horizontal-alignment: center;
+            }
+            Text {
+                text: "Cuando el iPhone abra una misión aparecerá aquí su cámara, las detecciones, el GPS y el estado del dispositivo.";
+                color: Tema.texto-tenue;
+                font-size: 13px;
+                horizontal-alignment: center;
+                wrap: word-wrap;
+            }
+        }
+    }
+
+    if Estado.vivo-unidades.length > 0: HorizontalLayout {
+        spacing: 10px;
+        alignment: start;
+        height: 44px;
+        for u in Estado.vivo-unidades: Unidad { dato: u; }
+    }
+
+    if Estado.vivo-unidades.length > 0: HorizontalLayout {
+        vertical-stretch: 1;
+        spacing: 22px;
+
+        Video { horizontal-stretch: 1; }
+
+        Tarjeta {
+            width: 360px;
+            VerticalLayout {
+                padding: 20px;
+                spacing: 14px;
+                alignment: start;
+                Titulo { text: "Telemetría de campo"; }
+                Etiqueta { text: Estado.vivo-mision; color: Tema.acento; }
+                if Estado.vivo-bateria >= 0: Barra {
+                    titulo: "Batería";
+                    icono: "🔋";
+                    valor: Estado.vivo-bateria;
+                }
+                Rectangle {
+                    property <length> hueco: 10px;
+                    property <length> ancho: (self.width - hueco) / 2;
+                    height: ceil(Estado.vivo-datos.length / 2) * (74px + hueco);
+                    for d[i] in Estado.vivo-datos: Indicador {
+                        dato: d;
+                        x: mod(i, 2) * (parent.ancho + parent.hueco);
+                        y: floor(i / 2) * (74px + parent.hueco);
+                        width: parent.ancho;
+                    }
+                }
+                Rectangle {
+                    height: 38px;
+                    border-radius: 8px;
+                    background: #ffffff08;
+                    Text {
+                        x: 14px;
+                        width: parent.width - 28px;
+                        text: "📍  " + Estado.vivo-coordenadas;
+                        color: Tema.texto-tenue;
+                        font-size: Tema.t-pequeno;
+                        overflow: elide;
+                    }
+                }
+                Boton {
+                    height: 40px;
+                    principal: true;
+                    texto: "VER EN EL MAPA";
+                    pulsado => { Estado.vivo-ver-en-mapa(); }
+                }
+            }
+        }
+    }
+}

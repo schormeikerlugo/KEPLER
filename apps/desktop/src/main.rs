@@ -11,6 +11,7 @@ mod mapa;
 mod modelos;
 mod panel;
 mod vista_mapa;
+mod vivo;
 
 use std::sync::Arc;
 

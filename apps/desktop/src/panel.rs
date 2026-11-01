@@ -19,7 +19,7 @@ use crate::api::{Cliente, Error};
 use crate::en_vivo::{self, Evento};
 use crate::modelos::{Aire, Clima, Dashboard, Explorador, Perfil, UbicacionIp};
 use crate::{AppWindow, Atencion, Conteo, DatoIndicador, DiaSemana, Estado, FilaMision, Pantalla};
-use crate::{archivos, bitacora, imagenes, vista_mapa};
+use crate::{archivos, bitacora, imagenes, vista_mapa, vivo};
 
 /// Igual que el session guard de la v0.7.
 const INACTIVIDAD: Duration = Duration::from_secs(15 * 60);
@@ -38,6 +38,9 @@ pub struct Contexto {
     pub archivos: archivos::Compartida,
     pub imagenes: imagenes::Cache,
     pub mapa: vista_mapa::Compartida,
+    pub vivo: vivo::Vivo,
+    /// ¿Quiere el Centro de Control el vídeo de las unidades? (vista en vivo abierta)
+    fotogramas: tokio::sync::watch::Sender<bool>,
     en_vivo: std::sync::Mutex<Option<JoinHandle<()>>>,
 }
 
@@ -71,6 +74,8 @@ pub fn conectar(ui: &AppWindow, rt: Handle, cliente: Arc<Cliente>) {
         archivos: Mutex::default(),
         imagenes: imagenes::Cache::default(),
         mapa: std::sync::Mutex::default(),
+        vivo: vivo::Vivo::default(),
+        fotogramas: tokio::sync::watch::channel(false).0,
         en_vivo: std::sync::Mutex::new(None),
     });
     let estado = ui.global::<Estado>();
@@ -183,6 +188,14 @@ pub fn conectar(ui: &AppWindow, rt: Handle, cliente: Arc<Cliente>) {
     let c = ctx.clone();
     estado.on_mapa_cerrar_seleccion(move || vista_mapa::cerrar_seleccion(&c));
     let c = ctx.clone();
+    estado.on_vivo_elegir(move |id| vivo::elegir(&c, &id));
+    let c = ctx.clone();
+    estado.on_vivo_ver_en_mapa(move || {
+        if vivo::ver_en_mapa(&c) {
+            ir(&c, Pantalla::Mapa);
+        }
+    });
+    let c = ctx.clone();
     estado.on_cerrar_toast(move |id| {
         if let Some(ui) = c.ui.upgrade() {
             bitacora::cerrar_toast(&ui.global::<Estado>(), &id);
@@ -190,6 +203,7 @@ pub fn conectar(ui: &AppWindow, rt: Handle, cliente: Arc<Cliente>) {
     });
 
     vigilar_enlace(&ctx);
+    vivo::vigilar(&ctx);
     refrescar_periodicamente(&ctx);
     vigilar_inactividad(ui, &ctx);
 }
@@ -237,6 +251,7 @@ fn salir(ctx: &Arc<Contexto>, motivo: &'static str) {
         let e = ui.global::<Estado>();
         e.set_en_vivo(false);
         bitacora::olvidar(&e);
+        vivo::olvidar(ctx, &e);
         archivos::olvidar(&e);
     }
     let c = ctx.clone();
@@ -260,6 +275,7 @@ fn ir(ctx: &Arc<Contexto>, pantalla: Pantalla) {
     if let Some(ui) = ctx.ui.upgrade() {
         ui.global::<Estado>().set_pantalla(pantalla);
     }
+    ctx.fotogramas.send_replace(pantalla == Pantalla::Envivo);
     if pantalla == Pantalla::Bitacora {
         cargar_bitacora(ctx, false);
     }
@@ -312,7 +328,11 @@ fn iniciar_en_vivo(ctx: &Arc<Contexto>) {
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
     let c = ctx.clone();
     let tarea = ctx.rt.spawn(async move {
-        let conexion = tokio::spawn(en_vivo::mantener(c.cliente.clone(), tx));
+        let conexion = tokio::spawn(en_vivo::mantener(
+            c.cliente.clone(),
+            tx,
+            c.fotogramas.subscribe(),
+        ));
         while let Some(ev) = rx.recv().await {
             match ev {
                 Evento::Conectado | Evento::Desconectado => {
@@ -320,6 +340,7 @@ fn iniciar_en_vivo(ctx: &Arc<Contexto>) {
                     c.ui.upgrade_in_event_loop(move |ui| ui.global::<Estado>().set_en_vivo(si))
                         .ok();
                 }
+                Evento::Campo { origen, contenido } => vivo::recibir(&c, origen, contenido),
                 Evento::Novedad => {
                     // Los triggers escriben en la misma transacción: ya está en la bitácora
                     tokio::join!(cargar(&c), bitacora::cargar(&c), vista_mapa::recargar(&c));
