@@ -105,6 +105,8 @@ pub enum Orden {
     Rastro(String),
     /// Posición y recorrido de las Unidades de Campo en vivo.
     Unidades(String),
+    /// Ruta que se está planificando.
+    Plan(String),
 }
 
 pub type Fotograma = SharedPixelBuffer<Rgba8Pixel>;
@@ -166,6 +168,7 @@ fn bucle(
                 Orden::Elementos(g) => poner_geojson(&mut r, "kepler", &g),
                 Orden::Rastro(g) => poner_geojson(&mut r, "rastro", &g),
                 Orden::Unidades(g) => poner_geojson(&mut r, "unidades", &g),
+                Orden::Plan(g) => poner_geojson(&mut r, "plan", &g),
             }
         }
         let Some(c) = camara else { continue };
@@ -218,7 +221,8 @@ fn preparar_estilo(pmtiles: &Path, datos: &Path) -> Result<String, String> {
         json!({ "type": "geojson", "data": { "type": "FeatureCollection", "features": [] } });
     estilo["sources"]["kepler"] = vacio.clone();
     estilo["sources"]["rastro"] = vacio.clone();
-    estilo["sources"]["unidades"] = vacio;
+    estilo["sources"]["unidades"] = vacio.clone();
+    estilo["sources"]["plan"] = vacio;
     let capas = estilo["layers"].as_array_mut().ok_or("estilo sin capas")?;
     capas.extend(capas_kepler());
     serde_json::to_string(&estilo).map_err(|e| e.to_string())
@@ -267,16 +271,23 @@ fn capas_kepler() -> Vec<Value> {
         ],
         "#FFFFFF"
     ]);
+    let punto = json!(["==", ["geometry-type"], "Point"]);
+    let linea = json!(["==", ["geometry-type"], "LineString"]);
     vec![
+        json!({ "id": "kepler-rutas", "type": "line", "source": "kepler", "filter": linea,
+                "layout": { "line-cap": "round", "line-join": "round" },
+                "paint": { "line-width": 3, "line-opacity": 0.85,
+                           "line-color": ["match", ["get", "nivel"], "seguro", "#00D4AA", "precaucion", "#FFBB33",
+                                          "peligro", "#FF4444", "#999999"] } }),
         json!({ "id": "rastro-halo", "type": "line", "source": "rastro",
                 "layout": { "line-cap": "round", "line-join": "round" },
                 "paint": { "line-color": "#3FA8FF", "line-width": 9, "line-opacity": 0.25, "line-blur": 4 } }),
         json!({ "id": "rastro", "type": "line", "source": "rastro",
                 "layout": { "line-cap": "round", "line-join": "round" },
                 "paint": { "line-color": "#3FA8FF", "line-width": 2.5 } }),
-        json!({ "id": "kepler-halo", "type": "circle", "source": "kepler",
+        json!({ "id": "kepler-halo", "type": "circle", "source": "kepler", "filter": punto,
                 "paint": { "circle-color": color, "circle-radius": 13, "circle-opacity": 0.22, "circle-blur": 0.7 } }),
-        json!({ "id": "kepler-puntos", "type": "circle", "source": "kepler",
+        json!({ "id": "kepler-puntos", "type": "circle", "source": "kepler", "filter": punto,
                 "paint": { "circle-color": color, "circle-radius": 5.5,
                            "circle-stroke-color": "#0a0f14", "circle-stroke-width": 1.5 } }),
         json!({ "id": "unidades-recorrido", "type": "line", "source": "unidades",
@@ -290,7 +301,15 @@ fn capas_kepler() -> Vec<Value> {
                 "filter": ["==", ["geometry-type"], "Point"],
                 "paint": { "circle-color": "#00D4AA", "circle-radius": 7,
                            "circle-stroke-color": "#FFFFFF", "circle-stroke-width": 2 } }),
-        json!({ "id": "kepler-nombres", "type": "symbol", "source": "kepler", "minzoom": 14,
+        json!({ "id": "plan-linea", "type": "line", "source": "plan",
+                "filter": ["==", ["geometry-type"], "LineString"],
+                "layout": { "line-cap": "round", "line-join": "round" },
+                "paint": { "line-color": "#FFFFFF", "line-width": 2.5, "line-dasharray": [2, 1.5] } }),
+        json!({ "id": "plan-vertices", "type": "circle", "source": "plan",
+                "filter": ["==", ["geometry-type"], "Point"],
+                "paint": { "circle-color": "#3FA8FF", "circle-radius": 5,
+                           "circle-stroke-color": "#FFFFFF", "circle-stroke-width": 1.5 } }),
+        json!({ "id": "kepler-nombres", "type": "symbol", "source": "kepler", "minzoom": 14, "filter": punto,
                 "layout": { "text-field": ["get", "nombre"], "text-font": ["Noto Sans Regular"],
                             "text-size": 11, "text-offset": [0, 1.3], "text-anchor": "top" },
                 "paint": { "text-color": "#CCCCCC", "text-halo-color": "#0a0f14", "text-halo-width": 1.5 } }),

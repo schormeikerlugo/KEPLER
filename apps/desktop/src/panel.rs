@@ -224,6 +224,16 @@ pub fn conectar(ui: &AppWindow, rt: Handle, cliente: Arc<Cliente>) {
     let c = ctx.clone();
     estado.on_ia_analizar(move |id| cortex::analizar(&c, id.to_string()));
     let c = ctx.clone();
+    estado.on_plan_alternar(move || vista_mapa::plan_alternar(&c));
+    let c = ctx.clone();
+    estado.on_plan_deshacer(move || vista_mapa::plan_deshacer(&c));
+    let c = ctx.clone();
+    estado.on_plan_limpiar(move || vista_mapa::plan_limpiar(&c));
+    let c = ctx.clone();
+    estado.on_plan_analizar(move || vista_mapa::plan_analizar(&c));
+    let c = ctx.clone();
+    estado.on_plan_guardar(move |n| vista_mapa::plan_guardar(&c, n.to_string()));
+    let c = ctx.clone();
     estado.on_cerrar_toast(move |id| {
         if let Some(ui) = c.ui.upgrade() {
             bitacora::cerrar_toast(&ui.global::<Estado>(), &id);

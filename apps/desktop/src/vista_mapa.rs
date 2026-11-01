@@ -10,7 +10,7 @@ use slint::{Color, ComponentHandle, ModelRc, SharedString, VecModel};
 use crate::imagenes::{self, MINIATURA};
 use crate::mapa::{self, Camara, Orden};
 use crate::panel::Contexto;
-use crate::{Estado, SeleccionMapa};
+use crate::{Estado, FilaRuta, SeleccionMapa};
 
 /// Caracas, si no se sabe dónde está el explorador.
 const INICIO: Camara = Camara {
@@ -30,6 +30,11 @@ pub struct Memoria {
     elementos: Vec<Value>,
     capas: Capas,
     misiones: Vec<String>,
+    /// Planificador de rutas: los clics añaden puntos `(lat, lng)`.
+    planificando: bool,
+    plan: Vec<(f64, f64)>,
+    /// Seguridad sugerida por el último análisis del corredor.
+    plan_seguridad: Option<&'static str>,
 }
 
 #[derive(Clone, Copy)]
@@ -38,6 +43,7 @@ struct Capas {
     personas: bool,
     objetos: bool,
     alertas: bool,
+    rutas: bool,
 }
 
 impl Default for Capas {
@@ -47,6 +53,7 @@ impl Default for Capas {
             personas: true,
             objetos: true,
             alertas: true,
+            rutas: true,
         }
     }
 }
@@ -58,6 +65,7 @@ impl Capas {
             "persona" => self.personas,
             "objeto" => self.objetos,
             "alerta" => self.alertas,
+            "ruta" => self.rutas,
             _ => false,
         }
     }
@@ -281,17 +289,33 @@ pub fn capas(c: &Contexto, e: &Estado<'_>) {
         personas: e.get_capa_personas(),
         objetos: e.get_capa_objetos(),
         alertas: e.get_capa_alertas(),
+        rutas: e.get_capa_rutas(),
     };
     m.enviar_elementos();
 }
 
 /// El punto visible más cercano al clic, si está a menos de `RADIO_CLIC` px.
 pub fn clic(c: &Arc<Contexto>, x: f32, y: f32) {
+    {
+        let mut m = c.mapa.lock().expect("mapa");
+        if m.planificando {
+            let (w, h) = m.tamano;
+            let camara = m.camara();
+            let (cx, cy) = camara.proyectar(camara.lat, camara.lng);
+            let punto =
+                camara.desproyectar(cx + f64::from(x) - w / 2.0, cy + f64::from(y) - h / 2.0);
+            m.plan.push(punto);
+            m.plan_seguridad = None;
+            pintar_plan(c, &m, None);
+            return;
+        }
+    }
     let elegido = {
         let m = c.mapa.lock().expect("mapa");
         let camara = m.camara();
         let (w, h) = m.tamano;
         m.visibles()
+            .filter(|f| f["geometry"]["type"] == "Point")
             .filter_map(|f| {
                 let p = &f["geometry"]["coordinates"];
                 let (px, py) = camara.en_vista(p[1].as_f64()?, p[0].as_f64()?, w, h);
@@ -411,6 +435,228 @@ fn describir(p: &Value) -> (String, String, Color) {
             ("OBJETO".into(), clase, rgb(0x00D4AA))
         }
     }
+}
+
+// --- Planificador de rutas --------------------------------------------------------
+
+pub fn plan_alternar(c: &Arc<Contexto>) {
+    let mut m = c.mapa.lock().expect("mapa");
+    m.planificando = !m.planificando;
+    pintar_plan(c, &m, None);
+}
+
+pub fn plan_deshacer(c: &Arc<Contexto>) {
+    let mut m = c.mapa.lock().expect("mapa");
+    m.plan.pop();
+    m.plan_seguridad = None;
+    pintar_plan(c, &m, None);
+}
+
+pub fn plan_limpiar(c: &Arc<Contexto>) {
+    let mut m = c.mapa.lock().expect("mapa");
+    m.plan.clear();
+    m.plan_seguridad = None;
+    pintar_plan(c, &m, None);
+}
+
+/// Hallazgos y peligros a 200 m del trazado (`/v1/rutas/analizar`).
+pub fn plan_analizar(c: &Arc<Contexto>) {
+    let puntos = c.mapa.lock().expect("mapa").plan.clone();
+    if puntos.len() < 2 {
+        return;
+    }
+    mensaje_plan(c, "Analizando el corredor…", true);
+    let c2 = c.clone();
+    c.rt.spawn(async move {
+        let waypoints: Vec<[f64; 2]> = puntos.iter().map(|&(lat, lng)| [lat, lng]).collect();
+        let r = c2
+            .cliente
+            .post::<Value>(
+                "/v1/rutas/analizar",
+                &json!({ "waypoints": waypoints, "corredor_m": 200 }),
+            )
+            .await;
+        match r {
+            Ok(a) => {
+                let mut m = c2.mapa.lock().expect("mapa");
+                m.plan_seguridad = Some(match a["riesgo"]["nivel"].as_str() {
+                    Some("bajo") => "seguro",
+                    Some("medio") => "precaucion",
+                    _ => "peligro",
+                });
+                pintar_plan(&c2, &m, Some(&a));
+                mensaje_plan(&c2, "", false);
+            }
+            Err(e) => mensaje_plan(&c2, &format!("⚠ {e}"), false),
+        }
+    });
+}
+
+/// Guarda la ruta planificada (privada) con la seguridad del análisis.
+pub fn plan_guardar(c: &Arc<Contexto>, nombre: String) {
+    let (puntos, seguridad) = {
+        let m = c.mapa.lock().expect("mapa");
+        (m.plan.clone(), m.plan_seguridad.unwrap_or("desconocido"))
+    };
+    let nombre = nombre.trim().to_owned();
+    if puntos.len() < 2 || nombre.is_empty() {
+        mensaje_plan(c, "Pon un nombre y al menos dos puntos", false);
+        return;
+    }
+    let c2 = c.clone();
+    c.rt.spawn(async move {
+        let ahora = Utc::now();
+        let fila = json!({
+            "id": kepler_core::nuevo_id(), "nombre": nombre, "origen": "planificada",
+            "seguridad": seguridad, "distancia_km": (longitud_km(&puntos) * 100.0).round() / 100.0,
+            "waypoints": puntos.iter().map(|&(lat, lng)| [lat, lng]).collect::<Vec<_>>(),
+            "creado_en": ahora, "actualizado_en": ahora, "version": 1,
+        });
+        match c2
+            .cliente
+            .post::<Value>("/v1/sync/subir", &json!({ "rutas": [fila] }))
+            .await
+        {
+            Ok(r) if r["rechazados"].as_array().is_none_or(Vec::is_empty) => {
+                {
+                    let mut m = c2.mapa.lock().expect("mapa");
+                    m.plan.clear();
+                    m.planificando = false;
+                    m.plan_seguridad = None;
+                    pintar_plan(&c2, &m, None);
+                }
+                mensaje_plan(&c2, &format!("Ruta «{nombre}» guardada"), false);
+                recargar(&c2).await;
+            }
+            Ok(r) => mensaje_plan(
+                &c2,
+                &format!("⚠ Rechazada: {}", r["rechazados"][0]["motivo"]),
+                false,
+            ),
+            Err(e) => mensaje_plan(&c2, &format!("⚠ {e}"), false),
+        }
+    });
+}
+
+fn longitud_km(puntos: &[(f64, f64)]) -> f64 {
+    puntos
+        .windows(2)
+        .filter_map(|w| {
+            let a = kepler_core::Coordenada::new(w[0].0, w[0].1).ok()?;
+            let b = kepler_core::Coordenada::new(w[1].0, w[1].1).ok()?;
+            Some(a.distancia_m(&b))
+        })
+        .sum::<f64>()
+        / 1000.0
+}
+
+/// Dibuja el plan en el mapa y su resumen (y el análisis, si lo hay) en el panel.
+fn pintar_plan(c: &Contexto, m: &Memoria, analisis: Option<&Value>) {
+    let coords: Vec<[f64; 2]> = m.plan.iter().map(|&(lat, lng)| [lng, lat]).collect();
+    let mut features: Vec<Value> = coords
+        .iter()
+        .map(|p| json!({ "type": "Feature", "properties": {}, "geometry": { "type": "Point", "coordinates": p } }))
+        .collect();
+    if coords.len() > 1 {
+        features.push(json!({ "type": "Feature", "properties": {},
+                              "geometry": { "type": "LineString", "coordinates": coords } }));
+    }
+    m.enviar(Orden::Plan(
+        json!({ "type": "FeatureCollection", "features": features }).to_string(),
+    ));
+
+    let activo = m.planificando;
+    let n = m.plan.len() as i32;
+    let km = format!("{:.2} km", longitud_km(&m.plan));
+    let (riesgo, tono, filas) = match analisis {
+        Some(a) => {
+            let nivel = a["riesgo"]["nivel"].as_str().unwrap_or("bajo");
+            let tono = match nivel {
+                "critico" => 0xFF4444,
+                "alto" => 0xFF8844,
+                "medio" => 0xFFBB33,
+                _ => 0x00D4AA,
+            };
+            let nivel_txt = if nivel == "critico" {
+                "CRÍTICO".to_owned()
+            } else {
+                nivel.to_uppercase()
+            };
+            (
+                format!("RIESGO {nivel_txt} · {} PUNTOS", a["riesgo"]["puntuacion"]),
+                Color::from_argb_encoded(0xff00_0000 | tono),
+                filas_analisis(a),
+            )
+        }
+        None => (
+            String::new(),
+            Color::from_argb_encoded(0xff99_9999),
+            Vec::new(),
+        ),
+    };
+    c.ui.upgrade_in_event_loop(move |ui| {
+        let e = ui.global::<Estado>();
+        e.set_plan_activo(activo);
+        e.set_plan_puntos(n);
+        e.set_plan_km(km.into());
+        e.set_plan_riesgo(riesgo.into());
+        e.set_plan_tono(tono);
+        e.set_plan_hallazgos(ModelRc::new(VecModel::from(filas)));
+    })
+    .ok();
+}
+
+/// Lo encontrado en el corredor.
+fn filas_analisis(a: &Value) -> Vec<FilaRuta> {
+    let rgb = |v: u32| Color::from_argb_encoded(0xff00_0000 | v);
+    let mut filas = Vec::new();
+    let grupos = [
+        ("puntos_interes", "POI"),
+        ("personas", "PERSONA"),
+        ("objetos", "OBJETO"),
+        ("rutas", "RUTA"),
+    ];
+    for (clave, tipo) in grupos {
+        for x in a[clave].as_array().into_iter().flatten().take(6) {
+            let detalle = x["detalle"].as_str().unwrap_or_default();
+            let tono = match detalle {
+                "critico" | "hostil" | "peligro" => 0xFF4444,
+                "alto" => 0xFF8844,
+                "medio" | "precaucion" => 0xFFBB33,
+                _ => 0x3FA8FF,
+            };
+            let autor = x["autor"]
+                .as_str()
+                .map(|a| format!(" · @{a}"))
+                .unwrap_or_default();
+            filas.push(FilaRuta {
+                nombre: x["nombre"].as_str().unwrap_or_default().into(),
+                detalle: format!(
+                    "{tipo} a {:.0} m{autor}",
+                    x["distancia_m"].as_f64().unwrap_or(0.0)
+                )
+                .into(),
+                seguridad: if detalle == "critico" {
+                    "crítico"
+                } else {
+                    detalle
+                }
+                .into(),
+                tono: rgb(tono),
+            });
+        }
+    }
+    filas
+}
+
+fn mensaje_plan(c: &Contexto, texto: &str, analizando: bool) {
+    let texto = texto.to_owned();
+    c.ui.upgrade_in_event_loop(move |ui| {
+        let e = ui.global::<Estado>();
+        e.set_plan_mensaje(texto.into());
+        e.set_plan_analizando(analizando);
+    })
+    .ok();
 }
 
 /// Unidades de Campo en vivo (solo si el mapa ya está listo).

@@ -274,6 +274,21 @@ export global Estado {
     in-out property <bool> capa-personas: true;
     in-out property <bool> capa-objetos: true;
     in-out property <bool> capa-alertas: true;
+    in-out property <bool> capa-rutas: true;
+    // Planificador de rutas
+    in property <bool> plan-activo;
+    in property <int> plan-puntos;
+    in property <string> plan-km;
+    in property <string> plan-riesgo;
+    in property <color> plan-tono;
+    in property <[FilaRuta]> plan-hallazgos;
+    in property <bool> plan-analizando;
+    in property <string> plan-mensaje;
+    callback plan-alternar();
+    callback plan-deshacer();
+    callback plan-limpiar();
+    callback plan-analizar();
+    callback plan-guardar(string);
     in property <SeleccionMapa> mapa-seleccion;
     in property <[string]> mapa-misiones;
     in-out property <int> mapa-mision;
