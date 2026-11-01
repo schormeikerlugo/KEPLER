@@ -1,0 +1,50 @@
+// «Acerca de»: versión, servidor y atribuciones (la de Slint la exige su licencia royalty-free).
+import { AboutSlint } from "std-widgets.slint";
+import { Tema } from "tema.slint";
+import { Logo, Etiqueta, Boton } from "componentes.slint";
+import { Estado } from "estado.slint";
+
+export component Acerca inherits Rectangle {
+    callback cerrar;
+    width: 460px;
+    height: cuerpo.preferred-height;
+    border-radius: Tema.radio-grande;
+    background: #0d131af7;
+    border-width: 1px;
+    border-color: Tema.borde-holo-sutil;
+    drop-shadow-blur: 40px;
+    drop-shadow-color: #000000cc;
+    TouchArea { }
+    cuerpo := VerticalLayout {
+        padding: 34px;
+        spacing: 14px;
+        HorizontalLayout {
+            alignment: center;
+            Logo { width: 210px; height: 48px; }
+        }
+        Text {
+            text: "Centro de Control · v" + Estado.version;
+            color: Tema.texto-secundario;
+            font-size: Tema.t-cuerpo;
+            horizontal-alignment: center;
+        }
+        Etiqueta {
+            text: "SERVIDOR " + Estado.servidor;
+            horizontal-alignment: center;
+        }
+        Rectangle { height: 1px; background: Tema.borde-sutil; }
+        AboutSlint { }
+        Text {
+            text: "Tipografía Jura (SIL Open Font License 1.1). Clima y aire: Open-Meteo. Lugares: OpenStreetMap / Nominatim.";
+            color: Tema.texto-tenue;
+            font-size: 11.5px;
+            wrap: word-wrap;
+            horizontal-alignment: center;
+        }
+        Boton {
+            texto: "CERRAR";
+            principal: true;
+            pulsado => { cerrar(); }
+        }
+    }
+}

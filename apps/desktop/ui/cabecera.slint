@@ -1,0 +1,181 @@
+import { Tema } from "tema.slint";
+import { Tarjeta, Logo, Etiqueta, Boton, Pastilla } from "componentes.slint";
+import { Estado, Pantalla } from "estado.slint";
+
+export component Avatar inherits Rectangle {
+    in property <string> iniciales;
+    in property <length> letra: 14px;
+    border-radius: self.width / 2;
+    border-width: 2px;
+    border-color: #ffffff2a;
+    background: @linear-gradient(160deg, #2a3a4a 0%, #0d1218 100%);
+    Text {
+        text: iniciales;
+        color: Tema.texto-secundario;
+        font-size: letra;
+        font-weight: Tema.peso-semi;
+    }
+}
+
+component Pestana inherits Rectangle {
+    in property <string> texto;
+    in property <bool> activa;
+    callback pulsada;
+    width: etiqueta.preferred-width + 24px;
+    height: 34px;
+    etiqueta := Text {
+        text: texto;
+        color: activa ? Tema.texto : zona.has-hover ? Tema.texto-secundario : Tema.texto-tenue;
+        font-size: 12px;
+        font-weight: Tema.peso-semi;
+        letter-spacing: 1.5px;
+        animate color { duration: Tema.mov-rapido; }
+    }
+    Rectangle {
+        y: parent.height - 2px;
+        height: 2px;
+        width: activa ? parent.width - 16px : 0;
+        border-radius: 1px;
+        background: Tema.acento;
+        drop-shadow-blur: 6px;
+        drop-shadow-color: Tema.glow-acento;
+        animate width { duration: Tema.mov-normal; easing: ease-out; }
+    }
+    zona := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { pulsada(); }
+    }
+}
+
+component Campana inherits Rectangle {
+    in property <int> cantidad;
+    in property <bool> abierta;
+    callback pulsada;
+    width: 46px;
+    height: 46px;
+    border-radius: 23px;
+    background: abierta ? Tema.superficie-activa : zona.has-hover ? #222222 : #1a1a1a;
+    border-width: 1px;
+    border-color: abierta ? Tema.acento-borde : transparent;
+    animate background { duration: Tema.mov-rapido; }
+    Text {
+        text: "🔔";
+        font-size: 17px;
+    }
+    if cantidad > 0: Rectangle {
+        x: 27px;
+        y: 2px;
+        width: max(20px, numero.preferred-width + 10px);
+        height: 15px;
+        border-radius: 7.5px;
+        background: Tema.peligro;
+        drop-shadow-blur: 6px;
+        drop-shadow-color: #FF444488;
+        numero := Text {
+            text: cantidad > 99 ? "99+" : cantidad;
+            font-size: 9px;
+            color: white;
+            font-weight: Tema.peso-negrita;
+        }
+    }
+    zona := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { pulsada(); }
+    }
+}
+
+export component Cabecera inherits Tarjeta {
+    in property <bool> panel-abierto;
+    callback campana;
+    callback acerca;
+    height: 103px;
+    HorizontalLayout {
+        padding-left: 24px;
+        padding-right: 30px;
+        spacing: 18px;
+        Logo { }
+        HorizontalLayout {
+            alignment: start;
+            spacing: 6px;
+            padding-top: 34px;
+            padding-bottom: 34px;
+            Pestana {
+                texto: "PANEL";
+                activa: Estado.pantalla == Pantalla.dashboard;
+                pulsada => { Estado.ir(Pantalla.dashboard); }
+            }
+            Pestana {
+                texto: "BITÁCORA";
+                activa: Estado.pantalla == Pantalla.bitacora;
+                pulsada => { Estado.ir(Pantalla.bitacora); }
+            }
+        }
+        Rectangle { horizontal-stretch: 1; }
+        VerticalLayout {
+            alignment: center;
+            spacing: 6px;
+            Pastilla {
+                texto: Estado.en-linea ? "SERVIDOR · " + Estado.enlace : "SIN CONEXIÓN";
+                tono: Estado.en-linea ? Tema.exito : Tema.peligro;
+            }
+            Pastilla {
+                texto: Estado.en-vivo ? "EN VIVO" : "EN VIVO · RECONECTANDO";
+                tono: Estado.en-vivo ? Tema.acento : Tema.aviso;
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            Boton {
+                texto: Estado.cargando ? "ACTUALIZANDO…" : "↻  ACTUALIZAR";
+                activo: !Estado.cargando;
+                pulsado => { Estado.refrescar(); }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            Campana {
+                cantidad: Estado.no-leidas;
+                abierta: root.panel-abierto;
+                pulsada => { root.campana(); }
+            }
+        }
+        Rectangle {
+            width: 1px;
+            height: 34px;
+            y: (parent.height - self.height) / 2;
+            background: Tema.borde-tenue;
+        }
+        VerticalLayout {
+            alignment: center;
+            Text {
+                text: Estado.nombre-visible;
+                color: Tema.texto;
+                font-size: 15px;
+                horizontal-alignment: right;
+            }
+            Etiqueta {
+                text: "@" + Estado.usuario;
+                horizontal-alignment: right;
+            }
+        }
+        Avatar {
+            width: 46px;
+            height: 58px;
+            y: (parent.height - self.height) / 2;
+            iniciales: Estado.iniciales;
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 6px;
+            Boton {
+                texto: "SALIR";
+                pulsado => { Estado.salir(); }
+            }
+            Boton {
+                height: 22px;
+                texto: "ACERCA DE";
+                pulsado => { root.acerca(); }
+            }
+        }
+    }
+}

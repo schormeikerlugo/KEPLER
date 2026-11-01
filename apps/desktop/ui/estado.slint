@@ -28,7 +28,16 @@ export struct DiaSemana {
     km: float,
 }
 
-export enum Pantalla { login, dashboard }
+export struct Notificacion {
+    id: string,
+    // critical · warning · success · info
+    tipo: string,
+    mensaje: string,
+    fecha: string,
+    leida: bool,
+}
+
+export enum Pantalla { login, dashboard, bitacora }
 
 export global Estado {
     in-out property <Pantalla> pantalla: Pantalla.login;
@@ -45,6 +54,20 @@ export global Estado {
     in property <string> rol;
     in property <bool> en-linea;
     in property <string> enlace;
+    in property <bool> en-vivo;
+    in property <string> version;
+
+    // Notificaciones (las 20 últimas para el panel) y toasts
+    in property <int> no-leidas;
+    in property <[Notificacion]> notificaciones;
+    in property <[Notificacion]> toasts;
+
+    // Bitácora completa
+    in property <[Notificacion]> bitacora;
+    in-out property <string> bitacora-tipo;
+    in-out property <bool> bitacora-solo-no-leidas;
+    in property <bool> bitacora-cargando;
+    in property <bool> bitacora-hay-mas;
 
     // Dashboard
     in property <bool> cargando;
@@ -67,4 +90,11 @@ export global Estado {
     callback entrar(string, string);
     callback salir();
     callback refrescar();
+    callback ir(Pantalla);
+    callback marcar-leida(string);
+    callback marcar-todas();
+    // Vuelve a cargar con bitacora-tipo y bitacora-solo-no-leidas
+    callback filtrar-bitacora();
+    callback mas-bitacora();
+    callback cerrar-toast(string);
 }

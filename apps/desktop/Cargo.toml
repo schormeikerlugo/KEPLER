@@ -15,8 +15,10 @@ path = "src/main.rs"
 
 [dependencies]
 kepler-core.workspace = true
+kepler-proto.workspace = true
 
 chrono.workspace = true
+futures-util = { version = "0.3.34", default-features = false, features = ["sink", "std"] }
 reqwest = { version = "0.13.5", default-features = false, features = ["json", "query", "rustls", "http2"] }
 serde.workspace = true
 serde_json.workspace = true
@@ -24,6 +26,8 @@ serde_json.workspace = true
 slint = { version = "~1.18.1", features = ["unstable-winit-030"] }
 thiserror.workspace = true
 tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+# wss:// cuando el servidor salga por Cloudflare Tunnel
+tokio-tungstenite = { version = "0.30.0", features = ["rustls-tls-webpki-roots"] }
 uuid.workspace = true
 
 [build-dependencies]

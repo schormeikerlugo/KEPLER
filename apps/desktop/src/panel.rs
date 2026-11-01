@@ -13,8 +13,11 @@ use slint::winit_030::{EventResult, WinitWindowAccessor, winit::event::WindowEve
 use slint::{Color, ComponentHandle, Model, ModelRc, Timer, TimerMode, VecModel, Weak};
 use tokio::runtime::Handle;
 use tokio::sync::Mutex;
+use tokio::task::JoinHandle;
 
 use crate::api::{Cliente, Error};
+use crate::bitacora;
+use crate::en_vivo::{self, Evento};
 use crate::modelos::{Aire, Clima, Dashboard, Explorador, Perfil, UbicacionIp};
 use crate::{AppWindow, Atencion, Conteo, DatoIndicador, DiaSemana, Estado, FilaMision, Pantalla};
 
@@ -25,12 +28,14 @@ const CADA_SALUD: Duration = Duration::from_secs(10);
 /// Posición del indicador de enlace en la telemetría.
 const FILA_ENLACE: usize = 7;
 
-struct Contexto {
-    cliente: Arc<Cliente>,
-    rt: Handle,
-    ui: Weak<AppWindow>,
+pub struct Contexto {
+    pub cliente: Arc<Cliente>,
+    pub rt: Handle,
+    pub ui: Weak<AppWindow>,
     /// Sin GPS en el escritorio: ubicación aproximada por IP, una vez por sesión.
     ubicacion: Mutex<Option<UbicacionIp>>,
+    pub bitacora: Mutex<bitacora::Memoria>,
+    en_vivo: std::sync::Mutex<Option<JoinHandle<()>>>,
 }
 
 pub fn conectar(ui: &AppWindow, rt: Handle, cliente: Arc<Cliente>) {
@@ -39,9 +44,13 @@ pub fn conectar(ui: &AppWindow, rt: Handle, cliente: Arc<Cliente>) {
         rt,
         ui: ui.as_weak(),
         ubicacion: Mutex::new(None),
+        bitacora: Mutex::default(),
+        en_vivo: std::sync::Mutex::new(None),
     });
     let estado = ui.global::<Estado>();
     estado.set_servidor(ctx.cliente.base().into());
+    estado.set_version(env!("CARGO_PKG_VERSION").into());
+    bitacora::preparar(&estado);
 
     let c = ctx.clone();
     estado.on_entrar(move |usuario, contrasena| {
@@ -51,6 +60,28 @@ pub fn conectar(ui: &AppWindow, rt: Handle, cliente: Arc<Cliente>) {
     estado.on_salir(move || salir(&c, ""));
     let c = ctx.clone();
     estado.on_refrescar(move || refrescar(&c));
+    let c = ctx.clone();
+    estado.on_ir(move |p| ir(&c, p));
+    let c = ctx.clone();
+    estado.on_marcar_leida(move |id| {
+        let c2 = c.clone();
+        c.rt.spawn(async move { bitacora::marcar(&c2, Some(id.to_string())).await });
+    });
+    let c = ctx.clone();
+    estado.on_marcar_todas(move || {
+        let c2 = c.clone();
+        c.rt.spawn(async move { bitacora::marcar(&c2, None).await });
+    });
+    let c = ctx.clone();
+    estado.on_filtrar_bitacora(move || cargar_bitacora(&c, false));
+    let c = ctx.clone();
+    estado.on_mas_bitacora(move || cargar_bitacora(&c, true));
+    let c = ctx.clone();
+    estado.on_cerrar_toast(move |id| {
+        if let Some(ui) = c.ui.upgrade() {
+            bitacora::cerrar_toast(&ui.global::<Estado>(), &id);
+        }
+    });
 
     vigilar_enlace(&ctx);
     refrescar_periodicamente(&ctx);
@@ -81,7 +112,8 @@ fn entrar(ctx: &Arc<Contexto>, usuario: String, contrasena: String) {
         })
         .ok();
         if ok {
-            cargar(&c).await;
+            iniciar_en_vivo(&c);
+            tokio::join!(cargar(&c), bitacora::cargar(&c));
         }
     });
 }
@@ -92,16 +124,75 @@ fn salir(ctx: &Arc<Contexto>, motivo: &'static str) {
         e.set_pantalla(Pantalla::Login);
         e.set_error_login(motivo.into());
     }
+    if let Some(h) = ctx.en_vivo.lock().expect("en vivo").take() {
+        h.abort();
+    }
+    if let Some(ui) = ctx.ui.upgrade() {
+        let e = ui.global::<Estado>();
+        e.set_en_vivo(false);
+        bitacora::olvidar(&e);
+    }
     let c = ctx.clone();
     ctx.rt.spawn(async move {
         c.cliente.salir().await;
         *c.ubicacion.lock().await = None;
+        *c.bitacora.lock().await = bitacora::Memoria::default();
     });
 }
 
 fn refrescar(ctx: &Arc<Contexto>) {
     let c = ctx.clone();
-    ctx.rt.spawn(async move { cargar(&c).await });
+    ctx.rt.spawn(async move {
+        tokio::join!(cargar(&c), bitacora::cargar(&c));
+    });
+}
+
+fn ir(ctx: &Arc<Contexto>, pantalla: Pantalla) {
+    if let Some(ui) = ctx.ui.upgrade() {
+        ui.global::<Estado>().set_pantalla(pantalla);
+    }
+    if pantalla == Pantalla::Bitacora {
+        cargar_bitacora(ctx, false);
+    }
+}
+
+fn cargar_bitacora(ctx: &Arc<Contexto>, seguir: bool) {
+    let Some(ui) = ctx.ui.upgrade() else { return };
+    let e = ui.global::<Estado>();
+    let (tipo, solo) = (
+        e.get_bitacora_tipo().to_string(),
+        e.get_bitacora_solo_no_leidas(),
+    );
+    let c = ctx.clone();
+    ctx.rt
+        .spawn(async move { bitacora::cargar_bitacora(&c, tipo, solo, seguir).await });
+}
+
+/// WebSocket en vivo: estado en la cabecera y, ante cada novedad, recarga
+/// notificaciones (toasts) y dashboard.
+fn iniciar_en_vivo(ctx: &Arc<Contexto>) {
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+    let c = ctx.clone();
+    let tarea = ctx.rt.spawn(async move {
+        let conexion = tokio::spawn(en_vivo::mantener(c.cliente.clone(), tx));
+        while let Some(ev) = rx.recv().await {
+            match ev {
+                Evento::Conectado | Evento::Desconectado => {
+                    let si = matches!(ev, Evento::Conectado);
+                    c.ui.upgrade_in_event_loop(move |ui| ui.global::<Estado>().set_en_vivo(si))
+                        .ok();
+                }
+                Evento::Novedad => {
+                    // Los triggers escriben en la misma transacción: ya está en la bitácora
+                    tokio::join!(cargar(&c), bitacora::cargar(&c));
+                }
+            }
+        }
+        conexion.abort();
+    });
+    if let Some(anterior) = ctx.en_vivo.lock().expect("en vivo").replace(tarea) {
+        anterior.abort();
+    }
 }
 
 fn refrescar_periodicamente(ctx: &Arc<Contexto>) {
@@ -112,7 +203,7 @@ fn refrescar_periodicamente(ctx: &Arc<Contexto>) {
         loop {
             intervalo.tick().await;
             if c.cliente.hay_sesion().await {
-                cargar(&c).await;
+                tokio::join!(cargar(&c), bitacora::cargar(&c));
             }
         }
     });

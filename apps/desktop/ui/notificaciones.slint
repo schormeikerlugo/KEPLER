@@ -1,0 +1,301 @@
+// Panel de la campana, toasts y pantalla de bitácora.
+import { Tema } from "tema.slint";
+import { Tarjeta, Etiqueta, Titulo, Boton } from "componentes.slint";
+import { Estado, Notificacion } from "estado.slint";
+
+export global Tipos {
+    public pure function color(tipo: string) -> color {
+        if tipo == "critical" {
+            return Tema.peligro;
+        }
+        if tipo == "warning" {
+            return Tema.aviso;
+        }
+        if tipo == "success" {
+            return Tema.exito;
+        }
+        return Tema.acento;
+    }
+    public pure function nombre(tipo: string) -> string {
+        if tipo == "critical" {
+            return "CRÍTICA";
+        }
+        if tipo == "warning" {
+            return "AVISO";
+        }
+        if tipo == "success" {
+            return "ÉXITO";
+        }
+        return "INFO";
+    }
+}
+
+export component FilaNotificacion inherits Rectangle {
+    in property <Notificacion> dato;
+    in property <bool> compacta;
+    callback pulsada;
+    property <color> tono: Tipos.color(dato.tipo);
+    height: max(compacta ? 58px : 54px, contenido.preferred-height + 20px);
+    border-radius: Tema.radio-medio;
+    background: zona.has-hover ? Tema.superficie-hover : dato.leida ? transparent : #ffffff05;
+    animate background { duration: Tema.mov-rapido; }
+    // Franja del tipo
+    Rectangle {
+        x: 0;
+        width: 3px;
+        height: parent.height - 16px;
+        border-radius: 1.5px;
+        background: tono;
+        opacity: dato.leida ? 0.35 : 1;
+        drop-shadow-blur: dato.leida ? 0 : 6px;
+        drop-shadow-color: tono.with-alpha(0.6);
+    }
+    contenido := HorizontalLayout {
+        padding-left: 16px;
+        padding-right: 14px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        spacing: 12px;
+        VerticalLayout {
+            spacing: 4px;
+            alignment: center;
+            horizontal-stretch: 1;
+            Text {
+                text: dato.mensaje;
+                color: dato.leida ? Tema.texto-tenue : Tema.texto;
+                font-size: 13px;
+                wrap: word-wrap;
+            }
+            HorizontalLayout {
+                spacing: 10px;
+                alignment: start;
+                Etiqueta {
+                    text: Tipos.nombre(dato.tipo);
+                    color: tono;
+                }
+                Etiqueta { text: dato.fecha; }
+            }
+        }
+        if !dato.leida: Rectangle {
+            width: 8px;
+            height: 8px;
+            y: (parent.height - self.height) / 2;
+            border-radius: 4px;
+            background: Tema.acento;
+            drop-shadow-blur: 6px;
+            drop-shadow-color: Tema.glow-acento;
+        }
+    }
+    zona := TouchArea {
+        mouse-cursor: dato.leida ? default : pointer;
+        clicked => { pulsada(); }
+    }
+}
+
+export component PanelNotificaciones inherits Rectangle {
+    callback ver-bitacora;
+    width: 440px;
+    height: min(620px, cuerpo.preferred-height);
+    border-radius: Tema.radio-tarjeta;
+    background: #121418f5;
+    border-width: 1px;
+    border-color: Tema.borde-holo-sutil;
+    drop-shadow-blur: 30px;
+    drop-shadow-color: #000000cc;
+    // Absorbe los clics para que no cierren el panel
+    TouchArea { }
+    cuerpo := VerticalLayout {
+        padding: 18px;
+        spacing: 10px;
+        HorizontalLayout {
+            Titulo { text: "Notificaciones"; }
+            Etiqueta {
+                text: Estado.no-leidas > 0 ? Estado.no-leidas + " SIN LEER" : "TODO LEÍDO";
+                horizontal-alignment: right;
+                vertical-alignment: center;
+            }
+        }
+        Flickable {
+            min-height: Estado.notificaciones.length == 0 ? 80px : min(440px, lista.preferred-height);
+            content-height: lista.preferred-height;
+            lista := VerticalLayout {
+                alignment: start;
+                spacing: 4px;
+                for n in Estado.notificaciones: FilaNotificacion {
+                    dato: n;
+                    compacta: true;
+                    pulsada => { Estado.marcar-leida(n.id); }
+                }
+            }
+            if Estado.notificaciones.length == 0: Text {
+                text: "Sin notificaciones todavía.";
+                color: Tema.texto-tenue;
+                font-size: Tema.t-pequeno;
+            }
+        }
+        HorizontalLayout {
+            spacing: 10px;
+            Boton {
+                texto: "MARCAR TODO LEÍDO";
+                activo: Estado.no-leidas > 0;
+                horizontal-stretch: 1;
+                pulsado => { Estado.marcar-todas(); }
+            }
+            Boton {
+                texto: "VER BITÁCORA";
+                principal: true;
+                horizontal-stretch: 1;
+                pulsado => { ver-bitacora(); }
+            }
+        }
+    }
+}
+
+component Toast inherits Rectangle {
+    in property <Notificacion> dato;
+    property <color> tono: Tipos.color(dato.tipo);
+    width: 380px;
+    height: fila.preferred-height;
+    border-radius: Tema.radio-medio;
+    background: #14171cf2;
+    border-width: 1px;
+    border-color: tono.with-alpha(0.45);
+    drop-shadow-blur: 24px;
+    drop-shadow-color: #000000aa;
+    fila := HorizontalLayout {
+        padding: 14px;
+        spacing: 12px;
+        Rectangle {
+            width: 3px;
+            border-radius: 1.5px;
+            background: tono;
+            drop-shadow-blur: 6px;
+            drop-shadow-color: tono.with-alpha(0.7);
+        }
+        VerticalLayout {
+            spacing: 4px;
+            horizontal-stretch: 1;
+            Etiqueta {
+                text: Tipos.nombre(dato.tipo);
+                color: tono;
+            }
+            Text {
+                text: dato.mensaje;
+                color: Tema.texto;
+                font-size: 13px;
+                wrap: word-wrap;
+            }
+        }
+        Text {
+            text: "✕";
+            color: cerrar.has-hover ? Tema.texto : Tema.texto-tenue;
+            font-size: 13px;
+            vertical-alignment: top;
+            cerrar := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { Estado.cerrar-toast(dato.id); }
+            }
+        }
+    }
+}
+
+export component Toasts inherits VerticalLayout {
+    alignment: end;
+    spacing: 10px;
+    for t in Estado.toasts: Toast { dato: t; }
+}
+
+component Filtro inherits Rectangle {
+    in property <string> texto;
+    in property <bool> activo;
+    in property <color> tono: Tema.acento;
+    callback pulsado;
+    height: 30px;
+    width: etiqueta.preferred-width + 26px;
+    border-radius: 15px;
+    background: activo ? tono.with-alpha(0.15) : zona.has-hover ? Tema.superficie-hover : transparent;
+    border-width: 1px;
+    border-color: activo ? tono.with-alpha(0.6) : Tema.borde-tenue;
+    animate background, border-color { duration: Tema.mov-rapido; }
+    etiqueta := Text {
+        text: texto;
+        color: activo ? tono : Tema.texto-secundario;
+        font-size: 11px;
+        font-weight: Tema.peso-semi;
+        letter-spacing: 1px;
+    }
+    zona := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { pulsado(); }
+    }
+}
+
+export component PantallaBitacora inherits Tarjeta {
+    function filtrar(tipo: string) {
+        Estado.bitacora-tipo = tipo;
+        Estado.filtrar-bitacora();
+    }
+    VerticalLayout {
+        padding-top: Tema.relleno-tarjeta-v;
+        padding-bottom: Tema.relleno-tarjeta-v;
+        padding-left: Tema.relleno-tarjeta-h;
+        padding-right: Tema.relleno-tarjeta-h;
+        spacing: 16px;
+        HorizontalLayout {
+            spacing: 8px;
+            Titulo {
+                text: "Bitácora";
+                vertical-alignment: center;
+            }
+            Rectangle { width: 18px; }
+            Filtro { texto: "TODAS"; activo: Estado.bitacora-tipo == ""; pulsado => { filtrar(""); } }
+            Filtro { texto: "CRÍTICAS"; tono: Tema.peligro; activo: Estado.bitacora-tipo == "critical"; pulsado => { filtrar("critical"); } }
+            Filtro { texto: "AVISOS"; tono: Tema.aviso; activo: Estado.bitacora-tipo == "warning"; pulsado => { filtrar("warning"); } }
+            Filtro { texto: "ÉXITOS"; tono: Tema.exito; activo: Estado.bitacora-tipo == "success"; pulsado => { filtrar("success"); } }
+            Filtro { texto: "INFO"; activo: Estado.bitacora-tipo == "info"; pulsado => { filtrar("info"); } }
+            Rectangle { horizontal-stretch: 1; }
+            Filtro {
+                texto: Estado.bitacora-solo-no-leidas ? "● SOLO SIN LEER" : "○ SOLO SIN LEER";
+                activo: Estado.bitacora-solo-no-leidas;
+                pulsado => {
+                    Estado.bitacora-solo-no-leidas = !Estado.bitacora-solo-no-leidas;
+                    Estado.filtrar-bitacora();
+                }
+            }
+            Boton {
+                texto: "MARCAR TODO LEÍDO";
+                activo: Estado.no-leidas > 0;
+                pulsado => { Estado.marcar-todas(); }
+            }
+        }
+        Flickable {
+            vertical-stretch: 1;
+            content-height: lista.preferred-height;
+            lista := VerticalLayout {
+                alignment: start;
+                spacing: 4px;
+                for n in Estado.bitacora: FilaNotificacion {
+                    dato: n;
+                    pulsada => { Estado.marcar-leida(n.id); }
+                }
+                if Estado.bitacora.length == 0 && !Estado.bitacora-cargando: Text {
+                    height: 80px;
+                    text: "Nada que mostrar con este filtro.";
+                    color: Tema.texto-tenue;
+                    font-size: Tema.t-pequeno;
+                    vertical-alignment: center;
+                }
+                if Estado.bitacora-hay-mas: HorizontalLayout {
+                    alignment: center;
+                    padding-top: 10px;
+                    Boton {
+                        width: 200px;
+                        texto: Estado.bitacora-cargando ? "CARGANDO…" : "CARGAR MÁS";
+                        activo: !Estado.bitacora-cargando;
+                        pulsado => { Estado.mas-bitacora(); }
+                    }
+                }
+            }
+        }
+    }
+}

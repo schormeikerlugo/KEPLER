@@ -102,6 +102,37 @@ impl Cliente {
         }
     }
 
+    /// POST con sesión (mismo reintento que `get`).
+    pub async fn post<T: DeserializeOwned>(&self, ruta: &str, cuerpo: &Value) -> Resultado<T> {
+        self.renovar_si_toca().await?;
+        match self.post_una_vez(ruta, cuerpo).await {
+            Err(Error::NoAutorizado(_)) => {
+                self.renovar().await?;
+                self.post_una_vez(ruta, cuerpo).await
+            }
+            otro => otro,
+        }
+    }
+
+    /// Token válido para abrir el WebSocket.
+    pub async fn token_vigente(&self) -> Resultado<String> {
+        self.renovar_si_toca().await?;
+        self.token().await
+    }
+
+    async fn post_una_vez<T: DeserializeOwned>(&self, ruta: &str, cuerpo: &Value) -> Resultado<T> {
+        let token = self.token().await?;
+        let r = self
+            .http
+            .post(format!("{}{ruta}", self.base))
+            .bearer_auth(token)
+            .json(cuerpo)
+            .send()
+            .await
+            .map_err(red)?;
+        leer(r).await
+    }
+
     async fn get_una_vez<T: DeserializeOwned>(&self, ruta: &str) -> Resultado<T> {
         let token = self.token().await?;
         let r = self

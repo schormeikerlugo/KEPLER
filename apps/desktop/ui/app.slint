@@ -3,7 +3,10 @@ import "../../../design/fonts/Jura-Variable.ttf";
 import { Tema } from "tema.slint";
 import { Estado, Pantalla } from "estado.slint";
 import { PantallaLogin } from "login.slint";
+import { Cabecera } from "cabecera.slint";
 import { PantallaDashboard } from "dashboard.slint";
+import { PanelNotificaciones, Toasts, PantallaBitacora } from "notificaciones.slint";
+import { Acerca } from "acerca.slint";
 
 export { Estado, Pantalla }
 
@@ -17,11 +20,69 @@ export component AppWindow inherits Window {
     background: Tema.fondo;
     default-font-family: "Jura";
 
+    property <bool> panel-abierto;
+    property <bool> acerca-abierto;
+
     if Estado.pantalla == Pantalla.login: PantallaLogin {
         cargando: Estado.entrando;
         error: Estado.error-login;
         servidor: Estado.servidor;
         entrar(u, c) => { Estado.entrar(u, c); }
     }
-    if Estado.pantalla == Pantalla.dashboard: PantallaDashboard { }
+
+    if Estado.pantalla != Pantalla.login: VerticalLayout {
+        padding-top: 30px;
+        padding-bottom: 30px;
+        padding-left: Tema.espacio-pagina;
+        padding-right: Tema.espacio-pagina;
+        spacing: 22px;
+
+        Cabecera {
+            panel-abierto: root.panel-abierto;
+            campana => { root.panel-abierto = !root.panel-abierto; }
+            acerca => { root.acerca-abierto = true; }
+        }
+
+        if Estado.error != "": Rectangle {
+            height: 40px;
+            border-radius: Tema.radio-medio;
+            background: #FF444418;
+            border-width: 1px;
+            border-color: #FF444455;
+            Text { text: "⚠  " + Estado.error; color: Tema.peligro; font-size: 13px; }
+        }
+
+        if Estado.pantalla == Pantalla.dashboard: PantallaDashboard { vertical-stretch: 1; }
+        if Estado.pantalla == Pantalla.bitacora: PantallaBitacora { vertical-stretch: 1; }
+    }
+
+    // Panel de la campana: un clic fuera lo cierra
+    if root.panel-abierto && Estado.pantalla != Pantalla.login: TouchArea {
+        clicked => { root.panel-abierto = false; }
+        PanelNotificaciones {
+            x: root.width - self.width - Tema.espacio-pagina - 150px;
+            y: 30px + 103px + 8px;
+            ver-bitacora => {
+                root.panel-abierto = false;
+                Estado.ir(Pantalla.bitacora);
+            }
+        }
+    }
+
+    if Estado.pantalla != Pantalla.login: Toasts {
+        x: root.width - 380px - 28px;
+        y: root.height - self.preferred-height - 28px;
+        width: 380px;
+        height: self.preferred-height;
+    }
+
+    if root.acerca-abierto: Rectangle {
+        background: #000000b3;
+        TouchArea {
+            clicked => { root.acerca-abierto = false; }
+        }
+        Acerca {
+            cerrar => { root.acerca-abierto = false; }
+        }
+    }
 }
