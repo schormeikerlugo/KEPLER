@@ -15,7 +15,7 @@ fn yolo_coincide_con_ultralytics() {
     };
     let img = decodificar(&std::fs::read(m.dir.join("prueba-bus.jpg")).unwrap()).unwrap();
     let dets = m.detector.detectar(&img, 0.5).unwrap();
-    // Ultralytics: bus 0.93 [6,229,807,749] y 4 personas
+    // Ultralytics (YOLO26n/s): bus ≥ 0.9 en [6,229,807,749] y 4 personas
     let clases: Vec<&str> = dets.iter().map(|d| d.clase.as_str()).collect();
     assert_eq!(
         clases.iter().filter(|c| **c == "person").count(),
@@ -23,7 +23,7 @@ fn yolo_coincide_con_ultralytics() {
         "{clases:?}"
     );
     let bus = dets.iter().find(|d| d.clase == "bus").expect("bus");
-    assert!((bus.confianza - 0.93).abs() < 0.03, "{}", bus.confianza);
+    assert!(bus.confianza > 0.9, "{}", bus.confianza);
     let (w, h) = (img.width() as f32, img.height() as f32);
     let x1 = bus.caja.x * w;
     let y2 = (bus.caja.y + bus.caja.alto) * h;

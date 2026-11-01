@@ -1,10 +1,10 @@
 """Exporta los modelos de KEPLER a ONNX (servidor). Herramienta offline: nada
 de esto corre en producción.
 
-    python models/export/exportar.py --yolo legacy/backend/models/yolo26n.pt
+    python models/export/exportar.py --yolo yolo26s.pt
 
 Genera en models/onnx/:
-  * yolo26n.onnx       — detección 640×640, salida end-to-end [1, 300, 6]
+  * yolo26s.onnx       — detección 640×640, salida end-to-end [1, 300, 6]
                          (x1, y1, x2, y2, confianza, clase) sin NMS
   * clip-vit-b32.onnx  — encoder de imagen CLIP ViT-B/32, entrada [N, 3, 224, 224]
                          normalizada, salida [N, 512] ya normalizada (L2)
@@ -28,7 +28,8 @@ def exportar_yolo(pesos: Path) -> dict:
     from ultralytics import YOLO
 
     modelo = YOLO(str(pesos))
-    ruta = Path(modelo.export(format="onnx", imgsz=640, opset=17, simplify=True, dynamic=False))
+    # nms=False: cabeza end-to-end (las versiones nuevas exportan por defecto la que necesita NMS)
+    ruta = Path(modelo.export(format="onnx", imgsz=640, opset=17, simplify=True, dynamic=False, nms=False))
     destino = SALIDA / f"{pesos.stem}.onnx"
     shutil.move(ruta, destino)
     return {

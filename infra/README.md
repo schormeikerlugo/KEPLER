@@ -28,7 +28,7 @@ Consumo en reposo: ~1,3 GB de RAM (kepler-server: ~460 MB con los modelos de vis
 | Archivos (Storage) | `/mnt/storage/kepler/storage` |
 | Backups | `/mnt/storage/kepler/backups/kepler-AAAA-MM-DD.dump` |
 | Mapas offline | `/mnt/storage/kepler/mapas/*.pmtiles` (venezuela: 434 MB) |
-| Modelos de visión | `/mnt/storage/kepler/modelos` (YOLO26n + CLIP, ~360 MB) |
+| Modelos de visión | `/mnt/storage/kepler/modelos` (YOLO26s + CLIP, ~390 MB) |
 | Secretos | `~/services/kepler/.env` (permisos 600, **nunca en git**) |
 
 ## Esquema

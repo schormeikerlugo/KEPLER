@@ -1,6 +1,6 @@
 {
   "yolo": {
-    "archivo": "yolo26n.onnx",
+    "archivo": "yolo26s.onnx",
     "tamano": 640,
     "clases": [
       "person",

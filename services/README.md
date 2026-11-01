@@ -50,10 +50,10 @@ Los servicios externos (clima, aire, IP) responden `{"disponible": false, "motiv
 
 ### Visión (`crates/kepler-vision`)
 
-- **Detección en vivo**: una unidad de campo con `Hola.deteccion_servidor = true` recibe `Detecciones` (YOLO26n + ByteTrack, `origen = SERVIDOR`) por cada `Fotograma`; el centro de control también las recibe.
+- **Detección en vivo**: una unidad de campo con `Hola.deteccion_servidor = true` recibe `Detecciones` (YOLO26s + ByteTrack, `origen = SERVIDOR`) por cada `Fotograma`; el centro de control también las recibe.
 - **Capturas**: foto en `capturas/<user>/<entidad>/<id>.jpg` (subida con el JWT del usuario), embedding CLIP y Re-ID (≥ 0.78): persona → se vincula a la identidad; POI → duplicado (si es de otro explorador cuenta como confirmación); objeto → se informa el parecido. Se avisa por WebSocket con `CapturaProcesada`.
 - Sin modelos el servidor arranca igual (`/health` → `vision.ok = false`): las capturas se guardan sin embedding.
-- Rendimiento en cortex (Ryzen 7 3700X, 4 hilos): YOLO 27 ms, CLIP 43 ms (34 ms/imagen en lote). Medir con `docker exec kepler-server kepler-bench /data/modelos`.
+- Rendimiento en cortex (Ryzen 7 3700X, 4 hilos): YOLO26s 78 ms con preprocesado (~13 FPS), CLIP 44 ms (34 ms/imagen en lote). Medir con `docker exec kepler-server kepler-bench /data/modelos`.
 
 ### Variables
 

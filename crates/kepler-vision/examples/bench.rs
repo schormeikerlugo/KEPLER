@@ -37,7 +37,11 @@ fn main() {
     medir("decodificar JPEG", 50, || {
         decodificar(&jpeg).unwrap();
     });
-    medir("YOLO26n (incluye preprocesado)", 50, || {
+    let nombre = format!(
+        "{} (con preprocesado)",
+        m.meta.yolo.archivo.trim_end_matches(".onnx")
+    );
+    medir(&nombre, 50, || {
         m.detector.detectar(&img, 0.25).unwrap();
     });
     let mut r = Rastreador::default();

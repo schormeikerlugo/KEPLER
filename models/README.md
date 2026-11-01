@@ -3,12 +3,12 @@
 Modelos de IA exportados para cada plataforma. Los `.onnx` no se versionan; se generan con el script de exportación (Python solo como herramienta, nunca en producción).
 
 ```bash
-legacy/backend/venv/bin/python models/export/exportar.py --yolo legacy/backend/models/yolo26n.pt
+legacy/backend/venv/bin/python models/export/exportar.py --yolo yolo26s.pt
 ```
 
 | Archivo (`models/onnx/`) | Contenido |
 |---|---|
-| `yolo26n.onnx` | YOLO26n 640×640, salida end-to-end `[1, 300, 6]` (x1, y1, x2, y2, confianza, clase), sin NMS |
+| `yolo26s.onnx` | YOLO26s 640×640, salida end-to-end `[1, 300, 6]` (x1, y1, x2, y2, confianza, clase), sin NMS. Elegido en [`comparativa/`](comparativa/README.md) |
 | `clip-vit-b32.onnx` | Encoder de imagen CLIP ViT-B/32 (el de la v0.7), salida `[N, 512]` normalizada |
 | `modelos.json` | 80 clases COCO, parámetros de preprocesado y embedding de referencia |
 | `referencia.png` | Imagen sintética para comprobar CLIP |
