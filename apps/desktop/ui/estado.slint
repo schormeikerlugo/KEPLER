@@ -114,6 +114,36 @@ export struct CajaVivo {
     tono: color,
 }
 
+export struct FilaObjeto {
+    id: string,
+    nombre: string,
+    categoria: string,
+    total: int,
+    tono: color,
+}
+
+export struct EtiquetaRadar {
+    texto: string,
+    // Posición normalizada [0, 1] dentro del gráfico
+    x: float,
+    y: float,
+}
+
+export struct CategoriaPoi {
+    id: string,
+    nombre: string,
+    tono: color,
+    propios: int,
+    compartidos: int,
+}
+
+export struct FilaRuta {
+    nombre: string,
+    detalle: string,
+    seguridad: string,
+    tono: color,
+}
+
 export enum Pantalla { login, dashboard, envivo, mapa, archivos, bitacora }
 
 export global Estado {
@@ -163,6 +193,22 @@ export global Estado {
     in property <string> semana-total;
     in property <string> semana-linea;
     in property <float> semana-max: 1;
+    in property <string> consejo;
+    in property <[FilaObjeto]> objetos-frecuentes;
+    in property <string> radar-poligono;
+    in property <string> radar-rejilla;
+    in property <string> radar-ejes;
+    in property <[EtiquetaRadar]> radar-etiquetas;
+    in property <[CategoriaPoi]> poi-categorias;
+    in-out property <string> poi-categoria;
+    in property <string> poi-categoria-nombre;
+    in property <[Hallazgo]> poi-lista;
+    in property <bool> poi-cargando;
+    in property <[Hallazgo]> personas-recientes;
+    in property <[FilaRuta]> rutas-recientes;
+    callback abrir-categoria-poi(string, string);
+    callback abrir-hallazgo(string, string);
+    callback ver-todo(string);
 
     callback entrar(string, string);
     callback salir();

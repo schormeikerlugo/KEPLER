@@ -10,6 +10,7 @@ mod imagenes;
 mod mapa;
 mod modelos;
 mod panel;
+mod tarjetas;
 mod vista_mapa;
 mod vivo;
 

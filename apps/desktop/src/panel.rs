@@ -19,7 +19,7 @@ use crate::api::{Cliente, Error};
 use crate::en_vivo::{self, Evento};
 use crate::modelos::{Aire, Clima, Dashboard, Explorador, Perfil, UbicacionIp};
 use crate::{AppWindow, Atencion, Conteo, DatoIndicador, DiaSemana, Estado, FilaMision, Pantalla};
-use crate::{archivos, bitacora, imagenes, vista_mapa, vivo};
+use crate::{archivos, bitacora, imagenes, tarjetas, vista_mapa, vivo};
 
 /// Igual que el session guard de la v0.7.
 const INACTIVIDAD: Duration = Duration::from_secs(15 * 60);
@@ -39,6 +39,8 @@ pub struct Contexto {
     pub imagenes: imagenes::Cache,
     pub mapa: vista_mapa::Compartida,
     pub vivo: vivo::Vivo,
+    /// Consejo del día: uno por sesión.
+    consejo: std::sync::Mutex<Option<String>>,
     /// ¿Quiere el Centro de Control el vídeo de las unidades? (vista en vivo abierta)
     fotogramas: tokio::sync::watch::Sender<bool>,
     en_vivo: std::sync::Mutex<Option<JoinHandle<()>>>,
@@ -75,6 +77,7 @@ pub fn conectar(ui: &AppWindow, rt: Handle, cliente: Arc<Cliente>) {
         imagenes: imagenes::Cache::default(),
         mapa: std::sync::Mutex::default(),
         vivo: vivo::Vivo::default(),
+        consejo: std::sync::Mutex::new(None),
         fotogramas: tokio::sync::watch::channel(false).0,
         en_vivo: std::sync::Mutex::new(None),
     });
@@ -196,6 +199,16 @@ pub fn conectar(ui: &AppWindow, rt: Handle, cliente: Arc<Cliente>) {
         }
     });
     let c = ctx.clone();
+    estado.on_abrir_categoria_poi(move |id, nombre| {
+        tarjetas::abrir_categoria_poi(&c, id.to_string(), nombre.to_string());
+    });
+    let c = ctx.clone();
+    estado.on_abrir_hallazgo(move |tipo, id| {
+        tarjetas::abrir_hallazgo(&c, tipo.to_string(), id.to_string());
+    });
+    let c = ctx.clone();
+    estado.on_ver_todo(move |tipo| tarjetas::ver_todo(&c, &tipo, |p| ir(&c, p)));
+    let c = ctx.clone();
     estado.on_cerrar_toast(move |id| {
         if let Some(ui) = c.ui.upgrade() {
             bitacora::cerrar_toast(&ui.global::<Estado>(), &id);
@@ -259,6 +272,7 @@ fn salir(ctx: &Arc<Contexto>, motivo: &'static str) {
         c.cliente.salir().await;
         *c.ubicacion.lock().await = None;
         *c.bitacora.lock().await = bitacora::Memoria::default();
+        *c.consejo.lock().expect("consejo") = None;
         *c.archivos.lock().await = archivos::Memoria::default();
         c.imagenes.vaciar();
     });
@@ -482,6 +496,28 @@ async fn cargar(c: &Arc<Contexto>) {
     .map(ToString::to_string)
     .unwrap_or_default();
 
+    let tarjetas = dashboard.as_ref().ok().map(tarjetas::construir);
+    let consejo = {
+        let mut guardado = c.consejo.lock().expect("consejo");
+        if guardado.is_none() && dashboard.is_ok() {
+            let clima = explorador
+                .as_ref()
+                .ok()
+                .and_then(|e| e.clima.clone())
+                .and_then(|d| d.datos().ok())
+                .map(|k| {
+                    serde_json::to_value(k.categoria)
+                        .ok()
+                        .and_then(|v| v.as_str().map(str::to_owned))
+                });
+            *guardado = Some(tarjetas::consejo(
+                dashboard.as_ref().ok(),
+                explorador.as_ref().ok(),
+                clima.flatten().as_deref(),
+            ));
+        }
+        guardado.clone().unwrap_or_default()
+    };
     let vista = Vista::construir(
         perfil.ok(),
         dashboard.ok(),
@@ -489,11 +525,16 @@ async fn cargar(c: &Arc<Contexto>) {
         aire,
         ubicacion,
     );
+    let c2 = c.clone();
     c.ui.upgrade_in_event_loop(move |ui| {
         let e = ui.global::<Estado>();
         e.set_cargando(false);
         e.set_error(error.into());
+        e.set_consejo(consejo.into());
         vista.aplicar(&e);
+        if let Some(t) = tarjetas {
+            tarjetas::aplicar(&c2, t, &e);
+        }
     })
     .ok();
 }

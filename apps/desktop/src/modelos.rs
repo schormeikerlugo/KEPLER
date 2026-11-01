@@ -3,6 +3,7 @@
 use chrono::{DateTime, NaiveDate, Utc};
 use kepler_core::entorno::{CalidadAire, CategoriaClima};
 use serde::Deserialize;
+use serde_json::Value;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Tokens {
@@ -30,6 +31,12 @@ pub struct Dashboard {
     pub recientes: Recientes,
     pub alertas: Alertas,
     pub semana: Vec<Dia>,
+    #[serde(default)]
+    pub objetos_por_categoria: Vec<Value>,
+    #[serde(default)]
+    pub objetos_frecuentes: Vec<Value>,
+    #[serde(default)]
+    pub pois_por_categoria: Vec<Value>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -46,6 +53,10 @@ pub struct Conteos {
 #[derive(Debug, Clone, Deserialize)]
 pub struct Recientes {
     pub misiones: Vec<Mision>,
+    #[serde(default)]
+    pub personas: Vec<Value>,
+    #[serde(default)]
+    pub rutas: Vec<Value>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

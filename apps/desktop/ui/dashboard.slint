@@ -1,6 +1,7 @@
 import { Tema } from "tema.slint";
 import { Tarjeta, Etiqueta, Titulo, Indicador, Barra, Pastilla } from "componentes.slint";
 import { Avatar } from "cabecera.slint";
+import { TarjetaObjetos, TarjetaPois, TarjetaPersonas, TarjetaRutas, TarjetaConsejo } from "tarjetas.slint";
 import { Estado, Atencion, FilaMision } from "estado.slint";
 
 component FilaAtencion inherits Rectangle {
@@ -307,12 +308,28 @@ export component PantallaDashboard inherits Flickable {
                 spacing: 22px;
                 alignment: stretch;
                 TablaMisiones { horizontal-stretch: 3; }
-                Resumen { horizontal-stretch: 2; }
+                TarjetaPois { horizontal-stretch: 2; }
+            }
+            HorizontalLayout {
+                spacing: 22px;
+                alignment: stretch;
+                TarjetaObjetos { horizontal-stretch: 3; }
+                TarjetaPersonas { horizontal-stretch: 2; }
+            }
+            HorizontalLayout {
+                spacing: 22px;
+                alignment: stretch;
+                Resumen { horizontal-stretch: 3; }
+                TarjetaRutas { horizontal-stretch: 2; }
             }
         }
 
-        TarjetaExplorador {
+        VerticalLayout {
             width: 340px;
+            spacing: 22px;
+            alignment: start;
+            TarjetaConsejo { }
+            TarjetaExplorador { }
         }
     }
 }

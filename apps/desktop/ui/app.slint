@@ -82,7 +82,7 @@ export component AppWindow inherits Window {
         height: self.preferred-height;
     }
 
-    if Estado.detalle-abierto && Estado.pantalla == Pantalla.archivos: Rectangle {
+    if Estado.detalle-abierto && Estado.pantalla != Pantalla.login: Rectangle {
         background: #000000b3;
         TouchArea { }
         ModalDetalle {

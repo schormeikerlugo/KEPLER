@@ -1,0 +1,295 @@
+// Tarjetas del dashboard: objetos (radar), POIs por categoría, personas, rutas y consejo.
+import { Tema } from "tema.slint";
+import { Tarjeta, Etiqueta, Titulo, Boton, Pastilla } from "componentes.slint";
+import { Estado, FilaObjeto, CategoriaPoi, Hallazgo, FilaRuta } from "estado.slint";
+
+component Cabeza inherits HorizontalLayout {
+    in property <string> titulo;
+    in property <string> ver: "";
+    callback ver-todo;
+    Titulo { text: titulo; vertical-alignment: center; }
+    Rectangle { horizontal-stretch: 1; }
+    if ver != "": Boton {
+        height: 26px;
+        principal: true;
+        texto: "VER TODO";
+        pulsado => { ver-todo(); }
+    }
+}
+
+component Fila inherits Rectangle {
+    callback pulsada;
+    in property <bool> clicable: true;
+    height: 42px;
+    border-radius: 8px;
+    background: clicable && zona.has-hover ? Tema.superficie-hover : transparent;
+    Rectangle {
+        y: parent.height - 1px;
+        height: 1px;
+        background: Tema.borde-sutil;
+    }
+    @children
+    zona := TouchArea {
+        mouse-cursor: clicable ? pointer : default;
+        clicked => { if clicable { pulsada(); } }
+    }
+}
+
+component Vacio inherits Text {
+    color: Tema.texto-tenue;
+    font-size: Tema.t-pequeno;
+    height: 50px;
+    vertical-alignment: center;
+}
+
+export component TarjetaObjetos inherits Tarjeta {
+    VerticalLayout {
+        padding: Tema.relleno-tarjeta-h;
+        padding-top: Tema.relleno-tarjeta-v;
+        spacing: 12px;
+        Cabeza {
+            titulo: "Objetos";
+            ver: "objetos";
+            ver-todo => { Estado.ver-todo("objetos"); }
+        }
+        HorizontalLayout {
+            spacing: 18px;
+            // Radar por categoría
+            Rectangle {
+                width: 220px;
+                height: 220px;
+                Path {
+                    width: 100%; height: 100%;
+                    viewbox-width: 200; viewbox-height: 200;
+                    commands: Estado.radar-rejilla;
+                    stroke: #ffffff14;
+                    stroke-width: 1px;
+                }
+                Path {
+                    width: 100%; height: 100%;
+                    viewbox-width: 200; viewbox-height: 200;
+                    commands: Estado.radar-ejes;
+                    stroke: #ffffff0c;
+                    stroke-width: 1px;
+                }
+                Path {
+                    width: 100%; height: 100%;
+                    viewbox-width: 200; viewbox-height: 200;
+                    commands: Estado.radar-poligono;
+                    fill: #3FA8FF33;
+                    stroke: Tema.acento;
+                    stroke-width: 2px;
+                }
+                for e in Estado.radar-etiquetas: Text {
+                    x: e.x * parent.width - 40px;
+                    y: e.y * parent.height - 7px;
+                    width: 80px;
+                    text: e.texto;
+                    color: Tema.texto-tenue;
+                    font-size: 9.5px;
+                    horizontal-alignment: center;
+                }
+                if Estado.objetos-frecuentes.length == 0: Text {
+                    text: "Sin objetos";
+                    color: Tema.texto-etiqueta;
+                    font-size: 11px;
+                }
+            }
+            VerticalLayout {
+                alignment: start;
+                horizontal-stretch: 1;
+                HorizontalLayout {
+                    padding-left: 8px;
+                    Etiqueta { text: "OBJETO"; horizontal-stretch: 1; }
+                    Etiqueta { text: "CATEGORÍA"; width: 40%; }
+                    Etiqueta { text: "VECES"; width: 15%; horizontal-alignment: right; }
+                }
+                for o in Estado.objetos-frecuentes: Fila {
+                    height: 34px;
+                    pulsada => { Estado.abrir-hallazgo("objetos", o.id); }
+                    HorizontalLayout {
+                        padding-left: 8px;
+                        padding-right: 8px;
+                        Text { text: o.nombre; color: Tema.texto; font-size: 13px; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
+                        Text { text: o.categoria; color: o.tono; font-size: 12px; vertical-alignment: center; overflow: elide; width: 40%; }
+                        Text { text: o.total; color: Tema.texto-secundario; font-size: 13px; vertical-alignment: center; horizontal-alignment: right; width: 15%; }
+                    }
+                }
+            }
+        }
+    }
+}
+
+export component TarjetaPois inherits Tarjeta {
+    VerticalLayout {
+        padding: Tema.relleno-tarjeta-h;
+        padding-top: Tema.relleno-tarjeta-v;
+        spacing: 6px;
+        alignment: start;
+        Cabeza {
+            titulo: Estado.poi-categoria == "" ? "POIs" : "POIs · " + Estado.poi-categoria-nombre;
+            ver: "pois";
+            ver-todo => { Estado.ver-todo("puntos_interes"); }
+        }
+        if Estado.poi-categoria != "": Text {
+            text: "‹  Volver a las categorías";
+            color: atras.has-hover ? Tema.acento : Tema.texto-tenue;
+            font-size: 12px;
+            height: 26px;
+            vertical-alignment: center;
+            atras := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { Estado.poi-categoria = ""; }
+            }
+        }
+        if Estado.poi-categoria == "": VerticalLayout {
+            for k in Estado.poi-categorias: Fila {
+                height: 48px;
+                pulsada => { Estado.abrir-categoria-poi(k.id, k.nombre); }
+                HorizontalLayout {
+                    padding-left: 6px;
+                    padding-right: 10px;
+                    spacing: 12px;
+                    Rectangle {
+                        width: 9px;
+                        height: 9px;
+                        y: (parent.height - self.height) / 2;
+                        border-radius: 4.5px;
+                        background: k.tono;
+                        drop-shadow-blur: 6px;
+                        drop-shadow-color: k.tono.with-alpha(0.6);
+                    }
+                    Rectangle {
+                        width: 40px;
+                        height: 20px;
+                        y: (parent.height - self.height) / 2;
+                        border-radius: 10px;
+                        background: Tema.acento-suave;
+                        Text { text: (k.propios < 10 ? "0" : "") + k.propios; color: Tema.acento; font-size: 11px; font-weight: Tema.peso-semi; }
+                    }
+                    Text { text: k.nombre; color: Tema.texto; font-size: Tema.t-cuerpo; vertical-alignment: center; horizontal-stretch: 1; }
+                    if k.compartidos > 0: Text {
+                        text: "+" + k.compartidos + " de otros";
+                        color: Tema.texto-tenue;
+                        font-size: 11px;
+                        vertical-alignment: center;
+                    }
+                    Text { text: "›"; color: Tema.texto-tenue; font-size: 16px; vertical-alignment: center; }
+                }
+            }
+        }
+        if Estado.poi-categoria != "": VerticalLayout {
+            for p in Estado.poi-lista: Fila {
+                height: 46px;
+                pulsada => { Estado.abrir-hallazgo("puntos_interes", p.id); }
+                HorizontalLayout {
+                    padding-left: 6px;
+                    spacing: 12px;
+                    VerticalLayout {
+                        alignment: center;
+                        horizontal-stretch: 1;
+                        Text { text: p.nombre; color: Tema.texto; font-size: 13px; overflow: elide; }
+                        Etiqueta { text: p.fecha; }
+                    }
+                    Text { text: p.etiqueta; color: p.tono; font-size: 11px; vertical-alignment: center; }
+                }
+            }
+            if Estado.poi-lista.length == 0: Vacio {
+                text: Estado.poi-cargando ? "Cargando…" : "Ningún POI propio en esta categoría.";
+            }
+        }
+    }
+}
+
+export component TarjetaPersonas inherits Tarjeta {
+    VerticalLayout {
+        padding: Tema.relleno-tarjeta-h;
+        padding-top: Tema.relleno-tarjeta-v;
+        spacing: 6px;
+        alignment: start;
+        Cabeza {
+            titulo: "Personas";
+            ver: "personas";
+            ver-todo => { Estado.ver-todo("personas"); }
+        }
+        for p in Estado.personas-recientes: Fila {
+            height: 54px;
+            pulsada => { Estado.abrir-hallazgo("personas", p.id); }
+            HorizontalLayout {
+                padding-left: 4px;
+                spacing: 12px;
+                Rectangle {
+                    width: 40px;
+                    height: 40px;
+                    y: (parent.height - self.height) / 2;
+                    border-radius: 20px;
+                    border-width: 1px;
+                    border-color: p.tono.with-alpha(0.6);
+                    background: #1a1d22;
+                    clip: true;
+                    if p.tiene-imagen: Image {
+                        width: parent.width;
+                        height: parent.height;
+                        source: p.imagen;
+                        image-fit: cover;
+                    }
+                }
+                VerticalLayout {
+                    alignment: center;
+                    horizontal-stretch: 1;
+                    Text { text: p.nombre; color: Tema.texto; font-size: 13px; overflow: elide; }
+                    Etiqueta { text: p.fecha; }
+                }
+                Text { text: p.etiqueta; color: p.tono; font-size: 11px; vertical-alignment: center; }
+            }
+        }
+        if Estado.personas-recientes.length == 0: Vacio { text: "Sin personas registradas."; }
+    }
+}
+
+export component TarjetaRutas inherits Tarjeta {
+    VerticalLayout {
+        padding: Tema.relleno-tarjeta-h;
+        padding-top: Tema.relleno-tarjeta-v;
+        spacing: 6px;
+        alignment: start;
+        Cabeza {
+            titulo: "Rutas";
+            ver: "mapa";
+            ver-todo => { Estado.ver-todo("mapa"); }
+        }
+        for r in Estado.rutas-recientes: Fila {
+            height: 46px;
+            clicable: false;
+            HorizontalLayout {
+                padding-left: 4px;
+                spacing: 12px;
+                VerticalLayout {
+                    alignment: center;
+                    horizontal-stretch: 1;
+                    Text { text: r.nombre; color: Tema.texto; font-size: 13px; overflow: elide; }
+                    Etiqueta { text: r.detalle; }
+                }
+                VerticalLayout {
+                    alignment: center;
+                    Pastilla { texto: r.seguridad; tono: r.tono; }
+                }
+            }
+        }
+        if Estado.rutas-recientes.length == 0: Vacio { text: "Sin rutas. Planifica una desde el mapa."; }
+    }
+}
+
+export component TarjetaConsejo inherits Tarjeta {
+    VerticalLayout {
+        padding: 20px;
+        spacing: 10px;
+        Titulo { text: "Consejo del día"; }
+        Text {
+            text: Estado.consejo;
+            color: Tema.texto-secundario;
+            font-size: 13px;
+            wrap: word-wrap;
+        }
+    }
+}

@@ -404,6 +404,35 @@ fn etiqueta(m: &Memoria, tipo: &str, f: &Value) -> (String, Color) {
     }
 }
 
+/// Guarda filas completas venidas de otra pantalla (dashboard) para poder abrirlas.
+pub async fn registrar(c: &Arc<Contexto>, filas: Vec<Value>) {
+    let mut m = c.archivos.lock().await;
+    for f in filas {
+        m.filas.insert(texto(&f, "id"), f);
+    }
+}
+
+/// Abre el detalle aunque el hallazgo no esté en la rejilla (lo pide si hace falta).
+pub async fn abrir_por_id(c: &Arc<Contexto>, tipo: String, id: String) {
+    let nombres = cargar_catalogo(c).await;
+    c.ui.upgrade_in_event_loop(move |ui| {
+        ui.global::<Estado>().set_categorias(modelo_textos(nombres))
+    })
+    .ok();
+    let falta = !c.archivos.lock().await.filas.contains_key(&id);
+    if falta {
+        match c
+            .cliente
+            .get::<Value>(&format!("/v1/archivos/{tipo}/{id}"))
+            .await
+        {
+            Ok(f) => registrar(c, vec![f]).await,
+            Err(_) => return,
+        }
+    }
+    abrir_detalle(c, id, tipo).await;
+}
+
 pub async fn abrir_detalle(c: &Arc<Contexto>, id: String, tipo: String) {
     let (detalle, subcategorias, foto) = {
         let m = c.archivos.lock().await;
