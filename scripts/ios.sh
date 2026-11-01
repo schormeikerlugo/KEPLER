@@ -102,13 +102,20 @@ dispositivo() {
             echo 'Falta el certificado: Xcode → Ajustes → Cuentas → Gestionar certificados → Apple Development' >&2
             exit 1
         fi
+        # Llavero propio para firmar por SSH (su contraseña aleatoria vive en ~/.kepler-firma, 600)
+        LLAVERO=\$HOME/Library/Keychains/kepler-firma.keychain-db
+        FIRMA=''
+        if [ -f \"\$LLAVERO\" ] && [ -f \$HOME/.kepler-firma ]; then
+            security unlock-keychain -p \"\$(cat \$HOME/.kepler-firma)\" \"\$LLAVERO\"
+            FIRMA=\"OTHER_CODE_SIGN_FLAGS=--keychain=\$LLAVERO\"
+        fi
         ID=\$(xcrun devicectl list devices 2>/dev/null | awk '/available|connected/ {print \$3; exit}')
         # UDID: con el iPhone concreto como destino Xcode lo registra en el equipo y crea el perfil
         UDID=\$(xcrun xctrace list devices 2>/dev/null | grep -v Simulator | grep -oE '[0-9A-F]{8}-[0-9A-F]{16}' | head -1)
         cd apps/ios
         xcodebuild -quiet -project Kepler.xcodeproj -scheme Kepler -configuration Debug \
             -destination \"platform=iOS,id=\$UDID\" -derivedDataPath build/derivado \
-            -allowProvisioningUpdates DEVELOPMENT_TEAM=\$EQUIPO build
+            -allowProvisioningUpdates DEVELOPMENT_TEAM=\$EQUIPO \$FIRMA build
         xcrun devicectl device install app --device \$ID build/derivado/Build/Products/Debug-iphoneos/Kepler.app >/dev/null
         xcrun devicectl device process launch --device \$ID dev.schormeiker.kepler >/dev/null
         echo '   instalada y abierta'

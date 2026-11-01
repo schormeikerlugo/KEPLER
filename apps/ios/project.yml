@@ -38,6 +38,7 @@ targets:
       properties:
         CFBundleDisplayName: KEPLER
         LSRequiresIPhoneOS: true
+        UIRequiresFullScreen: true
         UILaunchScreen:
           UIColorName: FondoLanzamiento
         UIAppFonts:
