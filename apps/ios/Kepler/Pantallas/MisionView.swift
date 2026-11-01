@@ -74,7 +74,7 @@ struct MisionView: View {
                 .background(.black.opacity(0.6), in: Capsule())
                 .lineLimit(1)
             Spacer()
-            Pastilla(texto: "\(camara.detecciones.count) obj · \(Int(camara.fps.rounded())) fps", tono: Tema.Color.acento)
+            Pastilla(texto: "\(camara.detecciones.count) obj · \(Int(camara.fps.rounded())) fps · \(Int(camara.latenciaMs.rounded())) ms", tono: Tema.Color.acento)
                 .background(.black.opacity(0.6), in: Capsule())
         }
         .padding(.top, Tema.Espacio.sm)

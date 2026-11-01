@@ -3,7 +3,6 @@ import CoreImage
 import CoreML
 import OSLog
 import UIKit
-import Vision
 
 private let registro = Logger(subsystem: "dev.schormeiker.kepler", category: "camara")
 
@@ -24,7 +23,11 @@ final class Camara: NSObject, ObservableObject {
     @Published private(set) var detecciones: [Deteccion] = []
     /// Tamaño del fotograma ya orientado (vertical), para colocar las cajas.
     @Published private(set) var tamanoImagen = CGSize(width: 1080, height: 1920)
+    /// Detecciones por segundo reales (medidas cada segundo) y latencia por fotograma.
     @Published private(set) var fps: Double = 0
+    @Published private(set) var latenciaMs: Double = 0
+    private var cuenta = 0
+    private var ventana = Date()
     @Published private(set) var imagenFija: UIImage?
 
     let sesion = AVCaptureSession()
@@ -110,6 +113,7 @@ final class Camara: NSObject, ObservableObject {
             return false
         }
         sesion.addInput(entrada)
+        fijar60fps(camara)
         let salida = AVCaptureVideoDataOutput()
         salida.alwaysDiscardsLateVideoFrames = true
         salida.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
@@ -118,6 +122,24 @@ final class Camara: NSObject, ObservableObject {
         sesion.commitConfiguration()
         configurada = true
         return true
+    }
+
+    /// 1080p a 60 fps (el preset de 1080p trae 30). YOLO tarda ~7 ms: sobra margen.
+    private func fijar60fps(_ camara: AVCaptureDevice) {
+        let formato = camara.formats.first { f in
+            let d = CMVideoFormatDescriptionGetDimensions(f.formatDescription)
+            return d.width == 1920 && d.height == 1080
+                && CMFormatDescriptionGetMediaSubType(f.formatDescription) == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange
+                && f.videoSupportedFrameRateRanges.contains { $0.maxFrameRate >= 60 }
+        }
+        guard let formato, (try? camara.lockForConfiguration()) != nil else {
+            registro.notice("Sin formato 1080p a 60 fps: se queda el del preset")
+            return
+        }
+        camara.activeFormat = formato
+        camara.activeVideoMinFrameDuration = CMTime(value: 1, timescale: 60)
+        camara.activeVideoMaxFrameDuration = CMTime(value: 1, timescale: 60)
+        camara.unlockForConfiguration()
     }
 
     private func encenderDemo(_ img: UIImage) {
@@ -129,7 +151,7 @@ final class Camara: NSObject, ObservableObject {
         demo = Task.detached { [weak self, detector] in
             while !Task.isCancelled {
                 let inicio = Date()
-                let d = detector.detectar(cgImage: cg, ancho: UInt32(cg.width), alto: UInt32(cg.height))
+                let d = detector.detectar(cgImage: cg)
                 await self?.publicar(d, imagen: imagen, tamano: CGSize(width: cg.width, height: cg.height), desde: inicio)
                 try? await Task.sleep(for: .milliseconds(500))
             }
@@ -142,7 +164,19 @@ final class Camara: NSObject, ObservableObject {
         await MainActor.run {
             self.detecciones = d
             self.tamanoImagen = tamano
-            self.fps = self.fps * 0.8 + (t > 0 ? 1 / t : 0) * 0.2
+            self.latenciaMs = self.latenciaMs * 0.9 + t * 1000 * 0.1
+            self.cuenta += 1
+            let pasado = Date().timeIntervalSince(self.ventana)
+            if pasado >= 1 {
+                self.fps = Double(self.cuenta) / pasado
+                #if DEBUG
+                if ProcessInfo.processInfo.environment["KEPLER_TRAZA"] == "1" {
+                    print(String(format: "TRAZA %.1f fps · %.1f ms · %d obj", self.fps, self.latenciaMs, d.count))
+                }
+                #endif
+                self.cuenta = 0
+                self.ventana = Date()
+            }
         }
     }
 }
@@ -154,47 +188,41 @@ extension Camara: AVCaptureVideoDataOutputSampleBufferDelegate {
         let inicio = Date()
         // Teléfono en vertical: el sensor entrega apaisado, girado 90° a la derecha
         let (w, h) = (CVPixelBufferGetWidth(buffer), CVPixelBufferGetHeight(buffer))
-        let d = detector.detectar(buffer: buffer, ancho: UInt32(h), alto: UInt32(w))
+        let d = detector.detectar(buffer: buffer)
         // Retiene solo el último búfer (el que se recortaría al capturar)
         let imagen = CIImage(cvPixelBuffer: buffer).oriented(.right)
         Task { await publicar(d, imagen: imagen, tamano: CGSize(width: h, height: w), desde: inicio) }
     }
 }
 
-/// YOLO26s en CoreML.
+/// YOLO26s en CoreML, sin Vision: letterbox propio con vImage (~1.7 ms) y el
+/// modelo en el Neural Engine (~5.6 ms) → ~7 ms por fotograma en el iPhone 13 Pro Max.
 final class Detector: @unchecked Sendable {
-    private let modelo: VNCoreMLModel?
+    private let modelo: MLModel?
+    private let salida: String
+    private let letterbox = Letterbox()
 
     init() {
         let config = MLModelConfiguration()
         config.computeUnits = .all
         do {
-            modelo = try VNCoreMLModel(for: yolo26s(configuration: config).model)
+            let m = try yolo26s(configuration: config).model
+            modelo = m
+            salida = m.modelDescription.outputDescriptionsByName.keys.first ?? ""
         } catch {
             registro.error("No se pudo cargar YOLO: \(error.localizedDescription)")
             modelo = nil
+            salida = ""
         }
     }
 
-    func detectar(buffer: CVPixelBuffer, ancho: UInt32, alto: UInt32) -> [Deteccion] {
-        ejecutar(VNImageRequestHandler(cvPixelBuffer: buffer, orientation: .right), ancho: ancho, alto: alto)
-    }
-
-    func detectar(cgImage: CGImage, ancho: UInt32, alto: UInt32) -> [Deteccion] {
-        ejecutar(VNImageRequestHandler(cgImage: cgImage, orientation: .up), ancho: ancho, alto: alto)
-    }
-
-    private func ejecutar(_ handler: VNImageRequestHandler, ancho: UInt32, alto: UInt32) -> [Deteccion] {
+    /// Fotograma del sensor (apaisado); `girar`: teléfono en vertical.
+    func detectar(buffer: CVPixelBuffer, girar: Bool = true) -> [Deteccion] {
         guard let modelo else { return [] }
-        let peticion = VNCoreMLRequest(model: modelo)
-        peticion.imageCropAndScaleOption = .scaleFit
-        do {
-            try handler.perform([peticion])
-        } catch {
-            return []
-        }
-        guard let obs = peticion.results?.first as? VNCoreMLFeatureValueObservation,
-              let matriz = obs.featureValue.multiArrayValue else { return [] }
+        let (ancho, alto) = letterbox.preparar(buffer, girar: girar)
+        guard let r = try? modelo.prediction(from: MLDictionaryFeatureProvider(
+            dictionary: ["image": MLFeatureValue(pixelBuffer: letterbox.salida)])),
+              let matriz = r.featureValue(for: salida)?.multiArrayValue else { return [] }
         let n = matriz.count
         var valores = [Float](repeating: 0, count: n)
         switch matriz.dataType {
@@ -209,6 +237,22 @@ final class Detector: @unchecked Sendable {
         default:
             for i in 0..<n { valores[i] = matriz[i].floatValue }
         }
-        return interpretarYolo(salida: valores, ancho: ancho, alto: alto, umbral: Camara.umbral)
+        return interpretarYolo(salida: valores, ancho: UInt32(ancho), alto: UInt32(alto), umbral: Camara.umbral)
+    }
+
+    /// Foto fija (simulador): se pasa a un búfer BGRA y se detecta sin girar.
+    func detectar(cgImage: CGImage) -> [Deteccion] {
+        var b: CVPixelBuffer?
+        CVPixelBufferCreate(nil, cgImage.width, cgImage.height, kCVPixelFormatType_32BGRA,
+                            [kCVPixelBufferIOSurfacePropertiesKey: [:]] as CFDictionary, &b)
+        guard let buffer = b else { return [] }
+        CVPixelBufferLockBaseAddress(buffer, [])
+        CGContext(data: CVPixelBufferGetBaseAddress(buffer), width: cgImage.width, height: cgImage.height,
+                  bitsPerComponent: 8, bytesPerRow: CVPixelBufferGetBytesPerRow(buffer),
+                  space: CGColorSpaceCreateDeviceRGB(),
+                  bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue)?
+            .draw(cgImage, in: CGRect(x: 0, y: 0, width: cgImage.width, height: cgImage.height))
+        CVPixelBufferUnlockBaseAddress(buffer, [])
+        return detectar(buffer: buffer, girar: false)
     }
 }

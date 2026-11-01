@@ -5,6 +5,12 @@ struct KeplerApp: App {
     @StateObject private var sesion = Sesion()
     @Environment(\.scenePhase) private var escena
 
+    init() {
+        #if DEBUG
+        Banco.ejecutarSiToca()
+        #endif
+    }
+
     var body: some Scene {
         WindowGroup {
             Raiz()
