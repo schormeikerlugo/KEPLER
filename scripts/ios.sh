@@ -96,15 +96,18 @@ dispositivo() {
     echo "→ iPhone"
     remoto "
         set -e
-        EQUIPO=\${KEPLER_EQUIPO:-\$(defaults read com.apple.dt.Xcode IDEProvisioningTeamByIdentifier 2>/dev/null | grep -oE 'teamID = [A-Z0-9]+' | head -1 | cut -d' ' -f3)}
+        # Equipo: el OU del certificado «Apple Development» del llavero
+        EQUIPO=\${KEPLER_EQUIPO:-\$(security find-certificate -c 'Apple Development' -p 2>/dev/null | openssl x509 -noout -subject 2>/dev/null | grep -oE 'OU=[A-Z0-9]+' | cut -d= -f2)}
         if [ -z \"\$EQUIPO\" ]; then
-            echo 'Falta la cuenta de Apple en Xcode (Ajustes → Cuentas) o KEPLER_EQUIPO' >&2
+            echo 'Falta el certificado: Xcode → Ajustes → Cuentas → Gestionar certificados → Apple Development' >&2
             exit 1
         fi
-        ID=\$(xcrun devicectl list devices 2>/dev/null | awk '/available/ {print \$3; exit}')
+        ID=\$(xcrun devicectl list devices 2>/dev/null | awk '/available|connected/ {print \$3; exit}')
+        # UDID: con el iPhone concreto como destino Xcode lo registra en el equipo y crea el perfil
+        UDID=\$(xcrun xctrace list devices 2>/dev/null | grep -v Simulator | grep -oE '[0-9A-F]{8}-[0-9A-F]{16}' | head -1)
         cd apps/ios
         xcodebuild -quiet -project Kepler.xcodeproj -scheme Kepler -configuration Debug \
-            -destination 'generic/platform=iOS' -derivedDataPath build/derivado \
+            -destination \"platform=iOS,id=\$UDID\" -derivedDataPath build/derivado \
             -allowProvisioningUpdates DEVELOPMENT_TEAM=\$EQUIPO build
         xcrun devicectl device install app --device \$ID build/derivado/Build/Products/Debug-iphoneos/Kepler.app >/dev/null
         xcrun devicectl device process launch --device \$ID dev.schormeiker.kepler >/dev/null
@@ -117,6 +120,6 @@ case "$ORDEN" in
     sim) sincronizar; nucleo; proyecto; simulador; sleep 4; captura ;;
     run) sincronizar; nucleo; proyecto; dispositivo ;;
     captura) captura "${2:-}" ;;
-    logs) ssh "$MAC" "xcrun devicectl device process log stream --device \$(xcrun devicectl list devices | awk '/available/ {print \$3; exit}') 2>&1 | grep -i kepler" ;;
+    logs) ssh "$MAC" "xcrun devicectl device process log stream --device \$(xcrun devicectl list devices | awk '/available|connected/ {print \$3; exit}') 2>&1 | grep -i kepler" ;;
     *) echo "uso: $0 nucleo|sim|run|captura|logs" >&2; exit 2 ;;
 esac
