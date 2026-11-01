@@ -1141,6 +1141,22 @@ async fn punta_a_punta() {
         !tipos.contains("alerta"),
         "mis propias alertas salen como persona"
     );
+    assert!(
+        tipos.contains("ruta"),
+        "la ruta propia sale como LineString"
+    );
+    let ruta_geo = m["features"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["properties"]["tipo"] == "ruta")
+        .unwrap();
+    assert_eq!(ruta_geo["geometry"]["type"], "LineString");
+    // [lng, lat]: el primer waypoint era [10.499, -66.801]
+    assert_eq!(
+        ruta_geo["geometry"]["coordinates"][0],
+        json!([-66.801, 10.499])
+    );
     ok("mapa: GeoJSON con POIs propios y compartidos, alertas ajenas y hallazgos propios");
 
     // --- comparador: dos personas parecidas (similitud 0.70) por debajo del Re-ID automático

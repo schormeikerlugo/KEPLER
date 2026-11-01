@@ -13,8 +13,9 @@ const LIMITE: i64 = 5000;
 
 /// `GET /v1/mapa/elementos` — `FeatureCollection` con POIs (propios y
 /// compartidos), personas propias, alertas de personas hostiles de otros
-/// exploradores y objetos propios. Propiedades: `tipo`, `id`, `nombre`,
-/// `nivel`, `propio`, `autor`, `imagen_path`, `capturado_en`.
+/// exploradores, objetos propios y rutas propias (`LineString`, `nivel` =
+/// seguridad). Propiedades: `tipo`, `id`, `nombre`, `nivel`, `propio`,
+/// `autor`, `imagen_path`, `capturado_en`.
 pub async fn elementos(State(estado): State<Estado>, sesion: Sesion) -> ApiResult<Json<Value>> {
     let mut tx = estado.db.como_usuario(&sesion).await?;
     let coleccion: Value = sqlx::query_scalar(
@@ -45,16 +46,30 @@ pub async fn elementos(State(estado): State<Estado>, sesion: Sesion) -> ApiResul
              where x.user_id = (select auth.uid()) and x.eliminado_en is null and x.lat is not null
              order by x.capturado_en desc limit $1)
          )
+         , lineas as (
+            select r.id, r.nombre, r.seguridad, r.distancia_km, r.creado_en,
+                   (select jsonb_agg(jsonb_build_array(w -> 1, w -> 0)) from jsonb_array_elements(r.waypoints) w) as coords
+            from public.rutas r
+            where r.eliminado_en is null and jsonb_array_length(r.waypoints) >= 2
+            order by r.creado_en desc limit $1
+         )
          select jsonb_build_object(
              'type', 'FeatureCollection',
-             'features', coalesce(jsonb_agg(jsonb_build_object(
+             'features',
+               coalesce((select jsonb_agg(jsonb_build_object(
                  'type', 'Feature',
                  'geometry', jsonb_build_object('type', 'Point', 'coordinates', jsonb_build_array(lng, lat)),
                  'properties', jsonb_build_object(
                      'tipo', tipo, 'id', id, 'nombre', nombre, 'nivel', nivel, 'propio', propio,
                      'autor', autor, 'imagen_path', imagen_path, 'capturado_en', capturado_en)
-             )), '[]'::jsonb))
-         from puntos",
+               )) from puntos), '[]'::jsonb)
+               || coalesce((select jsonb_agg(jsonb_build_object(
+                 'type', 'Feature',
+                 'geometry', jsonb_build_object('type', 'LineString', 'coordinates', coords),
+                 'properties', jsonb_build_object(
+                     'tipo', 'ruta', 'id', id, 'nombre', nombre, 'nivel', seguridad, 'propio', true,
+                     'distancia_km', distancia_km, 'capturado_en', creado_en)
+               )) from lineas), '[]'::jsonb))",
     )
     .bind(LIMITE)
     .fetch_one(&mut *tx)
