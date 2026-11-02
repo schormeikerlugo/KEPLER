@@ -42,9 +42,31 @@ final class Reloj: NSObject, ObservableObject {
     @Published private(set) var ultimos: [String: Double] = [:]
     /// Tramas del canal FFF1 descifradas con éxito en esta conexión.
     @Published private(set) var descifradas = 0
-    /// Recibe las muestras de salud que llegan del reloj (las guarda la sesión).
-    var alMuestras: (([MuestraBio]) -> Void)?
+    /// Guarda las muestras del reloj; `false` si aún no se puede (sin sesión abierta).
+    var alMuestras: (([MuestraBio]) -> Bool)? {
+        didSet { entregarPendientes() }
+    }
+    /// Muestras guardadas desde que se abrió la app.
+    @Published private(set) var guardadas = 0
+    /// Llegadas antes de abrir la sesión (iOS despierta la app en segundo plano).
+    private var pendientes: [MuestraBio] = []
     private var descifrador: RelojCarbinox?
+
+    /// Escuchar el reloj siempre: al abrir la app y en segundo plano (iOS
+    /// despierta a KEPLER cuando el reloj se reconecta). Activado por defecto.
+    static var siempre: Bool {
+        get { UserDefaults.standard.object(forKey: "kepler.reloj.siempre") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "kepler.reloj.siempre") }
+    }
+
+    /// Identificador para que iOS restaure el Bluetooth de KEPLER en segundo plano.
+    static let restauracion = "dev.schormeiker.kepler.reloj"
+
+    private func entregarPendientes() {
+        guard !pendientes.isEmpty, let alMuestras, alMuestras(pendientes) else { return }
+        guardadas += pendientes.count
+        pendientes = []
+    }
 
     /// ¿Hay clave del reloj (cuenta Carbinox vinculada en Ajustes)?
     var tieneClave: Bool { descifrador != nil }
@@ -58,14 +80,16 @@ final class Reloj: NSObject, ObservableObject {
     func escuchar() {
         guard descifrador != nil else { return }
         escuchando = true
+        Reloj.siempre = true
         situacion = descifrador?.claveSesion() == nil
-            ? "Esperando la autenticación del reloj: apaga y enciende el Bluetooth y abre Carbinox Max"
+            ? "Esperando la autenticación del reloj: cierra Carbinox Max del todo y vuelve a abrirla"
             : "Escuchando con la clave de sesión guardada"
         encender()
     }
 
     func parar() {
         escuchando = false
+        Reloj.siempre = false
         desconectar()
         situacion = ""
     }
@@ -100,7 +124,10 @@ final class Reloj: NSObject, ObservableObject {
 
     func encender() {
         if central == nil {
-            central = CBCentralManager(delegate: self, queue: .main)
+            // Con restauración: si iOS cierra KEPLER, la relanza en segundo plano
+            // cuando el reloj se reconecta (justo cuando se ve la autenticación)
+            let opciones: [String: Any]? = tieneClave ? [CBCentralManagerOptionRestoreIdentifierKey: Reloj.restauracion] : nil
+            central = CBCentralManager(delegate: self, queue: .main, options: opciones)
             estado = "Encendiendo Bluetooth…"
         } else {
             buscar()
@@ -254,6 +281,24 @@ extension ISO8601DateFormatter {
 }
 
 extension Reloj: CBCentralManagerDelegate, CBPeripheralDelegate {
+    /// iOS relanzó KEPLER en segundo plano: retoma el reloj que se estaba escuchando.
+    nonisolated func centralManager(_ central: CBCentralManager, willRestoreState dict: [String: Any]) {
+        let restaurados = dict[CBCentralManagerRestoredStatePeripheralsKey] as? [CBPeripheral] ?? []
+        MainActor.assumeIsolated {
+            for p in restaurados {
+                anotar(p, rssi: nil, conectado: p.state == .connected, servicios: [])
+                p.delegate = self
+                actual = p
+                abrirRegistro(nombre: p.name ?? "reloj")
+                escribirLinea("RESTAURADO \(p.name ?? "?") estado=\(p.state.rawValue)")
+                if p.state == .connected {
+                    conectado = vistos.first { $0.id == p.identifier }
+                    p.discoverServices(nil)
+                }
+            }
+        }
+    }
+
     nonisolated func centralManagerDidUpdateState(_ central: CBCentralManager) {
         MainActor.assumeIsolated {
             switch central.state {
@@ -397,7 +442,7 @@ extension Reloj {
         let deVinculo = r.habilidad == 0xFFFF && (r.comando == 0x0049 || r.comando == 0x004C)
         if let claro = r.claro {
             descifradas += 1
-            situacion = "Descifrando"
+            situacion = "Leyendo el reloj · \(guardadas) datos guardados"
             escribirLinea("CLARO \(cabecera) \(claro) \(r.descripcion)")
         } else if !r.descripcion.isEmpty {
             escribirLinea("SIN_DESCIFRAR \(cabecera) \(r.descripcion)")
@@ -405,7 +450,7 @@ extension Reloj {
                 ? "Clave del reloj antigua: actualízala en Ajustes › Reloj Carbinox"
                 : (descifrador.claveSesion() == nil
                     ? "Esperando la autenticación del reloj: apaga y enciende el Bluetooth y abre Carbinox Max"
-                    : "La clave de sesión ya no vale: espera la próxima reconexión del reloj")
+                    : "El reloj cambió de sesión: cierra Carbinox Max del todo y vuelve a abrirla")
         }
         if r.sesionNueva {
             ClavesReloj.sesion = descifrador.claveSesion()
@@ -414,6 +459,8 @@ extension Reloj {
         guard !r.muestras.isEmpty else { return }
         for m in r.muestras { ultimos[m.tipo] = m.valor }
         if let p = ultimos["pulso"] { pulso = Int(p) }
-        alMuestras?(r.muestras)
+        pendientes.append(contentsOf: r.muestras)
+        entregarPendientes()
+        if descifradas > 0 { situacion = "Leyendo el reloj · \(guardadas) datos guardados" }
     }
 }

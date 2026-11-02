@@ -68,6 +68,10 @@ final class Sesion: ObservableObject {
             Task { @MainActor in await self?.sincronizar() }
         }
         red.start(queue: DispatchQueue(label: "dev.schormeiker.kepler.red"))
+        // El reloj se escucha desde el arranque (también si iOS relanza KEPLER en
+        // segundo plano); lo que llegue antes de abrir la sesión espera en memoria
+        reloj.cargarClaves()
+        if Reloj.siempre && reloj.tieneClave { reloj.escuchar() }
     }
 
     func arrancar() async {

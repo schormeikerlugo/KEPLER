@@ -33,6 +33,10 @@ const ANIMO: u16 = 0xB005;
 const VINCULO_OK: u16 = 0x0049;
 const AUTENTICACION: u16 = 0x004C;
 const ACK: u16 = 0x0003;
+const RESUMEN_DIARIO: u16 = 0xA0B8;
+const RECIENTE_PULSO: u16 = 0xA0B9;
+const RECIENTE_OXIGENO: u16 = 0xA0BA;
+const RECIENTE_ESTRES: u16 = 0xA0BB;
 const NTY: u16 = 0x0008;
 
 /// Marcas de tiempo aceptadas (2024 … 2040): fuera de eso el dato no es fiable.
@@ -165,27 +169,87 @@ fn pares(d: &[u8]) -> Vec<(u32, u32)> {
         .collect()
 }
 
+/// Fase de sueño del reloj (1 profundo, 2 ligero, 3 despierto, 4 REM).
+fn fase_sueno(t: u8) -> &'static str {
+    match t {
+        1 => "profundo",
+        2 => "ligero",
+        3 => "despierto",
+        4 => "REM",
+        _ => "otro",
+    }
+}
+
+fn valido(ts: u32) -> bool {
+    (TS_MIN..TS_MAX).contains(&ts)
+}
+
+/// Respuestas a las consultas «reciente» de Carbinox Max: `[operación][instante u32][valor u32]`.
+fn reciente(
+    tipo: &str,
+    unidad: &str,
+    rango: std::ops::RangeInclusive<u32>,
+    d: &[u8],
+) -> (Vec<MuestraBio>, String) {
+    if d.len() < 9 {
+        return (Vec::new(), String::new());
+    }
+    let (ts, v) = (u32_le(d, 1), u32_le(d, 5));
+    let m = (valido(ts) && rango.contains(&v))
+        .then(|| muestra(tipo, f64::from(v), unidad, ts, None))
+        .into_iter()
+        .collect();
+    (m, format!("{tipo} reciente: {v}@{ts}"))
+}
+
 /// Lo que aporta una trama ya descifrada: muestras y una descripción para el registro.
 pub fn interpretar(habilidad: u16, comando: u16, d: &[u8]) -> (Vec<MuestraBio>, String) {
+    // Respuestas a consultas de Carbinox Max (habilidad común)
+    if habilidad == COMUN {
+        return match comando {
+            RECIENTE_PULSO => reciente("pulso", "lpm", 25..=240, d),
+            RECIENTE_OXIGENO => reciente("spo2", "%", 70..=100, d),
+            RECIENTE_ESTRES => reciente("estres", "nivel", 0..=100, d),
+            RESUMEN_DIARIO if d.len() >= 17 => {
+                let (ts, pasos, metros, kcal) =
+                    (u32_le(d, 1), u32_le(d, 5), u32_le(d, 9), u16_le(d, 13));
+                // Una muestra por cuarto de hora: el total del día va creciendo
+                let cuarto = ts / 900 * 900;
+                let m = if valido(ts) {
+                    vec![
+                        muestra("pasos_hoy", f64::from(pasos), "pasos", cuarto, None),
+                        muestra("distancia_hoy", f64::from(metros), "m", cuarto, None),
+                        muestra("energia_hoy", f64::from(kcal), "kcal", cuarto, None),
+                    ]
+                } else {
+                    Vec::new()
+                };
+                (
+                    m,
+                    format!("resumen del día: {pasos} pasos, {metros} m, {kcal} kcal @{ts}"),
+                )
+            }
+            _ => (Vec::new(), String::new()),
+        };
+    }
     if !matches!(comando, ACK | NTY) {
         return (Vec::new(), String::new());
     }
-    let validos = |v: Vec<(u32, u32)>| -> Vec<(u32, u32)> {
-        v.into_iter()
-            .filter(|(ts, _)| (TS_MIN..TS_MAX).contains(ts))
-            .collect()
-    };
     let puntual =
         |tipo: &str, unidad: &str, rango: std::ops::RangeInclusive<u32>, conv: fn(u32) -> f64| {
             let todos = pares(d);
-            let n = todos.len();
-            let m: Vec<MuestraBio> = validos(todos)
-                .into_iter()
-                .filter(|(_, v)| rango.contains(v))
-                .map(|(ts, v)| muestra(tipo, conv(v), unidad, ts, None))
+            let m: Vec<MuestraBio> = todos
+                .iter()
+                .filter(|(ts, v)| valido(*ts) && rango.contains(v))
+                .map(|&(ts, v)| muestra(tipo, conv(v), unidad, ts, None))
                 .collect();
-            let valores: Vec<String> = pares(d).iter().map(|(ts, v)| format!("{v}@{ts}")).collect();
-            let texto = format!("{tipo}: {} de {n} válidos [{}]", m.len(), valores.join(" "));
+            let valores: Vec<String> = todos.iter().map(|(ts, v)| format!("{v}@{ts}")).collect();
+            let texto = format!(
+                "{tipo}: {} de {} válidos [{}]",
+                m.len(),
+                todos.len(),
+                valores.join(" ")
+            );
             (m, texto)
         };
     match habilidad {
@@ -194,38 +258,69 @@ pub fn interpretar(habilidad: u16, comando: u16, d: &[u8]) -> (Vec<MuestraBio>, 
         ESTRES => puntual("estres", "nivel", 0..=100, f64::from),
         // La app oficial guarda 3 − valor
         ANIMO => puntual("animo_reloj", "nivel", 0..=3, |v| 3.0 - f64::from(v)),
-        // Pasos y sueño ya llegan por Apple Salud (Carbinox Max): solo se describen
+        // Registros de 32 bytes: [instante][pasos][metros][kcal u16][segundos u16]…
         PASOS | PASOS_INCREMENTO => {
-            let r: Vec<String> = d
-                .as_chunks::<32>()
+            let mut m = Vec::new();
+            let mut total = (0u32, 0u32, 0u32);
+            for c in d.as_chunks::<32>().0 {
+                let (ts, pasos, metros, kcal) =
+                    (u32_le(c, 0), u32_le(c, 4), u32_le(c, 8), u16_le(c, 12));
+                if !valido(ts) || pasos > 100_000 {
+                    continue;
+                }
+                total = (total.0 + pasos, total.1 + metros, total.2 + u32::from(kcal));
+                if pasos > 0 {
+                    m.push(muestra("pasos", f64::from(pasos), "pasos", ts, None));
+                }
+                if metros > 0 {
+                    m.push(muestra("distancia", f64::from(metros), "m", ts, None));
+                }
+                if kcal > 0 {
+                    m.push(muestra("energia_activa", f64::from(kcal), "kcal", ts, None));
+                }
+            }
+            (
+                m,
+                format!(
+                    "pasos: +{} pasos, +{} m, +{} kcal",
+                    total.0, total.1, total.2
+                ),
+            )
+        }
+        // Resumen de la noche (21 bytes) y tramos de 8: [inicio u32][minutos u16][fase][-]
+        SUENO if d.len() >= 21 => {
+            let m: Vec<MuestraBio> = d[21..]
+                .as_chunks::<8>()
                 .0
                 .iter()
-                .map(|c| {
-                    format!(
-                        "{}p/{}m/{}kcal/{}s@{}",
-                        u32_le(c, 4),
-                        u32_le(c, 8),
-                        u16_le(c, 12),
-                        u16_le(c, 14),
-                        u32_le(c, 0)
-                    )
+                .filter_map(|c| {
+                    let (ts, min) = (u32_le(c, 0), u16_le(c, 4));
+                    (valido(ts) && min > 0 && min < 24 * 60).then(|| {
+                        let mut s = muestra(
+                            "sueno",
+                            f64::from(min) / 60.0,
+                            "h",
+                            ts,
+                            Some(format!(r#"{{"fase":"{}"}}"#, fase_sueno(c[6]))),
+                        );
+                        s.fin = f64::from(ts) + f64::from(min) * 60.0;
+                        s
+                    })
                 })
                 .collect();
-            (Vec::new(), format!("pasos: [{}]", r.join(" ")))
-        }
-        SUENO if d.len() >= 21 => (
-            Vec::new(),
-            format!(
-                "sueño: {}→{} profundo {} ligero {} REM {} despierto {} (min) puntuación {}",
+            let texto = format!(
+                "sueño: {}→{} profundo {} ligero {} REM {} despierto {} (min), puntuación {}, {} tramos",
                 u32_le(d, 0),
                 u32_le(d, 4),
                 u16_le(d, 8),
                 u16_le(d, 10),
                 u16_le(d, 12),
                 u16_le(d, 14),
-                d[17]
-            ),
-        ),
+                d[17],
+                m.len()
+            );
+            (m, texto)
+        }
         _ => (Vec::new(), String::new()),
     }
 }
@@ -495,6 +590,33 @@ mod tests {
                 .claro
                 .is_none()
         );
+    }
+
+    #[test]
+    fn respuestas_reales_del_reloj() {
+        // Descifradas del Edge el 2026-11-02 (registro del iPhone)
+        let (m, _) = interpretar(
+            COMUN,
+            RECIENTE_PULSO,
+            &hex::decode("02f80de96a56000000").unwrap(),
+        );
+        assert_eq!(
+            (m[0].tipo.as_str(), m[0].valor, m[0].inicio),
+            ("pulso", 86.0, 1_793_658_360.0)
+        );
+        let r = hex::decode("01ef0ee96a22000000150000000100000000000000000000000000000000000000")
+            .unwrap();
+        let (m, d) = interpretar(COMUN, RESUMEN_DIARIO, &r);
+        assert_eq!(m[0].valor, 34.0, "{d}");
+        assert_eq!(m[1].valor, 21.0);
+        // Un tramo de sueño profundo de 90 min
+        let mut s = vec![0u8; 21];
+        s.extend(1_793_600_000u32.to_le_bytes());
+        s.extend(90u16.to_le_bytes());
+        s.extend([1, 0]);
+        let (m, _) = interpretar(SUENO, NTY, &s);
+        assert_eq!((m[0].valor, m[0].fin - m[0].inicio), (1.5, 5400.0));
+        assert_eq!(m[0].detalle.as_deref(), Some(r#"{"fase":"profundo"}"#));
     }
 
     #[test]

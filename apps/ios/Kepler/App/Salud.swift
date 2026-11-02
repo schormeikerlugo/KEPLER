@@ -143,6 +143,9 @@ final class Salud {
         set { UserDefaults.standard.set(newValue, forKey: "kepler.salud") }
     }
 
+    /// Tipos que el reloj Carbinox ya envía por Bluetooth.
+    static let delReloj: Set<String> = ["pasos", "distancia", "energia_activa", "sueno", "pulso", "spo2"]
+
     /// Días hacia atrás en la primera importación.
     static let diasIniciales = 30
 
@@ -157,7 +160,11 @@ final class Salud {
             let anterior = UserDefaults.standard.data(forKey: clave)
                 .flatMap { try? NSKeyedUnarchiver.unarchivedObject(ofClass: HKQueryAnchor.self, from: $0) }
             guard let (muestras, ancla) = try? await nuevas(t.tipo, ancla: anterior, desde: desde) else { continue }
-            let bio = muestras.compactMap { Salud.bio($0, t) }
+            // Con el reloj descifrado, lo que Carbinox Max copia en Salud llegaría dos veces
+            let bio = muestras
+                .filter { !(ClavesReloj.vinculo != nil && Salud.delReloj.contains(t.clave)
+                    && $0.sourceRevision.source.name.localizedCaseInsensitiveContains("carbinox")) }
+                .compactMap { Salud.bio($0, t) }
             if !bio.isEmpty {
                 guard let n = try? guardar(bio) else { continue }
                 total += n

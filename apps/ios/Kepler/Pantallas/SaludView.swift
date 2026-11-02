@@ -128,7 +128,8 @@ struct SaludView: View {
 
     static func nombre(_ tipo: String) -> String {
         Salud.tipos.first { $0.clave == tipo }?.nombre
-            ?? ["presion": "Presión (barómetro)", "altitud": "Altitud (barómetro)", "estres": "Estrés (reloj)",
+            ?? ["presion": "Presión (barómetro)", "altitud": "Altitud (barómetro)", "estres": "Estrés (reloj)", "pasos_hoy": "Pasos del día (reloj)",
+                "distancia_hoy": "Distancia del día (reloj)", "energia_hoy": "Energía del día (reloj)",
                 "animo_reloj": "Ánimo (reloj)"][tipo] ?? tipo
     }
 
@@ -244,30 +245,34 @@ private struct TarjetaReloj: View {
                             Dato(nombre: "SpO2", valor: reloj.ultimos["spo2"].map { String(format: "%.0f %%", $0) })
                             Dato(nombre: "Estrés", valor: reloj.ultimos["estres"].map { String(format: "%.0f", $0) })
                         }
-                        Text("Descifradas: \(reloj.descifradas) tramas")
+                        HStack(spacing: Tema.Espacio.lg) {
+                            Dato(nombre: "Pasos hoy", valor: reloj.ultimos["pasos_hoy"].map { String(format: "%.0f", $0) })
+                            Dato(nombre: "Ánimo", valor: reloj.ultimos["animo_reloj"].map { String(format: "%.0f/3", $0) })
+                        }
+                        Text("Descifradas: \(reloj.descifradas) tramas · guardados: \(reloj.guardadas) datos")
                             .font(Jura.fuente(11)).foregroundStyle(Tema.Color.textoTenue)
                     } else {
                         Text("Sin cuenta Carbinox: Ajustes › Reloj Carbinox para descifrar los datos.")
                             .font(Jura.fuente(11)).foregroundStyle(Tema.Color.aviso)
                     }
-                    ForEach(reloj.caracteristicas) { c in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("\(c.servicio) / \(c.uuid)  [\(c.propiedades)]  ·\(c.mensajes)")
-                                .font(.system(size: 10, design: .monospaced)).foregroundStyle(Tema.Color.textoSecundario)
-                            if let v = c.valor {
-                                Text(v).font(.system(size: 10, design: .monospaced)).foregroundStyle(Tema.Color.acento)
-                                    .lineLimit(2)
+                    Button("PARAR") { reloj.parar() }.buttonStyle(BotonKepler(principal: false))
+                    DisclosureGroup {
+                        VStack(alignment: .leading, spacing: 4) {
+                            ForEach(reloj.caracteristicas) { c in
+                                Text("\(c.servicio) / \(c.uuid)  [\(c.propiedades)]  ·\(c.mensajes)")
+                                    .font(.system(size: 10, design: .monospaced)).foregroundStyle(Tema.Color.textoSecundario)
+                            }
+                            if let r = reloj.registro {
+                                Text("Registro: Archivos › KEPLER › reloj › \(r.lastPathComponent)")
+                                    .font(Jura.fuente(11)).foregroundStyle(Tema.Color.textoTenue)
+                            }
+                            ForEach(reloj.lineas.suffix(12), id: \.self) { l in
+                                Text(l.dropFirst(11)).font(.system(size: 9, design: .monospaced))
+                                    .foregroundStyle(Tema.Color.textoTenue).lineLimit(2)
                             }
                         }
-                    }
-                    if let r = reloj.registro {
-                        Text("Registro: Archivos › KEPLER › reloj › \(r.lastPathComponent)")
-                            .font(Jura.fuente(11)).foregroundStyle(Tema.Color.textoTenue)
-                    }
-                    Button("PARAR") { reloj.parar() }.buttonStyle(BotonKepler(principal: false))
-                    ForEach(reloj.lineas.suffix(12), id: \.self) { l in
-                        Text(l.dropFirst(11)).font(.system(size: 9, design: .monospaced))
-                            .foregroundStyle(Tema.Color.textoTenue).lineLimit(2)
+                    } label: {
+                        Text("Detalle técnico").font(Jura.fuente(Tema.Tamano.pequeno)).foregroundStyle(Tema.Color.textoTenue)
                     }
                 } else if !reloj.tieneClave {
                     ForEach(reloj.vistos.prefix(25)) { v in
