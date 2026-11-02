@@ -46,6 +46,14 @@ targets:
       - sdk: AVFoundation.framework
       - sdk: Vision.framework
       - sdk: CoreML.framework
+      - sdk: HealthKit.framework
+      - sdk: CoreMotion.framework
+      - sdk: CoreBluetooth.framework
+    entitlements:
+      path: Kepler/Kepler.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
     info:
       path: Kepler/Info.plist
       properties:
@@ -70,6 +78,13 @@ targets:
         NSCameraUsageDescription: KEPLER usa la cámara para detectar y registrar objetos, personas y puntos de interés en campo.
         NSFaceIDUsageDescription: KEPLER usa Face ID para reabrir tu sesión sin escribir la contraseña.
         NSLocalNetworkUsageDescription: KEPLER se conecta al servidor de tu base (cortex) en la red local para sincronizar misiones y hallazgos.
+        NSHealthShareUsageDescription: KEPLER lee de Salud tu pulso, oxígeno, pasos, sueño y estado de ánimo (los que envía tu reloj) para tus misiones y Cortex.
+        NSHealthUpdateUsageDescription: KEPLER guarda en Salud el estado de ánimo que registras.
+        NSMotionUsageDescription: KEPLER usa el barómetro y el podómetro del iPhone para la altitud, la presión y tus pasos en campo.
+        NSBluetoothAlwaysUsageDescription: KEPLER se conecta por Bluetooth a tu reloj para leer pulso, oxígeno y otros sensores.
+        # Documentos/reloj (registros del Bluetooth) visibles en la app Archivos
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
     settings:

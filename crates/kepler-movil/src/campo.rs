@@ -53,6 +53,8 @@ pub struct EstadoSync {
     pub pendientes: u32,
     /// Puntos GPS por enviar.
     pub rastro: u32,
+    /// Muestras de salud y sensores por enviar.
+    pub biometria: u32,
     /// Rechazadas varias veces por el servidor: apartadas para no bloquear.
     pub apartadas: u32,
     pub en_linea: bool,
@@ -201,6 +203,7 @@ pub fn estado(a: &Almacen, en_linea: bool, ultimo_error: Option<String>) -> Esta
     EstadoSync {
         pendientes: a.pendientes(),
         rastro: a.rastro_pendiente(),
+        biometria: a.biometria_pendiente(),
         apartadas: a.apartadas(),
         en_linea,
         ultimo_error,
@@ -286,6 +289,7 @@ async fn ronda(a: &Almacen, c: &Cliente) -> Result<(), Parada> {
             enviar_rastro(a, c, &m).await?;
         }
     }
+    crate::biometria::enviar(a, c).await?;
     Ok(())
 }
 

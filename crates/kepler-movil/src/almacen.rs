@@ -98,6 +98,12 @@ impl Almacen {
                  enviado integer not null default 0
              );
              create index if not exists rastro_pendiente on rastro (mision) where enviado = 0;
+             create table if not exists biometria (
+                 id text primary key,
+                 cuerpo text not null,
+                 enviado integer not null default 0
+             );
+             create index if not exists biometria_pendiente on biometria (enviado) where enviado = 0;
              create table if not exists estado (clave text primary key, valor text not null);",
         )?;
         Ok(Self {
@@ -249,6 +255,47 @@ impl Almacen {
 
     pub fn rastro_pendiente(&self) -> u32 {
         self.contar("select count(*) from rastro where enviado = 0")
+    }
+
+    // --- biometría -------------------------------------------------------------
+
+    /// Muestras ya validadas (id, cuerpo para el servidor); las repetidas se ignoran.
+    pub fn guardar_biometria(&self, muestras: &[(String, Value)]) -> rusqlite::Result<()> {
+        let mut c = self.c();
+        let tx = c.transaction()?;
+        for (id, v) in muestras {
+            tx.execute(
+                "insert or ignore into biometria (id, cuerpo) values (?1, ?2)",
+                params![id, v.to_string()],
+            )?;
+        }
+        tx.commit()
+    }
+
+    pub fn biometria_sin_enviar(&self, limite: usize) -> rusqlite::Result<Vec<(String, Value)>> {
+        let c = self.c();
+        let mut q = c.prepare("select id, cuerpo from biometria where enviado = 0 limit ?1")?;
+        q.query_map([limite as i64], |f| {
+            let cuerpo: String = f.get(1)?;
+            Ok((
+                f.get(0)?,
+                serde_json::from_str(&cuerpo).unwrap_or(Value::Null),
+            ))
+        })?
+        .collect()
+    }
+
+    pub fn marcar_biometria(&self, ids: &[String]) -> rusqlite::Result<()> {
+        let mut c = self.c();
+        let tx = c.transaction()?;
+        for id in ids {
+            tx.execute("update biometria set enviado = 1 where id = ?1", [id])?;
+        }
+        tx.commit()
+    }
+
+    pub fn biometria_pendiente(&self) -> u32 {
+        self.contar("select count(*) from biometria where enviado = 0")
     }
 
     // --- estado ---------------------------------------------------------------

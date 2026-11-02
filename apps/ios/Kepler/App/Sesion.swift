@@ -38,6 +38,12 @@ final class Sesion: ObservableObject {
 
     let llavero = LlaveroKeychain()
     let ubicacion = Ubicacion()
+    /// Apple Salud (reloj vía su app, iPhone, estado de ánimo).
+    let salud = Salud()
+    /// Barómetro y podómetro del iPhone.
+    let sensores = Sensores()
+    var ultimaSalud: Date?
+    var ultimaPresion: Date?
     private(set) var nucleo: Nucleo
     private var enSegundoPlanoDesde: Date?
     var bucleSyncTarea: Task<Void, Never>?

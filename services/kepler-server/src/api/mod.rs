@@ -1,4 +1,5 @@
 mod archivos;
+pub mod biometria;
 mod capturas;
 mod catalogos;
 mod dashboard;
@@ -72,6 +73,8 @@ pub fn router(estado: Estado) -> Router {
             "/misiones/{id}/rastro",
             get(misiones::rastro).post(misiones::agregar_rastro),
         )
+        .route("/biometria", get(biometria::serie).post(biometria::subir))
+        .route("/biometria/resumen", get(biometria::resumen))
         .route("/sync/cambios", get(sync::cambios))
         .route("/sync/subir", post(sync::subir))
         .route("/notificaciones", get(notificaciones::listar))

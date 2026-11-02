@@ -32,7 +32,7 @@ extension Sesion {
         do {
             _ = try nucleo.terminarMision(completar: completar)
             mision = nil
-            ubicacion.dejarDeSeguir()
+            dejarDeSeguir()
             await sincronizar()
             await cargarPanel()
         } catch {
@@ -42,6 +42,8 @@ extension Sesion {
 
     func sincronizar() async {
         guard fase == .dentro else { return }
+        await importarSalud()
+        registrarPresion()
         guard let e = try? await nucleo.sincronizar() else { return }
         sync = e
         if e.enLinea, let n = try? await nucleo.noLeidas() { noLeidas = n }
@@ -53,7 +55,37 @@ extension Sesion {
         // La misión pudo cerrarse desde otro dispositivo
         let antes = mision
         mision = try? await nucleo.misionEnCurso()
-        if antes != nil, mision == nil { ubicacion.dejarDeSeguir() }
+        if antes != nil, mision == nil { dejarDeSeguir() }
+    }
+
+    /// Muestras nuevas de Apple Salud al almacén (cada 5 min o si `ya`).
+    func importarSalud(ya: Bool = false) async {
+        guard Salud.activa, let u = perfil?.usuario ?? llavero.usuarioGuardado else { return }
+        if !ya, let t = ultimaSalud, Date().timeIntervalSince(t) < 300 { return }
+        ultimaSalud = Date()
+        let n = nucleo
+        _ = await salud.importar(usuario: u) { try n.biometriaGuardar(muestras: $0) }
+    }
+
+    /// En misión, cada minuto: presión y altitud del barómetro del iPhone.
+    private func registrarPresion() {
+        guard mision != nil, let p = sensores.altitud.presion else { return }
+        if let t = ultimaPresion, Date().timeIntervalSince(t) < 60 { return }
+        ultimaPresion = Date()
+        let ahora = Date().timeIntervalSince1970
+        var muestras = [MuestraBio(id: UUID().uuidString.lowercased(), tipo: "presion", valor: p, unidad: "hPa",
+                                   inicio: ahora, fin: ahora, fuente: "Barómetro del iPhone", detalle: nil)]
+        if let a = sensores.altitud.absoluta {
+            muestras.append(MuestraBio(id: UUID().uuidString.lowercased(), tipo: "altitud", valor: a, unidad: "m",
+                                       inicio: ahora, fin: ahora, fuente: "Barómetro del iPhone",
+                                       detalle: sensores.altitud.precision.map { "{\"precision_m\":\($0)}" }))
+        }
+        _ = try? nucleo.biometriaGuardar(muestras: muestras)
+    }
+
+    private func dejarDeSeguir() {
+        ubicacion.dejarDeSeguir()
+        sensores.parar()
     }
 
     func refrescarSync() async {
@@ -62,7 +94,7 @@ extension Sesion {
 
     func detenerCampo() {
         bucleSyncTarea?.cancel()
-        ubicacion.dejarDeSeguir()
+        dejarDeSeguir()
         mision = nil
         sync = nil
     }
@@ -79,6 +111,7 @@ extension Sesion {
 
     /// GPS continuo mientras hay misión (también en segundo plano): cada punto va al almacén.
     private func seguirRastro() {
+        sensores.empezar()
         ubicacion.seguir { [weak self] l in
             guard let self else { return }
             let punto = PuntoGps(

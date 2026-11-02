@@ -12,7 +12,7 @@
 # KEPLER_DEMO_USUARIO/KEPLER_DEMO_CONTRASENA (entrada automática en el simulador, solo Debug),
 # KEPLER_DEMO_SECCION (desplaza el panel a esa tarjeta o abre la pestaña «mision»),
 # KEPLER_DEMO_IMAGEN (ruta en el Mac: foto que hace de cámara en el simulador),
-# KEPLER_SIM_UBICACION (lat,lng).
+# KEPLER_SIM_UBICACION (lat,lng), KEPLER_SIN_SALUD=1 (firmar sin HealthKit).
 #
 # Sincroniza con tar (los archivos de git, incluidos los nuevos sin commit); en el
 # Mac el repo vive en ~/kepler y `target/` se conserva entre compilaciones.
@@ -120,6 +120,10 @@ dispositivo() {
         if [ -f \"\$LLAVERO\" ] && [ -f \$HOME/.kepler-firma ]; then
             security unlock-keychain -p \"\$(cat \$HOME/.kepler-firma)\" \"\$LLAVERO\"
             FIRMA=\"OTHER_CODE_SIGN_FLAGS=--keychain=\$LLAVERO\"
+        fi
+        # KEPLER_SIN_SALUD=1: sin el permiso de HealthKit (si el perfil de firma aún no lo incluye)
+        if [ '${KEPLER_SIN_SALUD:-}' = 1 ]; then
+            plutil -create xml1 apps/ios/Kepler/Kepler.entitlements
         fi
         ID=\$(xcrun devicectl list devices 2>/dev/null | awk '/available|connected/ {print \$3; exit}')
         # UDID: con el iPhone concreto como destino Xcode lo registra en el equipo y crea el perfil

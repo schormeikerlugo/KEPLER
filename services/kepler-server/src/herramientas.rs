@@ -62,6 +62,17 @@ pub fn definiciones() -> Vec<Value> {
             } }),
         ),
         herramienta(
+            "salud_explorador",
+            "Salud y sensores del explorador (reloj vía Apple Salud, iPhone): pulso, pulso en reposo, \
+             variabilidad cardíaca (vfc), oxígeno (spo2), pasos, distancia, energía, sueño (horas por noche), \
+             estado de ánimo (valencia -1 a 1), presión y altitud. Último valor y media/mín/máx de los últimos \
+             días o durante una misión (código o título).",
+            json!({ "type": "object", "properties": {
+                "dias": { "type": "integer", "description": "Días hacia atrás (1-90, por defecto 7)" },
+                "mision": { "type": "string", "description": "Código o título de la misión (opcional)" }
+            } }),
+        ),
+        herramienta(
             "clima",
             "Clima actual en unas coordenadas: temperatura, lluvia, viento, UV y la categoría de KEPLER.",
             json!({ "type": "object", "required": ["lat", "lng"], "properties": {
@@ -144,6 +155,29 @@ async fn ejecutar_o_fallar(
         .bind(entero("limite", 10, 50))
         .fetch_one(&mut *tx)
         .await,
+        "salud_explorador" => {
+            let dias = entero("dias", 7, 90);
+            let mision = match texto("mision") {
+                Some(m) => match mision_id(&mut tx, &m).await.map_err(|e| e.to_string())? {
+                    Some(id) => Some(id),
+                    None => return Ok(json!({ "error": format!("no hay ninguna misión parecida a «{m}»") })),
+                },
+                None => None,
+            };
+            let desde = chrono::Utc::now() - chrono::Duration::days(dias);
+            crate::api::biometria::calcular_resumen(&mut tx, desde, mision).await.map(|tipos| {
+                let vacio = tipos.as_object().is_none_or(|o| o.is_empty());
+                json!({
+                    "periodo": if mision.is_some() { "durante la misión".to_owned() } else { format!("últimos {dias} días") },
+                    "tipos": tipos,
+                    "nota": if vacio {
+                        "Sin datos de salud: el explorador debe abrir Base › Salud y reloj en el iPhone para permitir Apple Salud."
+                    } else {
+                        "Acumulables (pasos, distancia, energía) por día: media/mín/máx diarios y «hoy». Sueño: horas por noche."
+                    },
+                })
+            })
+        }
         "detalle_mision" => {
             let busqueda = texto("mision").ok_or("falta `mision`")?;
             detalle_mision(&mut tx, &busqueda).await
@@ -535,4 +569,30 @@ pub fn imagenes(resultado: &Value) -> Vec<Value> {
                     "imagen_path": f["imagen_path"], "capturado_en": f["capturado_en"] })
         })
         .collect()
+}
+
+/// Id de una misión por código o título (exacto sin tildes o, si no, el más parecido).
+async fn mision_id(
+    tx: &mut crate::db::Tx<'_>,
+    busqueda: &str,
+) -> Result<Option<uuid::Uuid>, sqlx::Error> {
+    let misiones: Vec<(uuid::Uuid, String, Option<String>)> = sqlx::query_as(
+        "select id, codigo, titulo from public.misiones where eliminado_en is null order by creado_en desc limit 500",
+    )
+    .fetch_all(&mut **tx)
+    .await?;
+    let textos: Vec<String> = misiones
+        .iter()
+        .map(|(_, c, t)| format!("{} {c}", t.as_deref().unwrap_or_default()))
+        .collect();
+    let q = texto::normalizar(busqueda);
+    let i = textos
+        .iter()
+        .position(|t| texto::normalizar(t).contains(&q))
+        .or_else(|| {
+            texto::mas_parecidos(busqueda, textos.iter().map(String::as_str), 1)
+                .first()
+                .map(|r| r.0)
+        });
+    Ok(i.map(|i| misiones[i].0))
 }

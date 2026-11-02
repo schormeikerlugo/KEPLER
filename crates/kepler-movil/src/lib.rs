@@ -14,6 +14,7 @@ use serde_json::Value;
 
 mod almacen;
 mod archivo;
+mod biometria;
 mod campo;
 mod captura;
 mod centinela;
@@ -27,6 +28,7 @@ pub use archivo::{
     Candidato, EdicionHallazgo, EntradaBitacora, Hallazgo, IdentidadPendiente, PaginaBitacora,
     PaginaHallazgos, TipoHallazgo,
 };
+pub use biometria::{MuestraBio, ResumenBio};
 pub use campo::{EstadoSync, MisionEnCurso, PuntoGps};
 pub use captura::{CapturaGuardada, NuevaCaptura, TipoCaptura};
 pub use centinela::{Centinela, ModoCentinela};
@@ -231,6 +233,26 @@ impl Nucleo {
     pub fn registrar_punto(&self, punto: PuntoGps) -> Result<Option<MisionEnCurso>, ErrorKepler> {
         let a = self.almacen()?;
         campo::registrar(&a, &punto).map_err(almacen_err)
+    }
+
+    /// Guarda muestras de salud y sensores (se envían al sincronizar); devuelve las válidas.
+    pub fn biometria_guardar(&self, muestras: Vec<MuestraBio>) -> Result<u32, ErrorKepler> {
+        let a = self.almacen()?;
+        biometria::guardar(&a, &muestras).map_err(almacen_err)
+    }
+
+    /// Resumen por tipo de los últimos `dias` (o de una misión), del servidor.
+    pub async fn biometria_resumen(
+        &self,
+        dias: u32,
+        mision: Option<String>,
+    ) -> Result<Vec<ResumenBio>, ErrorKepler> {
+        let mut ruta = format!("/v1/biometria/resumen?dias={}", dias.clamp(1, 365));
+        if let Some(m) = mision {
+            ruta.push_str(&format!("&mision={m}"));
+        }
+        let v: Value = self.cliente.get(&ruta).await?;
+        Ok(biometria::resumen(&v))
     }
 
     /// Envía lo pendiente si hay conexión con la base.

@@ -39,7 +39,8 @@ const REPORTE_VIGENCIA: Duration = Duration::from_secs(3600);
 
 const PERSONA: &str = "Eres Cortex, la inteligencia artificial del ecosistema de exploración KEPLER. \
 Acompañas a un explorador de campo: le ayudas con sus misiones, hallazgos (objetos, personas, puntos \
-de interés), rutas, peligros y clima. Respondes siempre en español, con tono táctico y directo, en \
+de interés), rutas, peligros, clima y su estado físico (salud_explorador: pulso, oxígeno, sueño, pasos, \
+ánimo, altitud). Respondes siempre en español, con tono táctico y directo, en \
 frases cortas; usa viñetas cuando ayuden. Usa las herramientas para consultar datos reales del \
 explorador en lugar de suponer; si algo no está en los datos, dilo. Nunca inventes cifras, nombres \
 ni coordenadas. Las búsquedas toleran faltas de ortografía: si devuelven coincidencias aproximadas o \
@@ -252,6 +253,7 @@ fn describir(herramienta: &str) -> &'static str {
         "mostrar_imagenes" => "Buscando las fotos…",
         "peligros_cercanos" => "Buscando peligros cercanos…",
         "clima" => "Consultando el clima…",
+        "salud_explorador" => "Revisando tu salud…",
         _ => "Consultando datos…",
     }
 }
