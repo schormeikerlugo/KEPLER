@@ -13,6 +13,28 @@ pub trait OyenteCortex: Send + Sync {
     fn estado(&self, texto: String);
     /// La respuesta hasta ahora (completa, no el último trozo).
     fn texto(&self, acumulado: String);
+    /// Fotos de hallazgos que Cortex muestra (`mostrar_imagenes`), todas las de la respuesta.
+    fn imagenes(&self, todas: Vec<ImagenCortex>);
+}
+
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct ImagenCortex {
+    pub id: String,
+    /// `objeto`, `persona` o `poi`.
+    pub tipo: String,
+    pub nombre: String,
+    pub imagen_path: String,
+    pub capturado_en: i64,
+}
+
+fn imagen(v: &Value) -> Option<ImagenCortex> {
+    Some(ImagenCortex {
+        id: v["id"].as_str()?.to_owned(),
+        tipo: v["tipo"].as_str().unwrap_or("objeto").to_owned(),
+        nombre: v["nombre"].as_str().unwrap_or_default().to_owned(),
+        imagen_path: v["imagen_path"].as_str()?.to_owned(),
+        capturado_en: crate::archivo::segundos(&v["capturado_en"]),
+    })
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -29,6 +51,7 @@ pub struct MensajeCortex {
     pub rol: String,
     pub texto: String,
     pub en: i64,
+    pub imagenes: Vec<ImagenCortex>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -38,12 +61,14 @@ pub struct FinCortex {
     pub chat_id: Option<String>,
     pub titulo: Option<String>,
     pub segundos: f64,
+    pub imagenes: Vec<ImagenCortex>,
 }
 
 /// Procesa los eventos del streaming; devuelve el final o el error de la IA.
 pub struct Acumulador {
     oyente: Arc<dyn OyenteCortex>,
     texto: String,
+    imagenes: Vec<ImagenCortex>,
     fin: Option<Value>,
     error: Option<String>,
 }
@@ -53,6 +78,7 @@ impl Acumulador {
         Self {
             oyente,
             texto: String::new(),
+            imagenes: Vec::new(),
             fin: None,
             error: None,
         }
@@ -68,6 +94,16 @@ impl Acumulador {
             Some("reiniciar") => {
                 self.texto.clear();
                 self.oyente.texto(String::new());
+            }
+            Some("imagenes") => {
+                self.imagenes.extend(
+                    ev["items"]
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                        .filter_map(imagen),
+                );
+                self.oyente.imagenes(self.imagenes.clone());
             }
             Some("estado") => self
                 .oyente
@@ -93,6 +129,7 @@ impl Acumulador {
                 .filter(|t| !t.is_empty())
                 .map(str::to_owned),
             segundos: fin["segundos"].as_f64().unwrap_or(0.0),
+            imagenes: self.imagenes,
         })
     }
 }
@@ -119,6 +156,12 @@ pub fn mensajes(chat: &Value) -> Vec<MensajeCortex> {
             rol: m["rol"].as_str().unwrap_or("assistant").to_owned(),
             texto: m["contenido"].as_str().unwrap_or_default().to_owned(),
             en: crate::archivo::segundos(&m["en"]),
+            imagenes: m["imagenes"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(imagen)
+                .collect(),
         })
         .collect()
 }
@@ -141,6 +184,12 @@ mod tests {
         fn texto(&self, acumulado: String) {
             self.0.lock().unwrap().push(format!("texto:{acumulado}"));
         }
+        fn imagenes(&self, todas: Vec<ImagenCortex>) {
+            self.0
+                .lock()
+                .unwrap()
+                .push(format!("imagenes:{}", todas.len()));
+        }
     }
 
     #[test]
@@ -153,15 +202,20 @@ mod tests {
             json!({ "tipo": "reiniciar" }),
             json!({ "tipo": "token", "texto": "Tienes " }),
             json!({ "tipo": "token", "texto": "2 misiones" }),
+            json!({ "tipo": "imagenes", "items": [{ "id": "o", "tipo": "objeto", "nombre": "Autobús", "imagen_path": "u/o.jpg" },
+                                                   { "id": "sin_foto" }] }),
             json!({ "tipo": "fin", "chat_id": "c", "titulo": "🗺️ Misiones", "segundos": 5.5 }),
         ] {
             a.evento(ev);
         }
-        assert_eq!(
-            r.0.lock().unwrap().last().unwrap(),
-            "texto:Tienes 2 misiones"
+        assert!(
+            r.0.lock()
+                .unwrap()
+                .contains(&"texto:Tienes 2 misiones".to_owned())
         );
+        assert_eq!(r.0.lock().unwrap().last().unwrap(), "imagenes:1");
         let f = a.terminar().unwrap();
+        assert_eq!(f.imagenes[0].nombre, "Autobús");
         assert_eq!(
             (f.texto.as_str(), f.chat_id.as_deref(), f.segundos),
             ("Tienes 2 misiones", Some("c"), 5.5)

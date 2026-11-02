@@ -8,8 +8,9 @@ use chrono::{DateTime, Local, Utc};
 use serde_json::{Value, json};
 use slint::{ComponentHandle, Model, ModelRc, VecModel};
 
+use crate::imagenes::{self, MINIATURA};
 use crate::panel::Contexto;
-use crate::{ChatFila, Estado, LineaMd, MensajeChat};
+use crate::{ChatFila, Estado, FotoChat, LineaMd, MensajeChat};
 
 /// Cada cuánto se repinta el texto que va llegando.
 const REPINTAR: Duration = Duration::from_millis(60);
@@ -17,8 +18,8 @@ const REPINTAR: Duration = Duration::from_millis(60);
 #[derive(Default)]
 pub struct Memoria {
     chat: Option<String>,
-    /// (rol, texto) de la conversación abierta.
-    mensajes: Vec<(String, String)>,
+    /// (rol, texto, fotos) de la conversación abierta.
+    mensajes: Vec<(String, String, Vec<Value>)>,
 }
 
 pub type Compartida = Mutex<Memoria>;
@@ -92,11 +93,14 @@ pub fn abrir(c: &Arc<Contexto>, id: String) {
         let Ok(chat) = c2.cliente.get::<Value>(&format!("/v1/ia/chats/{id}")).await else {
             return;
         };
-        let mensajes: Vec<(String, String)> = chat["mensajes"]
+        let mensajes: Vec<(String, String, Vec<Value>)> = chat["mensajes"]
             .as_array()
             .into_iter()
             .flatten()
-            .map(|m| (texto(m, "rol"), texto(m, "contenido")))
+            .map(|m| {
+                let fotos = m["imagenes"].as_array().cloned().unwrap_or_default();
+                (texto(m, "rol"), texto(m, "contenido"), fotos)
+            })
             .collect();
         {
             let mut m = c2.cortex.lock().expect("cortex");
@@ -111,6 +115,7 @@ pub fn abrir(c: &Arc<Contexto>, id: String) {
                 pintar_todo(&e, &mensajes);
             })
             .ok();
+        cargar_fotos(&c2).await;
     });
 }
 
@@ -141,8 +146,10 @@ pub fn enviar(c: &Arc<Contexto>, texto_usuario: String) {
     }
     let chat_id = {
         let mut m = c.cortex.lock().expect("cortex");
-        m.mensajes.push(("user".into(), texto_usuario.clone()));
-        m.mensajes.push(("assistant".into(), String::new()));
+        m.mensajes
+            .push(("user".into(), texto_usuario.clone(), Vec::new()));
+        m.mensajes
+            .push(("assistant".into(), String::new(), Vec::new()));
         m.chat.clone()
     };
     if let Some(ui) = c.ui.upgrade() {
@@ -151,15 +158,15 @@ pub fn enviar(c: &Arc<Contexto>, texto_usuario: String) {
         e.set_cortex_error("".into());
         let modelo = e.get_cortex_mensajes();
         if let Some(v) = modelo.as_any().downcast_ref::<VecModel<MensajeChat>>() {
-            v.push(mensaje("user", &texto_usuario));
-            v.push(mensaje("assistant", ""));
+            v.push(mensaje("user", &texto_usuario, &[]));
+            v.push(mensaje("assistant", "", &[]));
         }
     }
     let c2 = c.clone();
     c.rt.spawn(async move {
         let (lat, lng) = c2.ubicacion_aproximada().await.unzip();
-        let cuerpo =
-            json!({ "chat_id": chat_id, "mensaje": texto_usuario, "lat": lat, "lng": lng });
+        let cuerpo = json!({ "chat_id": chat_id, "mensaje": texto_usuario, "lat": lat, "lng": lng,
+                    "desfase_min": desfase_min() });
         let mut respuesta = String::new();
         let mut ultimo_pintado = Instant::now();
         let mut fin: Option<Value> = None;
@@ -174,6 +181,13 @@ pub fn enviar(c: &Arc<Contexto>, texto_usuario: String) {
                     }
                 }
                 Some("reiniciar") => respuesta.clear(),
+                Some("imagenes") => {
+                    let nuevas = ev["items"].as_array().cloned().unwrap_or_default();
+                    if let Some(ultimo) = c2.cortex.lock().expect("cortex").mensajes.last_mut() {
+                        ultimo.2.extend(nuevas.clone());
+                    }
+                    poner_fotos(&c2, nuevas);
+                }
                 Some("estado") => {
                     pintar_respuesta(&c2, &respuesta, ev["texto"].as_str().unwrap_or_default())
                 }
@@ -244,11 +258,14 @@ fn pintar_respuesta(c: &Contexto, texto: &str, estado: &str) {
         let modelo = e.get_cortex_mensajes();
         let n = modelo.row_count();
         if n > 0 {
+            // Las fotos ya cargadas se conservan al repintar el texto
+            let fotos = modelo.row_data(n - 1).map(|m| m.fotos).unwrap_or_default();
             modelo.set_row_data(
                 n - 1,
                 MensajeChat {
                     rol: "assistant".into(),
                     lineas: modelo_lineas(lineas),
+                    fotos,
                 },
             );
         }
@@ -256,15 +273,15 @@ fn pintar_respuesta(c: &Contexto, texto: &str, estado: &str) {
     .ok();
 }
 
-fn pintar_todo(e: &Estado<'_>, mensajes: &[(String, String)]) {
-    let filas: Vec<MensajeChat> = mensajes.iter().map(|(r, t)| mensaje(r, t)).collect();
+fn pintar_todo(e: &Estado<'_>, mensajes: &[(String, String, Vec<Value>)]) {
+    let filas: Vec<MensajeChat> = mensajes.iter().map(|(r, t, f)| mensaje(r, t, f)).collect();
     let modelo = e.get_cortex_mensajes();
     if let Some(v) = modelo.as_any().downcast_ref::<VecModel<MensajeChat>>() {
         v.set_vec(filas);
     }
 }
 
-fn mensaje(rol: &str, texto: &str) -> MensajeChat {
+fn mensaje(rol: &str, texto: &str, fotos: &[Value]) -> MensajeChat {
     let lineas = if rol == "user" {
         vec![(texto.to_owned(), 0)]
     } else if texto.is_empty() {
@@ -275,6 +292,86 @@ fn mensaje(rol: &str, texto: &str) -> MensajeChat {
     MensajeChat {
         rol: rol.into(),
         lineas: modelo_lineas(lineas),
+        fotos: modelo_fotos(fotos),
+    }
+}
+
+fn modelo_fotos(fotos: &[Value]) -> ModelRc<FotoChat> {
+    ModelRc::new(VecModel::from(
+        fotos
+            .iter()
+            .map(|f| FotoChat {
+                id: texto(f, "id").into(),
+                tipo: tabla(f["tipo"].as_str().unwrap_or("objeto")).into(),
+                nombre: texto(f, "nombre").into(),
+                imagen: Default::default(),
+                tiene_imagen: false,
+            })
+            .collect::<Vec<_>>(),
+    ))
+}
+
+/// Tipo de `mostrar_imagenes` → tabla de Archivos (para abrir su ficha).
+fn tabla(tipo: &str) -> &'static str {
+    match tipo {
+        "persona" => "personas",
+        "poi" => "puntos_interes",
+        _ => "objetos",
+    }
+}
+
+/// Las fotos que llegan en la respuesta en curso (último mensaje).
+fn poner_fotos(c: &Arc<Contexto>, nuevas: Vec<Value>) {
+    let c2 = c.clone();
+    c.ui.upgrade_in_event_loop(move |ui| {
+        let modelo = ui.global::<Estado>().get_cortex_mensajes();
+        let n = modelo.row_count();
+        if n == 0 {
+            return;
+        }
+        if let Some(mut m) = modelo.row_data(n - 1) {
+            let mut todas: Vec<FotoChat> = m.fotos.iter().collect();
+            todas.extend(modelo_fotos(&nuevas).iter());
+            m.fotos = ModelRc::new(VecModel::from(todas));
+            modelo.set_row_data(n - 1, m);
+        }
+        let c3 = c2.clone();
+        c2.rt.spawn(async move { cargar_fotos(&c3).await });
+    })
+    .ok();
+}
+
+/// Descarga (con caché) las fotos aún sin imagen de la conversación abierta.
+async fn cargar_fotos(c: &Arc<Contexto>) {
+    let pendientes: Vec<(usize, usize, String)> = {
+        let m = c.cortex.lock().expect("cortex");
+        m.mensajes
+            .iter()
+            .enumerate()
+            .flat_map(|(i, (_, _, fotos))| {
+                fotos
+                    .iter()
+                    .enumerate()
+                    .filter_map(move |(j, f)| Some((i, j, f["imagen_path"].as_str()?.to_owned())))
+            })
+            .collect()
+    };
+    for (i, j, ruta) in pendientes {
+        let Some(px) = c.imagenes.obtener(&c.cliente, &ruta, MINIATURA).await else {
+            continue;
+        };
+        c.ui.upgrade_in_event_loop(move |ui| {
+            let modelo = ui.global::<Estado>().get_cortex_mensajes();
+            if let Some(m) = modelo.row_data(i)
+                && let Some(mut f) = m.fotos.row_data(j)
+                && !f.tiene_imagen
+            {
+                f.imagen = imagenes::a_imagen(px);
+                f.tiene_imagen = true;
+                m.fotos.set_row_data(j, f);
+            }
+        })
+        .ok();
     }
 }
 
@@ -325,7 +422,8 @@ pub fn analizar(c: &Arc<Contexto>, notificacion: String) {
     let c2 = c.clone();
     c.rt.spawn(async move {
         let (lat, lng) = c2.ubicacion_aproximada().await.unzip();
-        let cuerpo = json!({ "notificacion_id": notificacion, "lat": lat, "lng": lng });
+        let cuerpo = json!({ "notificacion_id": notificacion, "lat": lat, "lng": lng,
+                            "desfase_min": desfase_min() });
         let mut texto_ia = String::new();
         let mut ultimo = Instant::now();
         let mut estado = String::new();
@@ -411,6 +509,11 @@ pub fn markdown(texto: &str) -> Vec<(String, i32)> {
         }
     }
     lineas
+}
+
+/// Desfase horario local en minutos (Cortex da las horas en local).
+fn desfase_min() -> i32 {
+    Local::now().offset().local_minus_utc() / 60
 }
 
 fn texto(v: &Value, campo: &str) -> String {

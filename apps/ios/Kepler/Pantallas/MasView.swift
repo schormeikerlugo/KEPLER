@@ -535,7 +535,8 @@ struct DeepDiveView: View {
             let p = await sesion.ubicacion.actual()
             do {
                 let fin = try await sesion.nucleo.cortexAnalizar(notificacionId: entrada.id, lat: p?.latitude,
-                                                                lng: p?.longitude, oyente: oyente)
+                                                                lng: p?.longitude, desfaseMin: Int32(TimeZone.current.secondsFromGMT() / 60),
+                                                                oyente: oyente)
                 texto = fin.texto
                 estado = String(format: "Analizado en %.1f s", fin.segundos)
             } catch {

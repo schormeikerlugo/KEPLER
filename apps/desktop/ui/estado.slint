@@ -151,10 +151,21 @@ export struct LineaMd {
     tipo: int,
 }
 
+// Foto de un hallazgo que Cortex muestra en su respuesta
+export struct FotoChat {
+    id: string,
+    // objetos · personas · puntos_interes
+    tipo: string,
+    nombre: string,
+    imagen: image,
+    tiene-imagen: bool,
+}
+
 export struct MensajeChat {
     // user · assistant
     rol: string,
     lineas: [LineaMd],
+    fotos: [FotoChat],
 }
 
 export struct ChatFila {

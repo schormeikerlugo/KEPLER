@@ -14,6 +14,7 @@ pub mod modelos;
 pub mod reid;
 pub mod riesgo;
 mod sync;
+pub mod texto;
 mod usuario;
 pub mod vector_pg;
 pub mod vigencia;

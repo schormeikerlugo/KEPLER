@@ -7,6 +7,8 @@ mod entorno;
 mod etiquetas;
 mod explorador;
 mod ia;
+
+pub use ia::a_hora_local as ia_hora_local;
 mod mapa;
 mod mapas;
 mod misiones;

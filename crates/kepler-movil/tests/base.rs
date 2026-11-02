@@ -25,6 +25,7 @@ impl OyenteCortex for Oyente {
     fn texto(&self, acumulado: String) {
         *self.ultimo.lock().unwrap() = acumulado;
     }
+    fn imagenes(&self, _todas: Vec<kepler_movil::ImagenCortex>) {}
 }
 
 fn var(k: &str) -> String {
@@ -96,6 +97,7 @@ async fn archivos_bitacora_y_cortex() {
             "¿Cuántas misiones tengo?".into(),
             Some(10.5),
             Some(-66.9),
+            Some(-240),
             o.clone(),
         )
         .await

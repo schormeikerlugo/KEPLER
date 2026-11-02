@@ -47,12 +47,53 @@ component Burbuja inherits HorizontalLayout {
         background: mio ? Tema.acento-suave : #15181d;
         border-width: 1px;
         border-color: mio ? Tema.acento-borde : Tema.borde-sutil;
-        cuerpo := Markdown {
+        VerticalLayout {
             padding: 14px;
             padding-left: 18px;
             padding-right: 18px;
-            lineas: dato.lineas;
-            color: mio ? Tema.texto : Tema.texto-secundario;
+            spacing: 12px;
+            Markdown {
+                lineas: dato.lineas;
+                color: mio ? Tema.texto : Tema.texto-secundario;
+            }
+            // Fotos de hallazgos (mostrar_imagenes): clic → su ficha
+            if dato.fotos.length > 0: HorizontalLayout {
+                spacing: 8px;
+                alignment: start;
+                for f in dato.fotos: Rectangle {
+                    width: 116px;
+                    height: 116px;
+                    border-radius: 10px;
+                    clip: true;
+                    background: #1a1d22;
+                    border-width: 1px;
+                    border-color: zona-foto.has-hover ? Tema.acento : Tema.borde-tenue;
+                    if f.tiene-imagen: Image {
+                        width: parent.width;
+                        height: parent.height;
+                        source: f.imagen;
+                        image-fit: cover;
+                    }
+                    Rectangle {
+                        y: parent.height - 24px;
+                        height: 24px;
+                        background: #000000a0;
+                        Text {
+                            x: 6px;
+                            width: parent.width - 12px;
+                            text: f.nombre;
+                            color: Tema.texto;
+                            font-size: 10.5px;
+                            overflow: elide;
+                            vertical-alignment: center;
+                        }
+                    }
+                    zona-foto := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => { Estado.abrir-hallazgo(f.tipo, f.id); }
+                    }
+                }
+            }
         }
     }
 }

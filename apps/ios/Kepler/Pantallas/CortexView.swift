@@ -4,14 +4,18 @@ import SwiftUI
 final class OyenteVista: OyenteCortex, @unchecked Sendable {
     private let alEstado: @MainActor (String) -> Void
     private let alTexto: @MainActor (String) -> Void
+    private let alImagenes: @MainActor ([ImagenCortex]) -> Void
 
-    init(estado: @escaping @MainActor (String) -> Void, texto: @escaping @MainActor (String) -> Void) {
+    init(estado: @escaping @MainActor (String) -> Void, texto: @escaping @MainActor (String) -> Void,
+         imagenes: @escaping @MainActor ([ImagenCortex]) -> Void = { _ in }) {
         alEstado = estado
         alTexto = texto
+        alImagenes = imagenes
     }
 
     func estado(texto: String) { Task { @MainActor in alEstado(texto) } }
     func texto(acumulado: String) { Task { @MainActor in alTexto(acumulado) } }
+    func imagenes(todas: [ImagenCortex]) { Task { @MainActor in alImagenes(todas) } }
 }
 
 /// Chat con Cortex, la IA local de la base (necesita conexión).
@@ -21,6 +25,9 @@ struct CortexView: View {
     @State private var titulo = "Cortex"
     @State private var mensajes: [MensajeCortex] = []
     @State private var respuesta: String?
+    /// Fotos que Cortex va mostrando en la respuesta en curso.
+    @State private var fotos: [ImagenCortex] = []
+    @State private var ampliada: ImagenCortex?
     @State private var estado = ""
     @State private var error: String?
     @State private var entrada = ""
@@ -37,11 +44,13 @@ struct CortexView: View {
                         LazyVStack(alignment: .leading, spacing: Tema.Espacio.md) {
                             if mensajes.isEmpty && respuesta == nil { bienvenida }
                             ForEach(Array(mensajes.enumerated()), id: \.offset) { _, m in
-                                Burbuja(rol: m.rol, texto: m.texto, avatar: sesion.perfil?.avatarIa ?? "🤖")
+                                Burbuja(rol: m.rol, texto: m.texto, fotos: m.imagenes, avatar: sesion.perfil?.avatarIa ?? "🤖") {
+                                    ampliada = $0
+                                }
                             }
                             if let respuesta {
-                                Burbuja(rol: "assistant", texto: respuesta.isEmpty ? "…" : respuesta,
-                                        avatar: sesion.perfil?.avatarIa ?? "🤖")
+                                Burbuja(rol: "assistant", texto: respuesta.isEmpty ? "…" : respuesta, fotos: fotos,
+                                        avatar: sesion.perfil?.avatarIa ?? "🤖") { ampliada = $0 }
                             }
                             if !estado.isEmpty {
                                 Text(estado)
@@ -64,6 +73,7 @@ struct CortexView: View {
                 barraEntrada
             }
         }
+        .sheet(item: $ampliada) { FotoAmpliada(foto: $0) }
         .sheet(isPresented: $historial) {
             HistorialCortex { id, t in Task { await abrir(id, titulo: t) } } nuevo: { nuevo() }
                 .presentationDetents([.medium, .large])
@@ -148,15 +158,18 @@ struct CortexView: View {
         guard !texto.isEmpty, respuesta == nil else { return }
         entrada = ""
         error = nil
-        mensajes.append(MensajeCortex(rol: "user", texto: texto, en: Int64(Date().timeIntervalSince1970)))
+        mensajes.append(MensajeCortex(rol: "user", texto: texto, en: Int64(Date().timeIntervalSince1970), imagenes: []))
         respuesta = ""
+        fotos = []
         estado = "Cortex está pensando…"
-        let oyente = OyenteVista(estado: { estado = $0 }, texto: { respuesta = $0 })
+        let oyente = OyenteVista(estado: { estado = $0 }, texto: { respuesta = $0 }, imagenes: { fotos = $0 })
         let p = await sesion.ubicacion.actual()
         do {
             let fin = try await sesion.nucleo.cortexEnviar(chatId: chatId, mensaje: texto, lat: p?.latitude,
-                                                          lng: p?.longitude, oyente: oyente)
-            mensajes.append(MensajeCortex(rol: "assistant", texto: fin.texto, en: Int64(Date().timeIntervalSince1970)))
+                                                          lng: p?.longitude, desfaseMin: Int32(TimeZone.current.secondsFromGMT() / 60),
+                                                          oyente: oyente)
+            mensajes.append(MensajeCortex(rol: "assistant", texto: fin.texto, en: Int64(Date().timeIntervalSince1970),
+                                          imagenes: fin.imagenes))
             chatId = fin.chatId ?? chatId
             if let t = fin.titulo { titulo = t }
             estado = String(format: "Respondido en %.1f s", fin.segundos)
@@ -165,6 +178,7 @@ struct CortexView: View {
             estado = ""
         }
         respuesta = nil
+        fotos = []
     }
 
     private func abrir(_ id: String, titulo t: String) async {
@@ -191,7 +205,9 @@ struct CortexView: View {
 private struct Burbuja: View {
     let rol: String
     let texto: String
+    var fotos: [ImagenCortex] = []
     let avatar: String
+    var ampliar: (ImagenCortex) -> Void = { _ in }
 
     var body: some View {
         if rol == "user" {
@@ -209,7 +225,32 @@ private struct Burbuja: View {
                 Text(avatar).font(.system(size: 18))
                     .frame(width: 32, height: 32)
                     .background(Tema.Color.acentoSuave, in: Circle())
-                MarkdownCortex(texto: texto)
+                VStack(alignment: .leading, spacing: Tema.Espacio.sm) {
+                    MarkdownCortex(texto: texto)
+                    if !fotos.isEmpty {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 6)], spacing: 6) {
+                            ForEach(fotos, id: \.id) { f in
+                                Button { ampliar(f) } label: {
+                                    Color.clear
+                                        .aspectRatio(1, contentMode: .fit)
+                                        .overlay { ImagenRemota(ruta: f.imagenPath, lado: 160, simbolo: "photo") }
+                                        .overlay(alignment: .bottomLeading) {
+                                            Text(f.nombre)
+                                                .font(Jura.fuente(10, .semibold))
+                                                .foregroundStyle(.white)
+                                                .lineLimit(1)
+                                                .padding(.horizontal, 5)
+                                                .padding(.vertical, 2)
+                                                .background(.black.opacity(0.6), in: Capsule())
+                                                .padding(4)
+                                        }
+                                        .clipShape(RoundedRectangle(cornerRadius: Tema.Radio.medio))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }
                     .padding(12)
                     .background(Tema.Color.superficie, in: RoundedRectangle(cornerRadius: Tema.Radio.tarjeta))
                     .overlay(RoundedRectangle(cornerRadius: Tema.Radio.tarjeta).stroke(Tema.Color.bordeSutil, lineWidth: 1))
@@ -271,6 +312,28 @@ private struct HistorialCortex: View {
         }
         .task {
             do { chats = try await sesion.nucleo.cortexChats() } catch { self.error = Sesion.mensaje(error) }
+        }
+    }
+}
+
+extension ImagenCortex: Identifiable {}
+
+/// Foto de un hallazgo mostrada por Cortex, a pantalla completa.
+private struct FotoAmpliada: View {
+    @Environment(\.dismiss) private var cerrar
+    let foto: ImagenCortex
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            VStack(spacing: Tema.Espacio.md) {
+                ImagenRemota(ruta: foto.imagenPath, lado: 1000, simbolo: "photo", entera: true)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                Text(foto.nombre).font(Jura.fuente(Tema.Tamano.tituloTarjeta, .semibold)).foregroundStyle(Tema.Color.texto)
+                Etiqueta(texto: "\(foto.tipo) · \(Fecha.corta(foto.capturadoEn))")
+                Button("CERRAR") { cerrar() }.buttonStyle(BotonKepler(principal: false)).padding(.horizontal, Tema.Espacio.xl)
+            }
+            .padding(.vertical, Tema.Espacio.lg)
         }
     }
 }

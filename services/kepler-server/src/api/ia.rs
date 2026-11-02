@@ -5,6 +5,7 @@
 //! ```text
 //! {"tipo":"estado","texto":"Consultando misiones…"}
 //! {"tipo":"token","texto":"Hola"}
+//! {"tipo":"imagenes","items":[{"id","tipo","nombre","imagen_path","capturado_en"}]}
 //! {"tipo":"reiniciar"}            ← borrar lo recibido: era un borrador antes de usar herramientas
 //! {"tipo":"fin","chat_id":"…","titulo":"…","servidor":"…","segundos":3.2}
 //! {"tipo":"error","texto":"…"}
@@ -41,7 +42,11 @@ Acompañas a un explorador de campo: le ayudas con sus misiones, hallazgos (obje
 de interés), rutas, peligros y clima. Respondes siempre en español, con tono táctico y directo, en \
 frases cortas; usa viñetas cuando ayuden. Usa las herramientas para consultar datos reales del \
 explorador en lugar de suponer; si algo no está en los datos, dilo. Nunca inventes cifras, nombres \
-ni coordenadas.";
+ni coordenadas. Las búsquedas toleran faltas de ortografía: si devuelven coincidencias aproximadas o \
+sugerencias, preséntalas («No encontré X exactamente, pero sí Y…» o «¿Te refieres a…?») en lugar de \
+decir que no existe. Nunca digas que algo no está registrado sin haberlo buscado antes con las \
+herramientas (buscar_hallazgos, detalle_mision, listar_misiones). Si el explorador pide ver fotos o imágenes, usa mostrar_imagenes: las fotos se le \
+muestran solas; no escribas rutas de archivos.";
 
 #[derive(Debug, Deserialize)]
 pub struct PeticionChat {
@@ -50,6 +55,8 @@ pub struct PeticionChat {
     /// Ubicación aproximada del explorador (contexto para clima y peligros).
     lat: Option<f64>,
     lng: Option<f64>,
+    /// Desfase horario del dispositivo en minutos (Caracas: -240), para dar las horas en local.
+    desfase_min: Option<i32>,
 }
 
 /// `POST /v1/ia/chat` — responde en streaming y guarda la conversación.
@@ -73,9 +80,15 @@ pub async fn chat(
             .unwrap_or_default(),
         None => Vec::new(),
     };
-    let mut mensajes = vec![Mensaje::sistema(
-        contexto(&estado, &sesion, p.lat, p.lng).await,
-    )];
+    let mut mensajes = vec![Mensaje::sistema({
+        let mut c = contexto(&estado, &sesion, p.lat, p.lng, p.desfase_min).await;
+        if let Some(pistas) = herramientas::pistas(&estado, &sesion, &mensaje, p.desfase_min).await
+        {
+            c.push_str("\n\n");
+            c.push_str(&pistas);
+        }
+        c
+    })];
     let desde = historial.len().saturating_sub(HISTORIAL_MAX);
     for m in &historial[desde..] {
         let texto = m["contenido"].as_str().unwrap_or_default();
@@ -89,12 +102,12 @@ pub async fn chat(
 
     let (tx, rx) = mpsc::channel::<Value>(64);
     tokio::spawn(async move {
-        let Some((respuesta, servidor, segundos)) =
-            conversar(&estado, &sesion, mensajes, &tx).await
+        let Some((respuesta, servidor, segundos, imagenes)) =
+            conversar(&estado, &sesion, mensajes, p.desfase_min, &tx).await
         else {
             return;
         };
-        match guardar_chat(&estado, &sesion, p.chat_id, &mensaje, &respuesta).await {
+        match guardar_chat(&estado, &sesion, p.chat_id, &mensaje, &respuesta, &imagenes).await {
             Ok((chat_id, titulo)) => {
                 let _ = tx
                     .send(json!({ "tipo": "fin", "chat_id": chat_id, "titulo": titulo,
@@ -111,13 +124,16 @@ pub async fn chat(
     Ok(ndjson(rx))
 }
 
-/// Bucle de herramientas + respuesta en streaming. Devuelve el texto final.
+/// Bucle de herramientas + respuesta en streaming. Devuelve el texto final, el
+/// servidor, los segundos y las fotos mostradas.
 async fn conversar(
     estado: &Estado,
     sesion: &Sesion,
     mut mensajes: Vec<Mensaje>,
+    desfase_min: Option<i32>,
     tx: &mpsc::Sender<Value>,
-) -> Option<(String, String, f64)> {
+) -> Option<(String, String, f64, Vec<Value>)> {
+    let mut imagenes: Vec<Value> = Vec::new();
     let definiciones = herramientas::definiciones();
     let inicio = Instant::now();
     let _ = tx
@@ -167,6 +183,7 @@ async fn conversar(
                 texto.trim().to_owned(),
                 servidor,
                 inicio.elapsed().as_secs_f64(),
+                imagenes,
             ));
         }
         if !texto.trim().is_empty() {
@@ -184,10 +201,46 @@ async fn conversar(
             let resultado =
                 herramientas::ejecutar(estado, sesion, &l.function.name, &l.function.arguments)
                     .await;
-            mensajes.push(Mensaje::herramienta(&l.function.name, &resultado));
+            tracing::info!(herramienta = %l.function.name, args = %l.function.arguments,
+                           total = %resultado["total"], "cortex: herramienta");
+            if l.function.name == "mostrar_imagenes" {
+                let nuevas: Vec<Value> = herramientas::imagenes(&resultado)
+                    .into_iter()
+                    .filter(|i| !imagenes.iter().any(|v| v["id"] == i["id"]))
+                    .collect();
+                if !nuevas.is_empty() {
+                    let _ = tx
+                        .send(json!({ "tipo": "imagenes", "items": nuevas }))
+                        .await;
+                    imagenes.extend(nuevas);
+                }
+            }
+            // Al modelo, las fechas ya en hora local (los modelos pequeños no convierten bien)
+            let mut para_modelo = resultado;
+            a_hora_local(&mut para_modelo, desfase_min);
+            mensajes.push(Mensaje::herramienta(&l.function.name, &para_modelo));
         }
     }
     None
+}
+
+/// Sustituye las fechas RFC 3339 del resultado por «AAAA-MM-DD HH:MM» en la hora
+/// local del explorador (sin desfase conocido, se dejan en UTC).
+pub fn a_hora_local(v: &mut Value, desfase_min: Option<i32>) {
+    let Some(m) = desfase_min.filter(|m| m.abs() <= 14 * 60) else {
+        return;
+    };
+    match v {
+        Value::String(s) => {
+            if let Ok(t) = chrono::DateTime::parse_from_rfc3339(s) {
+                let local = t.with_timezone(&Utc) + chrono::Duration::minutes(i64::from(m));
+                *s = local.format("%Y-%m-%d %H:%M").to_string();
+            }
+        }
+        Value::Array(a) => a.iter_mut().for_each(|x| a_hora_local(x, desfase_min)),
+        Value::Object(o) => o.values_mut().for_each(|x| a_hora_local(x, desfase_min)),
+        _ => {}
+    }
 }
 
 fn describir(herramienta: &str) -> &'static str {
@@ -196,6 +249,7 @@ fn describir(herramienta: &str) -> &'static str {
         "listar_misiones" => "Consultando misiones…",
         "detalle_mision" => "Abriendo la misión…",
         "buscar_hallazgos" => "Buscando en tus hallazgos…",
+        "mostrar_imagenes" => "Buscando las fotos…",
         "peligros_cercanos" => "Buscando peligros cercanos…",
         "clima" => "Consultando el clima…",
         _ => "Consultando datos…",
@@ -203,7 +257,13 @@ fn describir(herramienta: &str) -> &'static str {
 }
 
 /// Instrucciones + lo mínimo del explorador (el resto lo piden las herramientas).
-async fn contexto(estado: &Estado, sesion: &Sesion, lat: Option<f64>, lng: Option<f64>) -> String {
+async fn contexto(
+    estado: &Estado,
+    sesion: &Sesion,
+    lat: Option<f64>,
+    lng: Option<f64>,
+    desfase_min: Option<i32>,
+) -> String {
     let nombre: Option<String> = match estado.db.como_usuario(sesion).await {
         Ok(mut tx) => {
             let n = sqlx::query_scalar("select coalesce(nombre_visible, nombre_usuario) from public.perfiles where id = $1")
@@ -217,7 +277,21 @@ async fn contexto(estado: &Estado, sesion: &Sesion, lat: Option<f64>, lng: Optio
         }
         Err(_) => None,
     };
-    let ahora = Utc::now().format("%Y-%m-%d %H:%M UTC");
+    // Los datos vienen en UTC: con el desfase del dispositivo, Cortex habla en hora local
+    let ahora = match desfase_min.filter(|m| m.abs() <= 14 * 60) {
+        Some(m) => {
+            let local = Utc::now() + chrono::Duration::minutes(i64::from(m));
+            let signo = if m < 0 { '-' } else { '+' };
+            format!(
+                "{} (hora local del explorador, UTC{signo}{}:{:02}). Las fechas de las herramientas ya están en \
+                 su hora local: úsalas tal cual y no escribas «UTC»",
+                local.format("%Y-%m-%d %H:%M"),
+                m.abs() / 60,
+                m.abs() % 60
+            )
+        }
+        None => Utc::now().format("%Y-%m-%d %H:%M UTC").to_string(),
+    };
     let ubicacion = match (lat, lng) {
         (Some(lat), Some(lng)) => {
             format!("Ubicación aproximada del explorador: {lat:.4}, {lng:.4}.")
@@ -249,12 +323,14 @@ async fn guardar_chat(
     chat_id: Option<Uuid>,
     pregunta: &str,
     respuesta: &str,
+    imagenes: &[Value],
 ) -> ApiResult<(Uuid, String)> {
     let ahora = Utc::now();
-    let nuevos = json!([
-        { "rol": "user", "contenido": pregunta, "en": ahora },
-        { "rol": "assistant", "contenido": respuesta, "en": ahora },
-    ]);
+    let mut asistente = json!({ "rol": "assistant", "contenido": respuesta, "en": ahora });
+    if !imagenes.is_empty() {
+        asistente["imagenes"] = json!(imagenes);
+    }
+    let nuevos = json!([{ "rol": "user", "contenido": pregunta, "en": ahora }, asistente]);
     let titulo = match chat_id {
         Some(_) => None,
         None => Some(titular(estado, pregunta).await),
@@ -441,6 +517,7 @@ pub struct PeticionAnalisis {
     notificacion_id: Uuid,
     lat: Option<f64>,
     lng: Option<f64>,
+    desfase_min: Option<i32>,
 }
 
 /// `POST /v1/ia/analizar` — Deep-Dive de una entrada de la bitácora (streaming).
@@ -466,12 +543,14 @@ pub async fn analizar(
          ahora (acciones concretas). Sé breve."
     );
     let mensajes = vec![
-        Mensaje::sistema(contexto(&estado, &sesion, p.lat, p.lng).await),
+        Mensaje::sistema(contexto(&estado, &sesion, p.lat, p.lng, p.desfase_min).await),
         Mensaje::usuario(pedido),
     ];
     let (tx, rx) = mpsc::channel::<Value>(64);
     tokio::spawn(async move {
-        if let Some((_, servidor, segundos)) = conversar(&estado, &sesion, mensajes, &tx).await {
+        if let Some((_, servidor, segundos, _)) =
+            conversar(&estado, &sesion, mensajes, p.desfase_min, &tx).await
+        {
             let _ = tx
                 .send(json!({ "tipo": "fin", "servidor": servidor, "segundos": segundos }))
                 .await;
@@ -546,4 +625,20 @@ fn ndjson(rx: mpsc::Receiver<Value>) -> Response {
         Body::from_stream(flujo),
     )
         .into_response()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fechas_a_hora_local() {
+        let mut v = json!({ "resultados": [{ "capturado_en": "2026-11-02T17:18:30.5Z", "nombre": "2026" }] });
+        a_hora_local(&mut v, Some(-240));
+        assert_eq!(v["resultados"][0]["capturado_en"], "2026-11-02 13:18");
+        assert_eq!(v["resultados"][0]["nombre"], "2026");
+        let mut sin = json!("2026-11-02T17:18:30Z");
+        a_hora_local(&mut sin, None);
+        assert_eq!(sin, "2026-11-02T17:18:30Z");
+    }
 }

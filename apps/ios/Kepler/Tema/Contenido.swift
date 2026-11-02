@@ -105,15 +105,21 @@ struct ImagenRemota: View {
     var lado: CGFloat = 96
     /// Símbolo mientras no hay foto.
     var simbolo = "person.fill"
+    /// Entera (sin recortar), para verla a pantalla completa.
+    var entera = false
     @State private var imagen: UIImage?
 
     private static let cache = NSCache<NSString, UIImage>()
 
     var body: some View {
         ZStack {
-            Tema.Color.superficieElevada
+            (entera ? Color.black : Tema.Color.superficieElevada)
             if let imagen {
-                Image(uiImage: imagen).resizable().scaledToFill()
+                if entera {
+                    Image(uiImage: imagen).resizable().scaledToFit()
+                } else {
+                    Image(uiImage: imagen).resizable().scaledToFill()
+                }
             } else {
                 Image(systemName: simbolo).foregroundStyle(Tema.Color.textoEtiqueta)
             }

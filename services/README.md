@@ -45,7 +45,7 @@ Solo el autor edita; los demás suben `confirmaciones` (`vigente` / `no_vigente`
 | GET | `/v1/imagenes/{ruta}` | Foto de Storage leída como el usuario (RLS de Storage); sin rate limit, caché inmutable |
 | GET | `/v1/identidades/pendientes` | Personas sueltas con parecidos ≥ 0,6 (por debajo del Re-ID automático): comparador |
 | POST | `/v1/personas/{id}/vincular` · `/desvincular` | `{con}`: pasa a la identidad (y nombre) de otra persona, con sus avistamientos |
-| POST | `/v1/ia/chat` | `{chat_id?, mensaje, lat?, lng?}` → Cortex responde en streaming NDJSON (`estado`, `token`, `reiniciar`, `fin`, `error`) y guarda la conversación (título automático) |
+| POST | `/v1/ia/chat` | `{chat_id?, mensaje, lat?, lng?, desfase_min?}` → Cortex responde en streaming NDJSON (`estado`, `token`, `imagenes`, `reiniciar`, `fin`, `error`) y guarda la conversación (título automático) |
 | GET / DELETE | `/v1/ia/chats` · `/v1/ia/chats/{id}` | Conversaciones / una conversación / borrado lógico |
 | GET | `/v1/ia/reporte?lat=&lng=&forzar=` | «Novedades de Cortex» en Markdown (tiempo y estado, hallazgos, sugerencia), caché 1 h |
 | POST | `/v1/ia/documentar/{mision_id}` | Cortex redacta el reporte de la misión con sus datos y lo guarda en `descripcion_ia` |
@@ -83,7 +83,10 @@ La escribe la base de datos (migración `0006`), así funciona igual en línea q
 
 - Ollama solo en la LAN, en el orden de `KEPLER_OLLAMA_URLS` (PC con GPU → Mac mini); uno que falla queda apartado 30 s.
 - Modelo **`qwen3.5:9b`** (`KEPLER_OLLAMA_MODELO`): `mistral:7b` devolvía las llamadas a herramientas como texto.
-- Herramientas de solo lectura que corren como el usuario (RLS): `resumen_explorador`, `listar_misiones`, `detalle_mision`, `buscar_hallazgos`, `peligros_cercanos`, `clima`. Hasta 4 rondas antes de obligar a responder.
+- Herramientas de solo lectura que corren como el usuario (RLS): `resumen_explorador`, `listar_misiones`, `detalle_mision`, `buscar_hallazgos`, `mostrar_imagenes`, `peligros_cercanos`, `clima`. Hasta 4 rondas antes de obligar a responder.
+- **Búsqueda tolerante** (`kepler-core::texto`): sin tildes ni mayúsculas, y si no hay coincidencia exacta, **Levenshtein** sobre nombre, clase (en español), descripción y etiquetas (similitud ≥ 0,7; sugerencias desde 0,5). Además, antes de preguntar al modelo se buscan en los hallazgos las palabras de la pregunta (≥ 0,8) y se le dan como contexto: no contesta «no está» sin haber mirado.
+- **Fotos**: `mostrar_imagenes` emite el evento `{"tipo":"imagenes","items":[…]}` y las guarda en el mensaje (`imagenes`) del chat.
+- **Hora local**: el cliente manda `desfase_min`; las fechas de las herramientas llegan al modelo ya en hora local.
 - En la PC (RTX 3060): ~6 s una pregunta con herramientas, ~5 s el reporte, ~11 s un Deep-Dive.
 
 ### Visión (`crates/kepler-vision`)

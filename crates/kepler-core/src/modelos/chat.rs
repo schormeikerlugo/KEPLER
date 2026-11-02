@@ -24,4 +24,7 @@ pub struct MensajeChat {
     pub rol: RolChat,
     pub contenido: String,
     pub en: DateTime<Utc>,
+    /// Fotos de hallazgos que Cortex mostró en la respuesta (`mostrar_imagenes`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub imagenes: Vec<serde_json::Value>,
 }

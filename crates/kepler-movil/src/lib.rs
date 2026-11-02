@@ -30,7 +30,7 @@ pub use archivo::{
 pub use campo::{EstadoSync, MisionEnCurso, PuntoGps};
 pub use captura::{CapturaGuardada, NuevaCaptura, TipoCaptura};
 pub use centinela::{Centinela, ModoCentinela};
-pub use cortex::{ChatResumen, FinCortex, MensajeCortex, OyenteCortex};
+pub use cortex::{ChatResumen, FinCortex, ImagenCortex, MensajeCortex, OyenteCortex};
 pub use mapa::{ProgresoDescarga, RegionMapa};
 pub use seguimiento::{Rastreada, Seguidor};
 pub use vision::Deteccion;
@@ -645,10 +645,11 @@ impl Nucleo {
         mensaje: String,
         lat: Option<f64>,
         lng: Option<f64>,
+        desfase_min: Option<i32>,
         oyente: Arc<dyn OyenteCortex>,
     ) -> Result<FinCortex, ErrorKepler> {
-        let cuerpo =
-            serde_json::json!({ "chat_id": chat_id, "mensaje": mensaje, "lat": lat, "lng": lng });
+        let cuerpo = serde_json::json!({ "chat_id": chat_id, "mensaje": mensaje, "lat": lat, "lng": lng,
+                                         "desfase_min": desfase_min });
         self.cortex_streaming("/v1/ia/chat", &cuerpo, oyente).await
     }
 
@@ -658,10 +659,11 @@ impl Nucleo {
         notificacion_id: String,
         lat: Option<f64>,
         lng: Option<f64>,
+        desfase_min: Option<i32>,
         oyente: Arc<dyn OyenteCortex>,
     ) -> Result<FinCortex, ErrorKepler> {
-        let cuerpo =
-            serde_json::json!({ "notificacion_id": notificacion_id, "lat": lat, "lng": lng });
+        let cuerpo = serde_json::json!({ "notificacion_id": notificacion_id, "lat": lat, "lng": lng,
+                                         "desfase_min": desfase_min });
         self.cortex_streaming("/v1/ia/analizar", &cuerpo, oyente)
             .await
     }
