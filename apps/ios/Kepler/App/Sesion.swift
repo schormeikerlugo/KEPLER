@@ -1,4 +1,5 @@
 import Foundation
+import Network
 import SwiftUI
 
 /// Estado de la app y puente con el núcleo Rust (`Nucleo`).
@@ -24,6 +25,12 @@ final class Sesion: ObservableObject {
     @Published private(set) var servidorEstado: EstadoServidor?
     @Published var error: String?
     @Published private(set) var ocupada = false
+    /// Misión en curso en este iPhone (funciona sin conexión).
+    @Published internal(set) var mision: MisionEnCurso?
+    /// Lo pendiente de enviar a la base.
+    @Published internal(set) var sync: EstadoSync?
+    /// Sesión abierta sin conexión con la base (Face ID sin red).
+    @Published internal(set) var sinConexion = false
 
     @AppStorage("kepler.servidor") var servidor = Sesion.servidorPorDefecto
 
@@ -31,12 +38,26 @@ final class Sesion: ObservableObject {
     let ubicacion = Ubicacion()
     private(set) var nucleo: Nucleo
     private var enSegundoPlanoDesde: Date?
+    var bucleSyncTarea: Task<Void, Never>?
+    private let red = NWPathMonitor()
     /// Sesión abierta en memoria (bloquear no la cierra).
     private var abierta = false
 
+    /// Application Support/Kepler: un almacén SQLite por usuario (cola offline, rastro).
+    static let directorioDatos: String = {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return base.appendingPathComponent("Kepler", isDirectory: true).path
+    }()
+
     init() {
         let url = UserDefaults.standard.string(forKey: "kepler.servidor") ?? Sesion.servidorPorDefecto
-        nucleo = Nucleo(servidor: url, llavero: llavero)
+        nucleo = Nucleo(servidor: url, llavero: llavero, directorio: Sesion.directorioDatos)
+        // Al recuperar la red (p. ej. al volver al Wi-Fi de la base), sincronizar
+        red.pathUpdateHandler = { [weak self] camino in
+            guard camino.status == .satisfied else { return }
+            Task { @MainActor in await self?.sincronizar() }
+        }
+        red.start(queue: DispatchQueue(label: "dev.schormeiker.kepler.red"))
     }
 
     func arrancar() async {
@@ -65,8 +86,9 @@ final class Sesion: ObservableObject {
         await trabajar {
             _ = try await self.nucleo.entrar(usuario: usuario, contrasena: contrasena)
             self.abierta = true
+            self.sinConexion = false
             self.fase = .dentro
-            await self.cargar()
+            await self.alEntrar()
         }
     }
 
@@ -81,14 +103,23 @@ final class Sesion: ObservableObject {
         }
         await trabajar {
             let token = try await self.llavero.leerToken(motivo: "Abrir tu sesión de KEPLER")
-            _ = try await self.nucleo.restaurar(refreshToken: token)
+            do {
+                _ = try await self.nucleo.restaurar(refreshToken: token)
+                self.sinConexion = false
+            } catch ErrorKepler.Red(_) {
+                // En campo sin cobertura: se trabaja en local y se restaura al volver la red
+                guard let u = self.llavero.usuarioGuardado else { throw ErrorLlavero.sinSesion }
+                try self.nucleo.entrarSinConexion(usuario: u, refreshToken: token)
+                self.sinConexion = true
+            }
             self.abierta = true
             self.fase = .dentro
-            await self.cargar()
+            await self.alEntrar()
         }
     }
 
     func salir() async {
+        detenerCampo()
         await nucleo.salir()
         llavero.olvidar()
         abierta = false
@@ -111,7 +142,8 @@ final class Sesion: ObservableObject {
         llavero.olvidar()
         abierta = false
         servidor = limpio
-        nucleo = Nucleo(servidor: limpio, llavero: llavero)
+        detenerCampo()
+        nucleo = Nucleo(servidor: limpio, llavero: llavero, directorio: Sesion.directorioDatos)
         fase = .login
         await comprobarServidor()
     }

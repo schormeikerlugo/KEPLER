@@ -38,6 +38,17 @@ pub enum Error {
     Servidor(String),
 }
 
+impl Error {
+    /// Código HTTP de un error del servidor (`Servidor("409 Conflict: …")`).
+    pub fn codigo(&self) -> Option<u16> {
+        match self {
+            Self::Servidor(m) => m.get(..3)?.parse().ok(),
+            Self::NoAutorizado(_) => Some(401),
+            Self::Red(_) => None,
+        }
+    }
+}
+
 pub type Resultado<T> = Result<T, Error>;
 
 struct Sesion {

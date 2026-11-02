@@ -44,6 +44,8 @@ pub struct CapturaGuardada {
     pub similitud: Option<f64>,
     /// Resumen para mostrar al explorador.
     pub mensaje: String,
+    /// Guardada en el dispositivo: se enviará al volver a la base.
+    pub en_cola: bool,
 }
 
 pub(crate) fn cuerpo(c: &NuevaCaptura, jpeg: &[u8], ahora: DateTime<Utc>) -> Value {
@@ -119,7 +121,27 @@ pub(crate) fn resultado(c: &NuevaCaptura, r: &Value) -> Result<CapturaGuardada, 
         coincide_con,
         similitud,
         mensaje,
+        en_cola: false,
     })
+}
+
+/// Captura guardada en la cola (sin conexión).
+pub(crate) fn en_cola(c: &NuevaCaptura, cuerpo: &Value) -> CapturaGuardada {
+    CapturaGuardada {
+        id: cuerpo[0]["fila"]["id"]
+            .as_str()
+            .unwrap_or_default()
+            .to_owned(),
+        accion: "en_cola".into(),
+        imagen_path: None,
+        coincide_con: None,
+        similitud: None,
+        mensaje: format!(
+            "{} guardado sin conexión · se enviará al volver a la base",
+            c.nombre.trim()
+        ),
+        en_cola: true,
+    }
 }
 
 #[cfg(test)]

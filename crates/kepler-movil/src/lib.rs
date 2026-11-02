@@ -5,16 +5,20 @@
 //! Swift recibe `Nucleo` (objeto con métodos `async`), registros y errores
 //! generados por UniFFI (`apps/ios/Kepler/Nucleo/kepler_movil.swift`).
 
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use kepler_cliente::{Cliente, Error as ErrorCliente};
 use serde_json::Value;
 
+mod almacen;
+mod campo;
 mod captura;
 mod panel;
 mod vision;
 
+pub use campo::{EstadoSync, MisionEnCurso, PuntoGps};
 pub use captura::{CapturaGuardada, NuevaCaptura, TipoCaptura};
 pub use vision::Deteccion;
 
@@ -91,6 +95,13 @@ pub struct Nucleo {
     consejo: Mutex<Option<String>>,
     /// Ciudad y coordenadas aproximadas por IP (sin GPS), una vez por sesión.
     ubicacion_ip: tokio::sync::Mutex<Option<(f64, f64, Option<String>)>>,
+    /// Carpeta de datos de la app: un almacén SQLite por usuario.
+    directorio: PathBuf,
+    almacen: Mutex<Option<Arc<almacen::Almacen>>>,
+    /// Sesión abierta sin conexión: el refresh token para restaurarla al volver la red.
+    por_restaurar: Mutex<Option<String>>,
+    /// Una sincronización a la vez; guarda el último resultado de red.
+    sincronizando: tokio::sync::Mutex<(bool, Option<String>)>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -103,7 +114,7 @@ pub struct Reporte {
 #[uniffi::export(async_runtime = "tokio")]
 impl Nucleo {
     #[uniffi::constructor]
-    pub fn new(servidor: String, llavero: Arc<dyn Llavero>) -> Arc<Self> {
+    pub fn new(servidor: String, llavero: Arc<dyn Llavero>, directorio: String) -> Arc<Self> {
         let cliente = Arc::new(Cliente::new(&servidor));
         cliente.al_renovar(Box::new(move |t| {
             llavero.guardar_sesion(t.usuario.clone(), t.refresh_token.clone());
@@ -112,6 +123,10 @@ impl Nucleo {
             cliente,
             consejo: Mutex::default(),
             ubicacion_ip: tokio::sync::Mutex::default(),
+            directorio: PathBuf::from(directorio),
+            almacen: Mutex::default(),
+            por_restaurar: Mutex::default(),
+            sincronizando: tokio::sync::Mutex::new((false, None)),
         })
     }
 
@@ -121,18 +136,115 @@ impl Nucleo {
 
     /// Login por nombre de usuario (`/v1/sesion`). Devuelve el usuario normalizado.
     pub async fn entrar(&self, usuario: String, contrasena: String) -> Result<String, ErrorKepler> {
-        Ok(self.cliente.entrar(&usuario, &contrasena).await?)
+        let u = self.cliente.entrar(&usuario, &contrasena).await?;
+        self.abrir_almacen(&u)?;
+        Ok(u)
     }
 
     /// Reabre la sesión guardada (tras Face ID) con su refresh token.
     pub async fn restaurar(&self, refresh_token: String) -> Result<String, ErrorKepler> {
-        Ok(self.cliente.restaurar(&refresh_token).await?)
+        let u = self.cliente.restaurar(&refresh_token).await?;
+        self.abrir_almacen(&u)?;
+        *self.por_restaurar.lock().expect("por_restaurar") = None;
+        Ok(u)
+    }
+
+    /// Sin conexión con la base: se trabaja con el almacén local y la sesión se
+    /// restaura con `refresh_token` en la primera sincronización con red.
+    pub fn entrar_sin_conexion(
+        &self,
+        usuario: String,
+        refresh_token: String,
+    ) -> Result<(), ErrorKepler> {
+        self.abrir_almacen(&usuario)?;
+        *self.por_restaurar.lock().expect("por_restaurar") = Some(refresh_token);
+        Ok(())
     }
 
     pub async fn salir(&self) {
         self.cliente.salir().await;
         *self.consejo.lock().expect("consejo") = None;
         *self.ubicacion_ip.lock().await = None;
+        // Lo pendiente se queda en el almacén del usuario hasta su próxima sesión
+        *self.almacen.lock().expect("almacén") = None;
+        *self.por_restaurar.lock().expect("por_restaurar") = None;
+    }
+
+    // --- campo: misión, rastro y cola offline ----------------------------------
+
+    /// La misión en curso: la del dispositivo o, si no hay y hay red, la activa
+    /// en el servidor (iniciada desde otro dispositivo).
+    pub async fn mision_en_curso(&self) -> Result<Option<MisionEnCurso>, ErrorKepler> {
+        let a = self.almacen()?;
+        if let Some(m) = campo::mision(&a) {
+            return Ok(Some(m));
+        }
+        let Ok(v) = self
+            .cliente
+            .get::<Vec<Value>>("/v1/misiones?estado=activa&limite=1")
+            .await
+        else {
+            return Ok(None);
+        };
+        match v.first() {
+            Some(m) => Ok(campo::adoptar(&a, m).map_err(almacen_err)?),
+            None => Ok(None),
+        }
+    }
+
+    /// Inicia una misión en el dispositivo (funciona sin conexión).
+    pub fn iniciar_mision(
+        &self,
+        titulo: String,
+        lat: Option<f64>,
+        lng: Option<f64>,
+    ) -> Result<MisionEnCurso, ErrorKepler> {
+        let a = self.almacen()?;
+        if campo::mision(&a).is_some() {
+            return Err(ErrorKepler::Servidor {
+                mensaje: "ya hay una misión en curso".into(),
+            });
+        }
+        campo::iniciar(&a, titulo.trim(), lat, lng, chrono::Utc::now()).map_err(almacen_err)
+    }
+
+    /// Completa (`true`) o aborta la misión en curso.
+    pub fn terminar_mision(&self, completar: bool) -> Result<Option<MisionEnCurso>, ErrorKepler> {
+        let a = self.almacen()?;
+        campo::terminar(&a, completar, chrono::Utc::now()).map_err(almacen_err)
+    }
+
+    /// Punto GPS de la misión en curso (sin misión no se guarda).
+    pub fn registrar_punto(&self, punto: PuntoGps) -> Result<Option<MisionEnCurso>, ErrorKepler> {
+        let a = self.almacen()?;
+        campo::registrar(&a, &punto).map_err(almacen_err)
+    }
+
+    /// Envía lo pendiente si hay conexión con la base.
+    pub async fn sincronizar(&self) -> Result<EstadoSync, ErrorKepler> {
+        let a = self.almacen()?;
+        let mut guardia = self.sincronizando.lock().await;
+        let refresh = self.por_restaurar.lock().expect("por_restaurar").clone();
+        if let Some(r) = refresh {
+            match self.cliente.restaurar(&r).await {
+                Ok(_) => *self.por_restaurar.lock().expect("por_restaurar") = None,
+                Err(e) => {
+                    let en_linea = !matches!(e, ErrorCliente::Red(_));
+                    *guardia = (en_linea, Some(e.to_string()));
+                    return Ok(campo::estado(&a, en_linea, Some(e.to_string())));
+                }
+            }
+        }
+        let e = campo::sincronizar(&a, &self.cliente).await;
+        *guardia = (e.en_linea, e.ultimo_error.clone());
+        Ok(e)
+    }
+
+    /// Lo pendiente según el almacén, con el último resultado de red conocido.
+    pub async fn estado_sync(&self) -> Result<EstadoSync, ErrorKepler> {
+        let a = self.almacen()?;
+        let (en_linea, error) = self.sincronizando.lock().await.clone();
+        Ok(campo::estado(&a, en_linea, error))
     }
 
     pub async fn hay_sesion(&self) -> bool {
@@ -258,17 +370,23 @@ impl Nucleo {
         jpeg: Vec<u8>,
     ) -> Result<CapturaGuardada, ErrorKepler> {
         let cuerpo = captura::cuerpo(&captura, &jpeg, chrono::Utc::now());
-        let r: Value = self.cliente.post("/v1/capturas", &cuerpo).await?;
-        captura::resultado(&captura, &r)
-    }
-
-    /// La misión activa más reciente (las capturas se asocian a ella).
-    pub async fn mision_activa(&self) -> Result<Option<MisionFila>, ErrorKepler> {
-        let v: Vec<Value> = self
-            .cliente
-            .get("/v1/misiones?estado=activa&limite=1")
-            .await?;
-        Ok(v.first().map(panel::mision))
+        let a = self.almacen()?;
+        // Directa si no hay nada antes en la cola (p. ej. la creación de su misión)
+        if a.pendientes() == 0 && self.cliente.hay_sesion().await {
+            match self.cliente.post::<Value>("/v1/capturas", &cuerpo).await {
+                Ok(r) => return captura::resultado(&captura, &r),
+                Err(ErrorCliente::Red(_)) => {}
+                Err(e) => return Err(e.into()),
+            }
+        }
+        a.encolar(
+            almacen::Clase::Captura,
+            "/v1/capturas",
+            &cuerpo,
+            captura.mision_id.as_deref(),
+        )
+        .map_err(almacen_err)?;
+        Ok(captura::en_cola(&captura, &cuerpo))
     }
 
     /// Categorías de POI (para reportar uno).
@@ -303,6 +421,26 @@ impl Nucleo {
 }
 
 impl Nucleo {
+    fn abrir_almacen(&self, usuario: &str) -> Result<(), ErrorKepler> {
+        let mut guardado = self.almacen.lock().expect("almacén");
+        let _ = std::fs::create_dir_all(&self.directorio);
+        let ruta = self.directorio.join(format!("kepler-{usuario}.sqlite"));
+        *guardado = Some(Arc::new(
+            almacen::Almacen::abrir(&ruta).map_err(almacen_err)?,
+        ));
+        Ok(())
+    }
+
+    fn almacen(&self) -> Result<Arc<almacen::Almacen>, ErrorKepler> {
+        self.almacen
+            .lock()
+            .expect("almacén")
+            .clone()
+            .ok_or_else(|| ErrorKepler::NoAutorizado {
+                mensaje: "sin sesión".into(),
+            })
+    }
+
     async fn por_ip(&self) -> Option<(f64, f64, Option<String>)> {
         let mut guardada = self.ubicacion_ip.lock().await;
         if guardada.is_none() {
@@ -316,6 +454,12 @@ impl Nucleo {
             }
         }
         guardada.clone()
+    }
+}
+
+fn almacen_err(e: rusqlite::Error) -> ErrorKepler {
+    ErrorKepler::Servidor {
+        mensaje: format!("almacén local: {e}"),
     }
 }
 

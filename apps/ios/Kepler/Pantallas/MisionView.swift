@@ -6,7 +6,7 @@ import SwiftUI
 struct MisionView: View {
     @EnvironmentObject private var sesion: Sesion
     @StateObject private var camara = Camara()
-    @State private var mision: MisionFila?
+    @State private var control = false
     @State private var aviso: (texto: String, tono: Color)?
     @State private var guardando = false
     @State private var capturas = 0
@@ -46,15 +46,17 @@ struct MisionView: View {
         }
         .task {
             await camara.encender()
-            mision = try? await sesion.nucleo.misionActiva()
             #if DEBUG
             await demo()
             #endif
         }
         .onDisappear { camara.apagar() }
         .sheet(isPresented: $poi) {
-            ReportarPoiView(camara: camara, mision: mision, sugerencia: objetivo) { mostrar($0, Tema.Color.exito) }
+            ReportarPoiView(camara: camara, mision: sesion.mision, sugerencia: objetivo) { mostrar($0, Tema.Color.exito) }
                 .presentationDetents([.large])
+        }
+        .sheet(isPresented: $control) {
+            ControlMisionView().presentationDetents([.medium])
         }
     }
 
@@ -69,12 +71,17 @@ struct MisionView: View {
     }
 
     private var hudSuperior: some View {
-        HStack(spacing: Tema.Espacio.sm) {
-            Pastilla(texto: mision.map { "Misión · \($0.titulo)" } ?? "Sin misión activa",
-                     tono: mision == nil ? Tema.Color.textoTenue : Tema.Color.exito)
-                .background(.black.opacity(0.6), in: Capsule())
-                .lineLimit(1)
-            Spacer()
+        VStack(alignment: .trailing, spacing: Tema.Espacio.sm) {
+            HStack(spacing: Tema.Espacio.sm) {
+                Button { control = true } label: {
+                    Pastilla(texto: sesion.mision.map { "\($0.titulo) · \(Medida.km($0.distanciaM))" } ?? "Iniciar misión",
+                             tono: sesion.mision == nil ? Tema.Color.texto : Tema.Color.exito)
+                        .background(.black.opacity(0.6), in: Capsule())
+                        .lineLimit(1)
+                }
+                Spacer()
+                IndicadorSync()
+            }
             Pastilla(texto: "\(camara.detecciones.count) obj · \(Int(camara.fps.rounded())) fps · \(Int(camara.latenciaMs.rounded())) ms", tono: Tema.Color.acento)
                 .background(.black.opacity(0.6), in: Capsule())
         }
@@ -183,12 +190,13 @@ struct MisionView: View {
         let nueva = NuevaCaptura(
             tipo: esPersona ? .persona : .objeto, nombre: esPersona ? "Persona \(hora)" : o.nombre,
             clase: o.clase, confianza: o.confianza, lat: p?.latitude, lng: p?.longitude,
-            misionId: mision?.id, nivelRiesgo: nil, categoriaId: nil, descripcion: nil, compartir: false)
+            misionId: sesion.mision?.id, nivelRiesgo: nil, categoriaId: nil, descripcion: nil, compartir: false)
         do {
             let r = try await sesion.nucleo.capturar(captura: nueva, jpeg: jpeg)
             capturas += 1
             ultimaFoto = UIImage(data: jpeg)
-            mostrar(r.mensaje, r.coincideCon == nil ? Tema.Color.exito : Tema.Color.acento)
+            mostrar(r.mensaje, r.enCola ? Tema.Color.aviso : r.coincideCon == nil ? Tema.Color.exito : Tema.Color.acento)
+            await sesion.refrescarSync()
         } catch {
             mostrar("⚠ \(Sesion.mensaje(error))", Tema.Color.peligro)
         }
@@ -204,7 +212,7 @@ struct MisionView: View {
     }
 
     #if DEBUG
-    /// Pruebas en el simulador: `KEPLER_DEMO_SECCION=mision-captura|mision-poi|mision-poi-guardar`.
+    /// Pruebas en el simulador: `KEPLER_DEMO_SECCION=mision-captura|mision-poi|mision-poi-guardar|mision-iniciar|mision-control|mision-ciclo`.
     private func demo() async {
         let entorno = ProcessInfo.processInfo.environment
         if let z = entorno["KEPLER_DEMO_ZOOM"].flatMap(Double.init) {
@@ -216,6 +224,18 @@ struct MisionView: View {
         try? await Task.sleep(for: .seconds(3))
         if s == "mision-captura" { await capturar() }
         if s.hasPrefix("mision-poi") { poi = true }
+        if s == "mision-iniciar", sesion.mision == nil { await sesion.iniciarMision(titulo: "Prueba en el simulador") }
+        if s == "mision-control" {
+            if sesion.mision == nil { await sesion.iniciarMision(titulo: "Reconocimiento del valle") }
+            control = true
+        }
+        if s == "mision-ciclo" {
+            if sesion.mision != nil { await sesion.terminarMision(completar: false) }
+            await sesion.iniciarMision(titulo: "Prueba en el simulador")
+            try? await Task.sleep(for: .seconds(45))
+            await capturar()
+            await sesion.terminarMision(completar: true)
+        }
     }
     #endif
 }
@@ -283,7 +303,7 @@ struct ReportarPoiView: View {
     @EnvironmentObject private var sesion: Sesion
     @Environment(\.dismiss) private var cerrar
     let camara: Camara
-    let mision: MisionFila?
+    let mision: MisionEnCurso?
     let sugerencia: Deteccion?
     let alGuardar: (String) -> Void
 
@@ -371,6 +391,7 @@ struct ReportarPoiView: View {
             descripcion: descripcion.isEmpty ? nil : descripcion, compartir: compartir)
         do {
             let r = try await sesion.nucleo.capturar(captura: nueva, jpeg: foto)
+            await sesion.refrescarSync()
             alGuardar(r.mensaje)
             cerrar()
         } catch {
@@ -403,5 +424,119 @@ struct Chips: View {
                 }
             }
         }
+    }
+}
+
+enum Medida {
+    static func km(_ metros: Double) -> String {
+        metros < 1000 ? "\(Int(metros.rounded())) m" : String(format: "%.2f km", metros / 1000)
+    }
+
+    static func duracion(desde segundos: Int64, hasta: Date = Date()) -> String {
+        let s = max(0, Int(hasta.timeIntervalSince1970) - Int(segundos))
+        return String(format: "%d:%02d:%02d", s / 3600, s / 60 % 60, s % 60)
+    }
+}
+
+/// «Sincronizado», «3 pendientes» o «Sin conexión · 3».
+struct IndicadorSync: View {
+    @EnvironmentObject private var sesion: Sesion
+
+    var body: some View {
+        let s = sesion.sync
+        let pendiente = (s?.pendientes ?? 0) + ((s?.rastro ?? 0) > 0 ? 1 : 0)
+        let (texto, tono): (String, Color) = switch (s?.enLinea ?? !sesion.sinConexion, pendiente) {
+        case (false, 0): ("Sin conexión", Tema.Color.aviso)
+        case (false, _): ("Sin conexión · \(s?.pendientes ?? 0)", Tema.Color.aviso)
+        case (true, 0): ("Sincronizado", Tema.Color.exito)
+        case (true, _): ("↑ \(s?.pendientes ?? 0) pendientes", Tema.Color.acento)
+        }
+        Pastilla(texto: texto, tono: tono)
+            .background(.black.opacity(0.6), in: Capsule())
+            .lineLimit(1)
+    }
+}
+
+/// Iniciar o terminar la misión en curso (funciona sin conexión).
+struct ControlMisionView: View {
+    @EnvironmentObject private var sesion: Sesion
+    @Environment(\.dismiss) private var cerrar
+    @State private var titulo = ""
+    @State private var confirmar: Bool?
+
+    var body: some View {
+        ZStack {
+            FondoKepler()
+            VStack(alignment: .leading, spacing: Tema.Espacio.lg) {
+                if let m = sesion.mision {
+                    Titulo(texto: m.titulo)
+                    Etiqueta(texto: m.codigo ?? "Pendiente de enviar a la base")
+                    TimelineView(.periodic(from: .now, by: 1)) { ctx in
+                        HStack(spacing: Tema.Espacio.md) {
+                            Dato(etiqueta: "Tiempo", valor: Medida.duracion(desde: m.inicioEn, hasta: ctx.date))
+                            Dato(etiqueta: "Distancia", valor: Medida.km(m.distanciaM))
+                            Dato(etiqueta: "Puntos GPS", valor: "\(m.puntos)")
+                        }
+                    }
+                    Text("El rastro se guarda en el iPhone (también con la pantalla apagada) y se envía al volver a la base.")
+                        .font(Jura.fuente(Tema.Tamano.pequeno))
+                        .foregroundStyle(Tema.Color.textoTenue)
+                    HStack(spacing: Tema.Espacio.md) {
+                        Button(confirmar == false ? "¿ABORTAR?" : "ABORTAR") {
+                            if confirmar == false { terminar(false) } else { confirmar = false }
+                        }
+                        .buttonStyle(BotonKepler(principal: false))
+                        Button(confirmar == true ? "¿COMPLETAR?" : "COMPLETAR") {
+                            if confirmar == true { terminar(true) } else { confirmar = true }
+                        }
+                        .buttonStyle(BotonKepler())
+                    }
+                } else {
+                    Titulo(texto: "Nueva misión")
+                    CampoKepler(etiqueta: "Título", texto: $titulo, marcador: tituloPorDefecto)
+                    Text("Empieza a registrar el rastro GPS; las capturas quedan asociadas a ella. Sin conexión también funciona.")
+                        .font(Jura.fuente(Tema.Tamano.pequeno))
+                        .foregroundStyle(Tema.Color.textoTenue)
+                    Button("INICIAR MISIÓN") {
+                        let t = titulo.trimmingCharacters(in: .whitespaces)
+                        Task {
+                            await sesion.iniciarMision(titulo: t.isEmpty ? tituloPorDefecto : t)
+                            cerrar()
+                        }
+                    }
+                    .buttonStyle(BotonKepler())
+                }
+                Spacer()
+            }
+            .padding(Tema.Espacio.xl)
+        }
+    }
+
+    private var tituloPorDefecto: String {
+        "Misión " + Date().formatted(.dateTime.day(.twoDigits).month(.twoDigits).hour(.twoDigits(amPM: .omitted)).minute(.twoDigits))
+    }
+
+    private func terminar(_ completar: Bool) {
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        Task {
+            await sesion.terminarMision(completar: completar)
+            cerrar()
+        }
+    }
+}
+
+private struct Dato: View {
+    let etiqueta: String
+    let valor: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Etiqueta(texto: etiqueta)
+            Text(valor)
+                .font(Jura.fuente(Tema.Tamano.valor, .semibold))
+                .foregroundStyle(Tema.Color.texto)
+                .monospacedDigit()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

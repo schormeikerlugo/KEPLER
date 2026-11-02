@@ -1,13 +1,37 @@
 import CoreLocation
 
-/// Ubicación puntual para el panel (clima, aire, Cortex). Pide permiso «al usar
-/// la app» la primera vez; sin permiso devuelve `nil` y el núcleo la aproxima por IP.
+/// Ubicación puntual para el panel (clima, aire, Cortex) y seguimiento continuo
+/// del rastro durante una misión, también en segundo plano (indicador azul de
+/// iOS). Pide permiso «al usar la app»; sin permiso el núcleo aproxima por IP.
 @MainActor
 final class Ubicacion: NSObject, CLLocationManagerDelegate {
     private let gestor = CLLocationManager()
     private var esperando: [CheckedContinuation<CLLocationCoordinate2D?, Never>] = []
     private var permiso: CheckedContinuation<Void, Never>?
     private var ultima: (CLLocation, Date)?
+    private var alPunto: ((CLLocation) -> Void)?
+
+    /// Rastro de misión: cada posición nueva (≥ 5 m) hasta `dejarDeSeguir`.
+    func seguir(_ f: @escaping (CLLocation) -> Void) {
+        alPunto = f
+        if gestor.authorizationStatus == .notDetermined { gestor.requestWhenInUseAuthorization() }
+        gestor.desiredAccuracy = kCLLocationAccuracyBest
+        gestor.distanceFilter = 5
+        gestor.activityType = .fitness
+        gestor.pausesLocationUpdatesAutomatically = false
+        gestor.allowsBackgroundLocationUpdates = true
+        gestor.showsBackgroundLocationIndicator = true
+        gestor.startUpdatingLocation()
+    }
+
+    func dejarDeSeguir() {
+        guard alPunto != nil else { return }
+        alPunto = nil
+        gestor.stopUpdatingLocation()
+        gestor.allowsBackgroundLocationUpdates = false
+        gestor.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        gestor.distanceFilter = kCLDistanceFilterNone
+    }
 
     override init() {
         super.init()
@@ -56,6 +80,7 @@ final class Ubicacion: NSObject, CLLocationManagerDelegate {
         Task { @MainActor in
             ultima = (l, Date())
             responder(l.coordinate)
+            if let alPunto { locations.forEach(alPunto) }
         }
     }
 

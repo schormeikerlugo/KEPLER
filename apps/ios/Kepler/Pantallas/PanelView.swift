@@ -558,6 +558,12 @@ struct TarjetaBase: View {
                            detalle: s.map { $0.ia ? "disponible" : "no disponible" } ?? "…")
                 FilaEstado(nombre: "Visión", ok: s.map { $0.enLinea && $0.vision },
                            detalle: s.map { $0.vision ? "YOLO + CLIP" : "no disponible" } ?? "…")
+                let p = sesion.sync
+                FilaEstado(nombre: "Pendiente de enviar", ok: p.map { $0.pendientes == 0 && $0.rastro == 0 },
+                           detalle: p.map { q in
+                               q.pendientes == 0 && q.rastro == 0 ? "nada"
+                                   : "\(q.pendientes) envíos · \(q.rastro) puntos GPS" + (q.apartadas > 0 ? " · \(q.apartadas) con error" : "")
+                           } ?? "…")
             }
         }
     }

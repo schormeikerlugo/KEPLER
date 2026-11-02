@@ -47,6 +47,9 @@ targets:
         CFBundleDisplayName: KEPLER
         LSRequiresIPhoneOS: true
         UIRequiresFullScreen: true
+        # Rastro GPS de la misión con la app en segundo plano
+        UIBackgroundModes:
+          - location
         UILaunchScreen:
           UIColorName: FondoLanzamiento
         UIAppFonts:
