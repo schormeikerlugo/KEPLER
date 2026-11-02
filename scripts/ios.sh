@@ -91,7 +91,7 @@ simulador() {
         # Ubicación simulada (Caracas por defecto) y permiso concedido para no ver el diálogo
         xcrun simctl location '${SIM}' set '${KEPLER_SIM_UBICACION:-10.5050,-66.8750}' 2>/dev/null || true
         xcrun simctl privacy '${SIM}' grant location dev.schormeiker.kepler 2>/dev/null || true
-        SIMCTL_CHILD_KEPLER_DEMO_USUARIO='${KEPLER_DEMO_USUARIO:-}' SIMCTL_CHILD_KEPLER_DEMO_CONTRASENA='${KEPLER_DEMO_CONTRASENA:-}' SIMCTL_CHILD_KEPLER_DEMO_SECCION='${KEPLER_DEMO_SECCION:-}' SIMCTL_CHILD_KEPLER_DEMO_IMAGEN='${KEPLER_DEMO_IMAGEN:-}' \\
+        SIMCTL_CHILD_KEPLER_DEMO_USUARIO='${KEPLER_DEMO_USUARIO:-}' SIMCTL_CHILD_KEPLER_DEMO_CONTRASENA='${KEPLER_DEMO_CONTRASENA:-}' SIMCTL_CHILD_KEPLER_DEMO_SECCION='${KEPLER_DEMO_SECCION:-}' SIMCTL_CHILD_KEPLER_DEMO_IMAGEN='${KEPLER_DEMO_IMAGEN:-}' SIMCTL_CHILD_KEPLER_DEMO_PREGUNTA='${KEPLER_DEMO_PREGUNTA:-}' \\
             xcrun simctl launch '${SIM}' dev.schormeiker.kepler >/dev/null
     "
 }

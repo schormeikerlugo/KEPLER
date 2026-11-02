@@ -31,6 +31,8 @@ final class Sesion: ObservableObject {
     @Published internal(set) var sync: EstadoSync?
     /// Sesión abierta sin conexión con la base (Face ID sin red).
     @Published internal(set) var sinConexion = false
+    /// Entradas de la bitácora sin leer (globo de la pestaña «Base»).
+    @Published var noLeidas: UInt32 = 0
 
     @AppStorage("kepler.servidor") var servidor = Sesion.servidorPorDefecto
 

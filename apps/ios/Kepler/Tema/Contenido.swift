@@ -103,6 +103,8 @@ struct ImagenRemota: View {
     @EnvironmentObject private var sesion: Sesion
     let ruta: String?
     var lado: CGFloat = 96
+    /// Símbolo mientras no hay foto.
+    var simbolo = "person.fill"
     @State private var imagen: UIImage?
 
     private static let cache = NSCache<NSString, UIImage>()
@@ -113,7 +115,7 @@ struct ImagenRemota: View {
             if let imagen {
                 Image(uiImage: imagen).resizable().scaledToFill()
             } else {
-                Image(systemName: "person.fill").foregroundStyle(Tema.Color.textoEtiqueta)
+                Image(systemName: simbolo).foregroundStyle(Tema.Color.textoEtiqueta)
             }
         }
         .task(id: ruta) { await cargar() }

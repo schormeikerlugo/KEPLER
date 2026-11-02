@@ -13,17 +13,24 @@ use kepler_cliente::{Cliente, Error as ErrorCliente};
 use serde_json::Value;
 
 mod almacen;
+mod archivo;
 mod campo;
 mod captura;
 mod centinela;
+mod cortex;
 mod mapa;
 mod panel;
 mod seguimiento;
 mod vision;
 
+pub use archivo::{
+    Candidato, EdicionHallazgo, EntradaBitacora, Hallazgo, IdentidadPendiente, PaginaBitacora,
+    PaginaHallazgos, TipoHallazgo,
+};
 pub use campo::{EstadoSync, MisionEnCurso, PuntoGps};
 pub use captura::{CapturaGuardada, NuevaCaptura, TipoCaptura};
 pub use centinela::{Centinela, ModoCentinela};
+pub use cortex::{ChatResumen, FinCortex, MensajeCortex, OyenteCortex};
 pub use mapa::{ProgresoDescarga, RegionMapa};
 pub use seguimiento::{Rastreada, Seguidor};
 pub use vision::Deteccion;
@@ -496,6 +503,169 @@ impl Nucleo {
         .to_string())
     }
 
+    // --- archivos, comparador y bitácora --------------------------------------
+
+    pub async fn archivos(
+        &self,
+        tipo: TipoHallazgo,
+        busqueda: Option<String>,
+        mision: Option<String>,
+        antes: Option<i64>,
+    ) -> Result<PaginaHallazgos, ErrorKepler> {
+        let ruta = archivo::ruta_listado(tipo, busqueda.as_deref(), mision.as_deref(), antes);
+        let v: Value = self.cliente.get(&ruta).await?;
+        Ok(PaginaHallazgos {
+            items: v["items"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(|f| archivo::hallazgo(tipo, f))
+                .collect(),
+            hay_mas: v["hay_mas"] == true,
+        })
+    }
+
+    /// Guarda la edición del detalle (gana el servidor si otro lo cambió antes).
+    pub async fn editar_hallazgo(&self, edicion: EdicionHallazgo) -> Result<Hallazgo, ErrorKepler> {
+        let tabla = edicion.tipo.tabla();
+        let original: Value = self
+            .cliente
+            .get(&format!("/v1/archivos/{tabla}/{}", edicion.id))
+            .await?;
+        let fila = archivo::fila_editada(&original, &edicion, chrono::Utc::now());
+        let mut f = self.subir_fila(edicion.tipo, fila).await?;
+        // La fila final no trae lo calculado del listado
+        f["etiquetas"] = original["etiquetas"].clone();
+        Ok(archivo::hallazgo(edicion.tipo, &f))
+    }
+
+    pub async fn borrar_hallazgo(&self, tipo: TipoHallazgo, id: String) -> Result<(), ErrorKepler> {
+        let original: Value = self
+            .cliente
+            .get(&format!("/v1/archivos/{}/{id}", tipo.tabla()))
+            .await?;
+        self.subir_fila(tipo, archivo::fila_borrada(&original, chrono::Utc::now()))
+            .await?;
+        Ok(())
+    }
+
+    /// Personas sueltas con parecidos (comparador).
+    pub async fn identidades_pendientes(&self) -> Result<Vec<IdentidadPendiente>, ErrorKepler> {
+        let v: Vec<Value> = self.cliente.get("/v1/identidades/pendientes").await?;
+        Ok(v.iter().map(archivo::identidad).collect())
+    }
+
+    /// La persona `id` es la misma que `con` (pasa a su identidad y nombre).
+    pub async fn vincular_persona(&self, id: String, con: String) -> Result<(), ErrorKepler> {
+        let _: Value = self
+            .cliente
+            .post(
+                &format!("/v1/personas/{id}/vincular"),
+                &serde_json::json!({ "con": con }),
+            )
+            .await?;
+        Ok(())
+    }
+
+    pub async fn desvincular_persona(&self, id: String) -> Result<(), ErrorKepler> {
+        let _: Value = self
+            .cliente
+            .post(
+                &format!("/v1/personas/{id}/desvincular"),
+                &serde_json::json!({}),
+            )
+            .await?;
+        Ok(())
+    }
+
+    pub async fn bitacora(
+        &self,
+        antes: Option<i64>,
+        solo_no_leidas: bool,
+    ) -> Result<PaginaBitacora, ErrorKepler> {
+        let mut ruta = format!("/v1/notificaciones?limite=40&solo_no_leidas={solo_no_leidas}");
+        if let Some(t) = antes.and_then(|s| chrono::DateTime::<chrono::Utc>::from_timestamp(s, 0)) {
+            ruta.push_str(&format!("&antes={}", t.format("%Y-%m-%dT%H:%M:%SZ")));
+        }
+        let v: Value = self.cliente.get(&ruta).await?;
+        Ok(PaginaBitacora {
+            items: v["items"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(archivo::entrada)
+                .collect(),
+            no_leidas: u32::try_from(v["no_leidas"].as_u64().unwrap_or(0)).unwrap_or(0),
+        })
+    }
+
+    /// Entradas sin leer (para el globo de la pestaña).
+    pub async fn no_leidas(&self) -> Result<u32, ErrorKepler> {
+        let v: Value = self
+            .cliente
+            .get("/v1/notificaciones?limite=1&solo_no_leidas=true")
+            .await?;
+        Ok(u32::try_from(v["no_leidas"].as_u64().unwrap_or(0)).unwrap_or(0))
+    }
+
+    /// Marca como leídas `ids` (vacío: todas).
+    pub async fn marcar_leidas(&self, ids: Vec<String>) -> Result<(), ErrorKepler> {
+        let cuerpo = if ids.is_empty() {
+            serde_json::json!({ "todas": true })
+        } else {
+            serde_json::json!({ "ids": ids })
+        };
+        let _: Value = self
+            .cliente
+            .post("/v1/notificaciones/leer", &cuerpo)
+            .await?;
+        Ok(())
+    }
+
+    // --- Cortex -----------------------------------------------------------------
+
+    pub async fn cortex_chats(&self) -> Result<Vec<ChatResumen>, ErrorKepler> {
+        let v: Vec<Value> = self.cliente.get("/v1/ia/chats").await?;
+        Ok(v.iter().map(cortex::resumen).collect())
+    }
+
+    pub async fn cortex_chat(&self, id: String) -> Result<Vec<MensajeCortex>, ErrorKepler> {
+        let v: Value = self.cliente.get(&format!("/v1/ia/chats/{id}")).await?;
+        Ok(cortex::mensajes(&v))
+    }
+
+    pub async fn cortex_borrar(&self, id: String) -> Result<(), ErrorKepler> {
+        Ok(self.cliente.borrar(&format!("/v1/ia/chats/{id}")).await?)
+    }
+
+    /// Pregunta a Cortex; la respuesta llega por `oyente` mientras se escribe.
+    pub async fn cortex_enviar(
+        &self,
+        chat_id: Option<String>,
+        mensaje: String,
+        lat: Option<f64>,
+        lng: Option<f64>,
+        oyente: Arc<dyn OyenteCortex>,
+    ) -> Result<FinCortex, ErrorKepler> {
+        let cuerpo =
+            serde_json::json!({ "chat_id": chat_id, "mensaje": mensaje, "lat": lat, "lng": lng });
+        self.cortex_streaming("/v1/ia/chat", &cuerpo, oyente).await
+    }
+
+    /// Deep-Dive de una entrada de la bitácora.
+    pub async fn cortex_analizar(
+        &self,
+        notificacion_id: String,
+        lat: Option<f64>,
+        lng: Option<f64>,
+        oyente: Arc<dyn OyenteCortex>,
+    ) -> Result<FinCortex, ErrorKepler> {
+        let cuerpo =
+            serde_json::json!({ "notificacion_id": notificacion_id, "lat": lat, "lng": lng });
+        self.cortex_streaming("/v1/ia/analizar", &cuerpo, oyente)
+            .await
+    }
+
     /// Bytes de una foto de Storage (`imagen_path`, `avatar_path`).
     pub async fn imagen(&self, ruta: String) -> Result<Vec<u8>, ErrorKepler> {
         Ok(self
@@ -511,6 +681,26 @@ impl Nucleo {
 }
 
 impl Nucleo {
+    async fn subir_fila(&self, tipo: TipoHallazgo, fila: Value) -> Result<Value, ErrorKepler> {
+        let cuerpo = serde_json::json!({ tipo.tabla(): [fila] });
+        let r: Value = self.cliente.post("/v1/sync/subir", &cuerpo).await?;
+        archivo::resultado_subida(tipo, &r)
+    }
+
+    async fn cortex_streaming(
+        &self,
+        ruta: &str,
+        cuerpo: &Value,
+        oyente: Arc<dyn OyenteCortex>,
+    ) -> Result<FinCortex, ErrorKepler> {
+        let mut a = cortex::Acumulador::new(oyente);
+        self.cliente
+            .post_ndjson(ruta, cuerpo, |ev| a.evento(ev))
+            .await?;
+        a.terminar()
+            .map_err(|mensaje| ErrorKepler::Servidor { mensaje })
+    }
+
     fn abrir_almacen(&self, usuario: &str) -> Result<(), ErrorKepler> {
         let mut guardado = self.almacen.lock().expect("almacén");
         let _ = std::fs::create_dir_all(&self.directorio);

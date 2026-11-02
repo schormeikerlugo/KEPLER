@@ -44,6 +44,7 @@ extension Sesion {
         guard fase == .dentro else { return }
         guard let e = try? await nucleo.sincronizar() else { return }
         sync = e
+        if e.enLinea, let n = try? await nucleo.noLeidas() { noLeidas = n }
         if e.enLinea, sinConexion, e.ultimoError == nil {
             // Sesión restaurada al volver la red
             sinConexion = false
