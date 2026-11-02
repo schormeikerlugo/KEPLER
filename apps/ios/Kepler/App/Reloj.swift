@@ -64,7 +64,7 @@ final class Reloj: NSObject, ObservableObject {
     /// Servicios con los que buscar relojes ya conectados al iPhone (los de la
     /// plataforma YC/UTE del Carbinox primero: 56FF comandos, 55FF capacidades).
     static let serviciosConocidos: [CBUUID] = [
-        "56FF", "55FF", "60FF", "61FF", "AE00", "D0FF3C17-D293-8E48-14FE2E4DA212",
+        "56FF", "55FF", "60FF", "61FF", "AE00", "0000D0FF-3C17-D293-8E48-14FE2E4DA212",
         "180D", "180F", "180A", "1800", "1801", "FEE7", "FFF0", "FEEA", "FE59", "FFE0", "FD00", "FEE0", "FEE1",
         "6E400001-B5A3-F393-E0A9-E50E24DCCA9F",
     ].map(CBUUID.init(string:))
