@@ -13,6 +13,7 @@ use kepler_core::Coordenada;
 use serde_json::{Value, json};
 
 use crate::almacen::{Almacen, Clase, Punto};
+use crate::captura;
 
 /// Puntos con peor precisión se descartan.
 pub const PRECISION_MAX_M: f64 = 50.0;
@@ -246,7 +247,13 @@ async fn ronda(a: &Almacen, c: &Cliente) -> Result<(), Parada> {
             enviar_rastro(a, c, m).await?;
         }
         match c.post::<Value>(&p.ruta, &p.cuerpo).await {
-            // Las capturas rechazadas (foto inválida…) no se arreglan reenviando
+            // Su misión ya no existe en el servidor: se guarda suelta
+            Ok(r) if p.clase == Clase::Captura && captura::rechazada_por_mision(&r) => {
+                c.post::<Value>(&p.ruta, &captura::sin_mision(&p.cuerpo))
+                    .await?;
+                a.quitar(p.seq)?;
+            }
+            // Otros rechazos (foto inválida…) no se arreglan reenviando
             Ok(_) => a.quitar(p.seq)?,
             Err(e @ (ErrorCliente::Red(_) | ErrorCliente::NoAutorizado(_))) => return Err(e.into()),
             Err(e) => {
@@ -320,7 +327,16 @@ async fn reconciliar(a: &Almacen, c: &Cliente) {
     if a.mision_por_crear(&m.id) {
         return;
     }
-    if let Ok(v) = c.get::<Value>(&format!("/v1/misiones/{}", m.id)).await {
+    let v = match c.get::<Value>(&format!("/v1/misiones/{}", m.id)).await {
+        Ok(v) => v,
+        // Borrada en el servidor (o de otra cuenta): deja de ser la misión en curso
+        Err(e) if e.codigo() == Some(404) => {
+            let _ = a.escribir(CLAVE_MISION, None);
+            return;
+        }
+        Err(_) => return,
+    };
+    {
         if v["estado"] != "activa" {
             let _ = a.escribir(CLAVE_MISION, None);
         } else if m.codigo.is_none() {

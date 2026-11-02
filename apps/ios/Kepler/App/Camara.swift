@@ -20,7 +20,8 @@ final class Camara: NSObject, ObservableObject {
     }
 
     @Published private(set) var estado: Estado = .apagada
-    @Published private(set) var detecciones: [Deteccion] = []
+    /// Objetos seguidos entre fotogramas (ids estables, cajas suavizadas, distancia).
+    @Published private(set) var rastreadas: [Rastreada] = []
     /// Tamaño del fotograma ya orientado (vertical), para colocar las cajas.
     @Published private(set) var tamanoImagen = CGSize(width: 1080, height: 1920)
     /// Detecciones por segundo reales (medidas cada segundo) y latencia por fotograma.
@@ -36,7 +37,13 @@ final class Camara: NSObject, ObservableObject {
     private var baseZoom: CGFloat = 1
 
     let sesion = AVCaptureSession()
-    nonisolated static let umbral: Float = 0.35
+    /// Umbral del detector: las detecciones dudosas (0.25-0.35) solo mantienen
+    /// objetos ya seguidos; para aparecer hace falta 0.35 (`Seguidor`).
+    nonisolated static let umbral: Float = 0.25
+    nonisolated let seguidor = Seguidor()
+    /// Focal en píxeles (alto de la imagen vertical) con zoom 1.0 del dispositivo.
+    nonisolated(unsafe) private var focalBase: Float = 0
+    nonisolated(unsafe) private var dispositivoCaptura: AVCaptureDevice?
 
     private let cola = DispatchQueue(label: "dev.schormeiker.kepler.camara")
     private let detector = Detector()
@@ -73,7 +80,8 @@ final class Camara: NSObject, ObservableObject {
         demo = nil
         let s = sesion
         cola.async { if s.isRunning { s.stopRunning() } }
-        detecciones = []
+        rastreadas = []
+        seguidor.reiniciar()
         if estado == .encendida { estado = .apagada }
     }
 
@@ -153,6 +161,10 @@ final class Camara: NSObject, ObservableObject {
         sesion.addInput(entrada)
         fijar60fps(camara)
         dispositivo = camara
+        dispositivoCaptura = camara
+        // El campo de visión del formato es el horizontal del sensor = el vertical en la imagen
+        let fov = Float(camara.activeFormat.videoFieldOfView) * .pi / 180
+        focalBase = 1920 / 2 / tan(fov / 2)
         (baseZoom, zoomsDisponibles) = niveles(camara)
         if (try? camara.lockForConfiguration()) != nil {
             camara.videoZoomFactor = baseZoom
@@ -203,19 +215,21 @@ final class Camara: NSObject, ObservableObject {
             while !Task.isCancelled {
                 let inicio = Date()
                 let d = detector.detectar(cgImage: cg)
-                await self?.publicar(d, imagen: imagen, tamano: CGSize(width: cg.width, height: cg.height), desde: inicio)
+                // Sin datos de la lente: sin distancia
+                let r = self?.seguidor.actualizar(detecciones: d, focalPx: 0, altoPx: Float(cg.height)) ?? []
+                await self?.publicar(r, imagen: imagen, tamano: CGSize(width: cg.width, height: cg.height), desde: inicio)
                 try? await Task.sleep(for: .milliseconds(500))
             }
         }
     }
 
-    nonisolated private func publicar(_ d: [Deteccion], imagen: CIImage, tamano: CGSize, desde: Date,
+    nonisolated private func publicar(_ d: [Rastreada], imagen: CIImage, tamano: CGSize, desde: Date,
                                       deteccion: TimeInterval? = nil) async {
         ultimo = imagen
         // Latencia = lo que tarda la detección (sin la espera al hilo principal)
         let t = deteccion ?? Date().timeIntervalSince(desde)
         await MainActor.run {
-            self.detecciones = d
+            self.rastreadas = d
             self.tamanoImagen = tamano
             self.latenciaMs = self.latenciaMs * 0.9 + t * 1000 * 0.1
             self.cuenta += 1
@@ -228,6 +242,10 @@ final class Camara: NSObject, ObservableObject {
                         .replacingOccurrences(of: "AVCaptureDeviceTypeBuiltIn", with: "") ?? "-"
                     print(String(format: "TRAZA %.1f fps · %.1f ms · %d obj · %.0f× · %@", self.fps, self.latenciaMs,
                                  d.count, self.zoom, lente))
+                    for r in d.prefix(3) {
+                        print(String(format: "TRAZA   #%llu %@ %.2f edad %u · %@", r.id, r.deteccion.clase, r.deteccion.confianza,
+                                     r.edad, r.distanciaM.map { String(format: "%.1f m", $0) } ?? "sin distancia"))
+                    }
                 }
                 #endif
                 self.cuenta = 0
@@ -244,12 +262,14 @@ extension Camara: AVCaptureVideoDataOutputSampleBufferDelegate {
         let inicio = Date()
         // Teléfono en vertical: el sensor entrega apaisado, girado 90° a la derecha
         let (w, h) = (CVPixelBufferGetWidth(buffer), CVPixelBufferGetHeight(buffer))
-        let d = detector.detectar(buffer: buffer)
+        let detectadas = detector.detectar(buffer: buffer)
+        let zoom = Float(dispositivoCaptura?.videoZoomFactor ?? 1)
+        let d = seguidor.actualizar(detecciones: detectadas, focalPx: focalBase * zoom, altoPx: Float(w))
         let duracion = Date().timeIntervalSince(inicio)
         #if DEBUG
         if ProcessInfo.processInfo.environment["KEPLER_COMPARAR"] == "1" {
             Camara.contador += 1
-            if Camara.contador % 60 == 0 { Banco.compararConCuadrado(buffer, vertical: d) }
+            if Camara.contador % 60 == 0 { Banco.compararConCuadrado(buffer, vertical: detectadas) }
         }
         #endif
         // Retiene solo el último búfer (el que se recortaría al capturar)

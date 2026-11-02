@@ -15,13 +15,17 @@ use serde_json::Value;
 mod almacen;
 mod campo;
 mod captura;
+mod centinela;
 mod mapa;
 mod panel;
+mod seguimiento;
 mod vision;
 
 pub use campo::{EstadoSync, MisionEnCurso, PuntoGps};
 pub use captura::{CapturaGuardada, NuevaCaptura, TipoCaptura};
+pub use centinela::{Centinela, ModoCentinela};
 pub use mapa::{ProgresoDescarga, RegionMapa};
+pub use seguimiento::{Rastreada, Seguidor};
 pub use vision::Deteccion;
 
 pub use panel::{
@@ -376,6 +380,13 @@ impl Nucleo {
         // Directa si no hay nada antes en la cola (p. ej. la creación de su misión)
         if a.pendientes() == 0 && self.cliente.hay_sesion().await {
             match self.cliente.post::<Value>("/v1/capturas", &cuerpo).await {
+                Ok(r) if captura::rechazada_por_mision(&r) => {
+                    let r = self
+                        .cliente
+                        .post::<Value>("/v1/capturas", &captura::sin_mision(&cuerpo))
+                        .await?;
+                    return captura::resultado(&captura, &r);
+                }
                 Ok(r) => return captura::resultado(&captura, &r),
                 Err(ErrorCliente::Red(_)) => {}
                 Err(e) => return Err(e.into()),

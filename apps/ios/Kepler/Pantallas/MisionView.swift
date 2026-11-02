@@ -14,13 +14,21 @@ struct MisionView: View {
     @State private var poi = false
     @State private var destello = false
 
-    private var objetivo: Deteccion? { elegirObjetivo(detecciones: camara.detecciones) }
+    @State private var centinela = Centinela()
+    @State private var modoCentinela: ModoCentinela = .apagado
+    @State private var capturasCentinela = 0
+
+    /// Lo que guardará la captura rápida: lo más claro y centrado de lo seguido.
+    private var objetivo: Rastreada? {
+        guard let d = elegirObjetivo(detecciones: camara.rastreadas.map(\.deteccion)) else { return nil }
+        return camara.rastreadas.first { $0.deteccion == d }
+    }
 
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
             vista.ignoresSafeArea()
-            CajasDeteccion(detecciones: camara.detecciones, objetivo: objetivo, tamanoImagen: camara.tamanoImagen)
+            CajasDeteccion(rastreadas: camara.rastreadas, objetivo: objetivo?.id, tamanoImagen: camara.tamanoImagen)
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
             if destello { Color.white.opacity(0.35).ignoresSafeArea().allowsHitTesting(false) }
@@ -51,8 +59,22 @@ struct MisionView: View {
             #endif
         }
         .onDisappear { camara.apagar() }
+        // Centinela: evalúa cada fotograma; captura como mucho uno cada 0.5 s
+        .onChange(of: camara.rastreadas) { _, r in
+            #if DEBUG
+            if ProcessInfo.processInfo.environment["KEPLER_TRAZA"] == "1" {
+                print("CENTINELA \(modoCentinela) \(r.map { "\($0.id):\($0.deteccion.clase):\($0.edad):\(String(format: "%.2f", $0.deteccion.confianza))" })")
+            }
+            #endif
+            guard modoCentinela != .apagado,
+                  let elegida = centinela.evaluar(rastreadas: r, ahoraS: Date().timeIntervalSince1970) else { return }
+            #if DEBUG
+            if ProcessInfo.processInfo.environment["KEPLER_TRAZA"] == "1" { print("CENTINELA captura \(elegida.id)") }
+            #endif
+            Task { await guardar(elegida, automatica: true) }
+        }
         .sheet(isPresented: $poi) {
-            ReportarPoiView(camara: camara, mision: sesion.mision, sugerencia: objetivo) { mostrar($0, Tema.Color.exito) }
+            ReportarPoiView(camara: camara, mision: sesion.mision, sugerencia: objetivo?.deteccion) { mostrar($0, Tema.Color.exito) }
                 .presentationDetents([.large])
         }
         .sheet(isPresented: $control) {
@@ -82,8 +104,15 @@ struct MisionView: View {
                 Spacer()
                 IndicadorSync()
             }
-            Pastilla(texto: "\(camara.detecciones.count) obj · \(Int(camara.fps.rounded())) fps · \(Int(camara.latenciaMs.rounded())) ms", tono: Tema.Color.acento)
-                .background(.black.opacity(0.6), in: Capsule())
+            HStack(spacing: Tema.Espacio.sm) {
+                Button { cambiarCentinela() } label: {
+                    Pastilla(texto: textoCentinela, tono: modoCentinela == .apagado ? Tema.Color.textoTenue : Tema.Color.peligro)
+                        .background(.black.opacity(0.6), in: Capsule())
+                }
+                Spacer()
+                Pastilla(texto: "\(camara.rastreadas.count) obj · \(Int(camara.fps.rounded())) fps · \(Int(camara.latenciaMs.rounded())) ms", tono: Tema.Color.acento)
+                    .background(.black.opacity(0.6), in: Capsule())
+            }
         }
         .padding(.top, Tema.Espacio.sm)
     }
@@ -177,30 +206,67 @@ struct MisionView: View {
         }
     }
 
+    private var textoCentinela: String {
+        switch modoCentinela {
+        case .apagado: "Centinela"
+        case .personas: "Centinela · personas · \(capturasCentinela)"
+        case .todo: "Centinela · todo · \(capturasCentinela)"
+        }
+    }
+
+    /// Apagado → personas → todo → apagado.
+    private func cambiarCentinela() {
+        UISelectionFeedbackGenerator().selectionChanged()
+        modoCentinela = switch modoCentinela {
+        case .apagado: .personas
+        case .personas: .todo
+        case .todo: .apagado
+        }
+        if modoCentinela == .personas {
+            centinela.reiniciar()
+            capturasCentinela = 0
+        }
+        centinela.cambiarModo(modo: modoCentinela)
+    }
+
     /// Captura rápida: recorta el objetivo y lo guarda como objeto o persona.
     private func capturar() async {
-        guard let o = objetivo, let jpeg = camara.jpeg(de: o) else { return }
+        guard let o = objetivo else { return }
         guardando = true
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         withAnimation(.easeOut(duration: 0.08)) { destello = true }
         Task { try? await Task.sleep(for: .milliseconds(120)); withAnimation { destello = false } }
+        await guardar(o, automatica: false)
+        guardando = false
+    }
+
+    /// Guarda lo seguido (captura rápida o del Centinela).
+    private func guardar(_ r: Rastreada, automatica: Bool) async {
+        let o = r.deteccion
+        guard let jpeg = camara.jpeg(de: o) else { return }
+        if automatica { UIImpactFeedbackGenerator(style: .light).impactOccurred() }
         let esPersona = o.clase == "person"
         let hora = Date().formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits))
         let p = await sesion.ubicacion.actual()
         let nueva = NuevaCaptura(
             tipo: esPersona ? .persona : .objeto, nombre: esPersona ? "Persona \(hora)" : o.nombre,
             clase: o.clase, confianza: o.confianza, lat: p?.latitude, lng: p?.longitude,
-            misionId: sesion.mision?.id, nivelRiesgo: nil, categoriaId: nil, descripcion: nil, compartir: false)
+            misionId: sesion.mision?.id, nivelRiesgo: nil, categoriaId: nil, descripcion: nil, compartir: false,
+            distanciaM: esPersona ? nil : r.distanciaM)
         do {
-            let r = try await sesion.nucleo.capturar(captura: nueva, jpeg: jpeg)
+            let g = try await sesion.nucleo.capturar(captura: nueva, jpeg: jpeg)
             capturas += 1
+            if automatica { capturasCentinela += 1 }
             ultimaFoto = UIImage(data: jpeg)
-            mostrar(r.mensaje, r.enCola ? Tema.Color.aviso : r.coincideCon == nil ? Tema.Color.exito : Tema.Color.acento)
+            let texto = automatica ? "Centinela · \(g.mensaje)" : g.mensaje
+            mostrar(texto, g.enCola ? Tema.Color.aviso : g.coincideCon == nil ? Tema.Color.exito : Tema.Color.acento)
             await sesion.refrescarSync()
         } catch {
+            #if DEBUG
+            print("CENTINELA error \(Sesion.mensaje(error))")
+            #endif
             mostrar("⚠ \(Sesion.mensaje(error))", Tema.Color.peligro)
         }
-        guardando = false
     }
 
     private func mostrar(_ texto: String, _ tono: Color) {
@@ -225,6 +291,10 @@ struct MisionView: View {
         if s == "mision-captura" { await capturar() }
         if s.hasPrefix("mision-poi") { poi = true }
         if s == "mision-iniciar", sesion.mision == nil { await sesion.iniciarMision(titulo: "Prueba en el simulador") }
+        if s == "mision-centinela" {
+            cambiarCentinela()
+            cambiarCentinela()
+        }
         if s == "mision-control" {
             if sesion.mision == nil { await sesion.iniciarMision(titulo: "Reconocimiento del valle") }
             control = true
@@ -242,8 +312,8 @@ struct MisionView: View {
 
 /// Cajas sobre la vista (que llena la pantalla recortando, como `aspectFill`).
 struct CajasDeteccion: View {
-    let detecciones: [Deteccion]
-    let objetivo: Deteccion?
+    let rastreadas: [Rastreada]
+    let objetivo: UInt64?
     let tamanoImagen: CGSize
 
     var body: some View {
@@ -251,18 +321,19 @@ struct CajasDeteccion: View {
             let s = max(g.size.width / tamanoImagen.width, g.size.height / tamanoImagen.height)
             let dx = (g.size.width - tamanoImagen.width * s) / 2
             let dy = (g.size.height - tamanoImagen.height * s) / 2
-            ForEach(Array(detecciones.enumerated()), id: \.offset) { _, d in
+            ForEach(rastreadas, id: \.id) { seguida in
+                let d = seguida.deteccion
                 let r = CGRect(x: CGFloat(d.x) * tamanoImagen.width * s + dx,
                                y: CGFloat(d.y) * tamanoImagen.height * s + dy,
                                width: CGFloat(d.ancho) * tamanoImagen.width * s,
                                height: CGFloat(d.alto) * tamanoImagen.height * s)
-                let esObjetivo = d == objetivo
+                let esObjetivo = seguida.id == objetivo
                 let tono = d.clase == "person" ? Tema.Color.aviso : Tema.Color.acento
                 ZStack(alignment: .topLeading) {
                     RoundedRectangle(cornerRadius: 6)
                         .stroke(tono.opacity(esObjetivo ? 1 : 0.55), lineWidth: esObjetivo ? 2.5 : 1.2)
                         .shadow(color: tono.opacity(esObjetivo ? 0.8 : 0), radius: 8)
-                    Text("\(d.nombre) \(Int((d.confianza * 100).rounded()))%")
+                    Text("\(d.nombre) \(Int((d.confianza * 100).rounded()))%" + (seguida.distanciaM.map { " · ~\(Medida.metros($0))" } ?? ""))
                         .font(Jura.fuente(11, .semibold))
                         .foregroundStyle(.black)
                         .lineLimit(1)
@@ -388,7 +459,7 @@ struct ReportarPoiView: View {
         let nueva = NuevaCaptura(
             tipo: .poi, nombre: nombre, clase: sugerencia?.clase, confianza: nil, lat: p?.latitude, lng: p?.longitude,
             misionId: mision?.id, nivelRiesgo: riesgo, categoriaId: categoria,
-            descripcion: descripcion.isEmpty ? nil : descripcion, compartir: compartir)
+            descripcion: descripcion.isEmpty ? nil : descripcion, compartir: compartir, distanciaM: nil)
         do {
             let r = try await sesion.nucleo.capturar(captura: nueva, jpeg: foto)
             await sesion.refrescarSync()
@@ -428,6 +499,11 @@ struct Chips: View {
 }
 
 enum Medida {
+    /// Distancia estimada: metros redondeados (a 5 m de lejos).
+    static func metros(_ m: Float) -> String {
+        m < 20 ? "\(Int(m.rounded())) m" : "\(Int((m / 5).rounded()) * 5) m"
+    }
+
     static func km(_ metros: Double) -> String {
         metros < 1000 ? "\(Int(metros.rounded())) m" : String(format: "%.2f km", metros / 1000)
     }
@@ -447,9 +523,9 @@ struct IndicadorSync: View {
         let pendiente = (s?.pendientes ?? 0) + ((s?.rastro ?? 0) > 0 ? 1 : 0)
         let (texto, tono): (String, Color) = switch (s?.enLinea ?? !sesion.sinConexion, pendiente) {
         case (false, 0): ("Sin conexión", Tema.Color.aviso)
-        case (false, _): ("Sin conexión · \(s?.pendientes ?? 0)", Tema.Color.aviso)
+        case (false, _): ("Sin conexión · " + (s?.pendientes == 0 ? "rastro" : "\(s?.pendientes ?? 0)"), Tema.Color.aviso)
         case (true, 0): ("Sincronizado", Tema.Color.exito)
-        case (true, _): ("↑ \(s?.pendientes ?? 0) pendientes", Tema.Color.acento)
+        case (true, _): (s?.pendientes == 0 ? "↑ Enviando rastro" : "↑ \(s?.pendientes ?? 0) pendientes", Tema.Color.acento)
         }
         Pastilla(texto: texto, tono: tono)
             .background(.black.opacity(0.6), in: Capsule())

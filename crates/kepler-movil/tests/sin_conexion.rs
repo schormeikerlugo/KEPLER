@@ -73,6 +73,7 @@ async fn mision_y_captura_sin_conexion_se_sincronizan() {
                 categoria_id: None,
                 descripcion: None,
                 compartir: false,
+                distancia_m: None,
             },
             jpeg,
         )

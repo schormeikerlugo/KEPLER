@@ -31,6 +31,8 @@ pub struct NuevaCaptura {
     pub descripcion: Option<String>,
     /// POI: visible para los demás exploradores (avisos de peligro).
     pub compartir: bool,
+    /// Objeto: distancia estimada en metros.
+    pub distancia_m: Option<f32>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -65,6 +67,7 @@ pub(crate) fn cuerpo(c: &NuevaCaptura, jpeg: &[u8], ahora: DateTime<Utc>) -> Val
             fila["clase_yolo"] = json!(c.clase);
             fila["confianza"] = json!(c.confianza);
             fila["descripcion"] = json!(c.descripcion);
+            fila["distancia_m"] = json!(c.distancia_m);
             fila["atributos"] = json!({});
             fila["contexto_ambiental"] = json!({});
             "objeto"
@@ -89,6 +92,22 @@ pub(crate) fn cuerpo(c: &NuevaCaptura, jpeg: &[u8], ahora: DateTime<Utc>) -> Val
         "fila": fila,
         "imagen": base64::engine::general_purpose::STANDARD.encode(jpeg),
     }])
+}
+
+/// ¿Rechazada porque su misión no existe en el servidor (borrada)?
+pub(crate) fn rechazada_por_mision(r: &Value) -> bool {
+    r["rechazadas"][0]["motivo"]
+        .as_str()
+        .is_some_and(|m| m.contains("mision_id"))
+}
+
+/// La misma captura sin misión (se guarda suelta antes que perderla).
+pub(crate) fn sin_mision(cuerpo: &Value) -> Value {
+    let mut c = cuerpo.clone();
+    if let Some(f) = c[0]["fila"].as_object_mut() {
+        f.insert("mision_id".into(), Value::Null);
+    }
+    c
 }
 
 pub(crate) fn resultado(c: &NuevaCaptura, r: &Value) -> Result<CapturaGuardada, ErrorKepler> {
@@ -161,6 +180,7 @@ mod tests {
             categoria_id: None,
             descripcion: None,
             compartir: true,
+            distancia_m: Some(12.0),
         }
     }
 
@@ -186,6 +206,16 @@ mod tests {
                 .get("clase_yolo")
                 .is_none()
         );
+    }
+
+    #[test]
+    fn sin_su_mision_se_guarda_suelta() {
+        let mut n = nueva(TipoCaptura::Objeto);
+        n.mision_id = Some("m".into());
+        let c = cuerpo(&n, b"x", Utc::now());
+        assert_eq!(sin_mision(&c)[0]["fila"]["mision_id"], Value::Null);
+        let r = json!({ "procesadas": [], "rechazadas": [{ "indice": 0, "motivo": "insert or update on table \"objetos\" violates foreign key constraint \"objetos_mision_id_fkey\"" }] });
+        assert!(rechazada_por_mision(&r));
     }
 
     #[test]
