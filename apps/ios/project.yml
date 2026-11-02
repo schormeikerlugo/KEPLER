@@ -63,6 +63,8 @@ targets:
         # Rastro GPS de la misión con la app en segundo plano
         UIBackgroundModes:
           - location
+          # Escuchar el reloj Carbinox con la app en segundo plano
+          - bluetooth-central
         UILaunchScreen:
           UIColorName: FondoLanzamiento
         UIAppFonts:

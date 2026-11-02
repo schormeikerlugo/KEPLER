@@ -64,7 +64,7 @@ pub fn definiciones() -> Vec<Value> {
         herramienta(
             "salud_explorador",
             "Salud y sensores del explorador (reloj vía Apple Salud, iPhone): pulso, pulso en reposo, \
-             variabilidad cardíaca (vfc), oxígeno (spo2), pasos, distancia, energía, sueño (horas por noche), \
+             variabilidad cardíaca (vfc), oxígeno (spo2), estrés (estres, 0-100, del reloj), pasos, distancia, energía, sueño (horas por noche), \
              estado de ánimo (valencia -1 a 1), presión y altitud. Último valor y media/mín/máx de los últimos \
              días o durante una misión (código o título).",
             json!({ "type": "object", "properties": {

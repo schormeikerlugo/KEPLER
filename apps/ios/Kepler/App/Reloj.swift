@@ -38,6 +38,21 @@ final class Reloj: NSObject, ObservableObject {
     @Published private(set) var bateria: Int?
     @Published private(set) var registro: URL?
     @Published private(set) var lineas: [String] = []
+    /// Últimos valores descifrados del reloj (tipo → valor).
+    @Published private(set) var ultimos: [String: Double] = [:]
+    /// Tramas del canal FFF1 descifradas con éxito en esta conexión.
+    @Published private(set) var descifradas = 0
+    /// Recibe las muestras de salud que llegan del reloj (las guarda la sesión).
+    var alMuestras: (([MuestraBio]) -> Void)?
+    private var descifrador: RelojCarbinox?
+
+    /// ¿Hay clave del reloj (cuenta Carbinox vinculada en Ajustes)?
+    var tieneClave: Bool { descifrador != nil }
+
+    /// Carga las claves del Llavero (tras vincular la cuenta Carbinox).
+    func cargarClaves() {
+        descifrador = ClavesReloj.vinculo.flatMap { try? RelojCarbinox(claveVinculo: $0, claveSesion: ClavesReloj.sesion) }
+    }
 
     private var central: CBCentralManager?
     private var perifericos: [UUID: CBPeripheral] = [:]
@@ -94,6 +109,12 @@ final class Reloj: NSObject, ObservableObject {
         // Los que ya tiene conectados el sistema (el reloj con Carbinox Max)
         for p in central.retrieveConnectedPeripherals(withServices: Reloj.serviciosConocidos) {
             anotar(p, rssi: nil, conectado: true, servicios: [])
+        }
+        // Con clave: se engancha solo al reloj Carbinox que ya usa el iPhone
+        if descifrador != nil, actual == nil,
+           let v = vistos.first(where: { $0.conectado && ($0.nombre.contains("Carbinox") || $0.nombre.contains("Edge")) }) {
+            conectar(v)
+            return
         }
         central.scanForPeripherals(withServices: nil, options: [CBCentralManagerScanOptionAllowDuplicatesKey: false])
         estado = "Buscando…"
@@ -333,6 +354,7 @@ extension Reloj: CBCentralManagerDelegate, CBPeripheralDelegate {
                     ? " «\(s)»" : nil
             } ?? ""
             escribirLinea("RX \(servicio)/\(c.uuid.uuidString) \(Reloj.hex(datos))\(texto)")
+            if c.uuid.uuidString == "FFF1" { descifrar(datos) }
             if let i = caracteristicas.firstIndex(where: { $0.servicio == servicio && $0.uuid == c.uuid.uuidString }) {
                 caracteristicas[i].valor = Reloj.hex(datos.prefix(24)) + texto
                 caracteristicas[i].mensajes += 1
@@ -343,5 +365,24 @@ extension Reloj: CBCentralManagerDelegate, CBPeripheralDelegate {
             default: break
             }
         }
+    }
+}
+
+extension Reloj {
+    /// Canal principal del Carbinox: descifra, registra y entrega las muestras.
+    fileprivate func descifrar(_ datos: Data) {
+        guard let descifrador, let r = descifrador.recibir(datos: datos) else { return }
+        let cabecera = String(format: "%04X/%04X", r.habilidad, r.comando)
+        if let claro = r.claro {
+            descifradas += 1
+            escribirLinea("CLARO \(cabecera) \(claro) \(r.descripcion)")
+        } else if !r.descripcion.isEmpty {
+            escribirLinea("SIN_DESCIFRAR \(cabecera) \(r.descripcion)")
+        }
+        if r.sesionNueva { ClavesReloj.sesion = descifrador.claveSesion() }
+        guard !r.muestras.isEmpty else { return }
+        for m in r.muestras { ultimos[m.tipo] = m.valor }
+        if let p = ultimos["pulso"] { pulso = Int(p) }
+        alMuestras?(r.muestras)
     }
 }

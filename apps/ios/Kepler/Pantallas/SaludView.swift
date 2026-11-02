@@ -4,7 +4,6 @@ import SwiftUI
 /// iPhone, el estado de ánimo y el explorador Bluetooth del reloj.
 struct SaludView: View {
     @EnvironmentObject private var sesion: Sesion
-    @StateObject private var reloj = Reloj()
     @State private var resumen: [ResumenBio] = []
     @State private var filas: [Salud.Fila] = []
     @State private var analizando = false
@@ -20,7 +19,7 @@ struct SaludView: View {
                     if !resumen.isEmpty { tarjetaResumen }
                     tarjetaAnimo
                     TarjetaSensores(sensores: sesion.sensores)
-                    tarjetaReloj
+                    TarjetaReloj(reloj: sesion.reloj)
                     if let aviso {
                         Text(aviso).font(Jura.fuente(Tema.Tamano.pequeno)).foregroundStyle(Tema.Color.aviso)
                     }
@@ -37,7 +36,7 @@ struct SaludView: View {
             // Prueba en el iPhone: KEPLER_SALUD=1 analiza Salud y busca el reloj al abrir
             if ProcessInfo.processInfo.environment["KEPLER_SALUD"] == "1" {
                 await analizar()
-                reloj.encender()
+                sesion.reloj.encender()
             }
         }
         #endif
@@ -129,7 +128,8 @@ struct SaludView: View {
 
     static func nombre(_ tipo: String) -> String {
         Salud.tipos.first { $0.clave == tipo }?.nombre
-            ?? ["presion": "Presión (barómetro)", "altitud": "Altitud (barómetro)"][tipo] ?? tipo
+            ?? ["presion": "Presión (barómetro)", "altitud": "Altitud (barómetro)", "estres": "Estrés (reloj)",
+                "animo_reloj": "Ánimo (reloj)"][tipo] ?? tipo
     }
 
     static func texto(_ r: ResumenBio) -> String {
@@ -173,10 +173,50 @@ struct SaludView: View {
             }
         }
     }
+}
 
-    // MARK: Reloj Bluetooth
+private struct Dato: View {
+    let nombre: String
+    let valor: String?
 
-    private var tarjetaReloj: some View {
+    var body: some View {
+        HStack {
+            Text(nombre).font(Jura.fuente(Tema.Tamano.pequeno)).foregroundStyle(Tema.Color.textoTenue)
+            Spacer()
+            Text(valor ?? "—").font(Jura.fuente(Tema.Tamano.cuerpo, .semibold)).foregroundStyle(Tema.Color.texto)
+        }
+    }
+}
+
+/// Sensores del iPhone (se observan aparte: viven en la sesión).
+private struct TarjetaSensores: View {
+    @ObservedObject var sensores: Sensores
+
+    var body: some View {
+        Tarjeta {
+            VStack(alignment: .leading, spacing: Tema.Espacio.md) {
+                Etiqueta(texto: "Sensores del iPhone")
+                Dato(nombre: "Presión", valor: sensores.altitud.presion.map { String(format: "%.1f hPa", $0) })
+                Dato(nombre: "Altitud", valor: sensores.altitud.absoluta.map {
+                    String(format: "%.0f m ± %.0f", $0, sensores.altitud.precision ?? 0)
+                })
+                Dato(nombre: "Desnivel desde que abriste", valor: sensores.altitud.relativa.map { String(format: "%+.1f m", $0) })
+                Dato(nombre: "Pasos hoy", valor: sensores.hoy.map { "\($0.pasos)" })
+                Dato(nombre: "Distancia hoy", valor: sensores.hoy?.distancia.map { String(format: "%.2f km", $0 / 1000) })
+                Dato(nombre: "Pisos hoy", valor: sensores.hoy.map { "↑\($0.pisosSubidos ?? 0) ↓\($0.pisosBajados ?? 0)" })
+                if let e = sensores.error {
+                    Text(e).font(Jura.fuente(11)).foregroundStyle(Tema.Color.aviso)
+                }
+            }
+        }
+    }
+}
+
+/// Reloj Bluetooth: lo que se descifra del Carbinox y el explorador GATT.
+private struct TarjetaReloj: View {
+    @ObservedObject var reloj: Reloj
+
+    var body: some View {
         Tarjeta {
             VStack(alignment: .leading, spacing: Tema.Espacio.md) {
                 HStack {
@@ -189,6 +229,17 @@ struct SaludView: View {
                     HStack(spacing: Tema.Espacio.lg) {
                         Dato(nombre: "Pulso", valor: reloj.pulso.map { "\($0) lpm" })
                         Dato(nombre: "Batería", valor: reloj.bateria.map { "\($0) %" })
+                    }
+                    if reloj.tieneClave {
+                        HStack(spacing: Tema.Espacio.lg) {
+                            Dato(nombre: "SpO2", valor: reloj.ultimos["spo2"].map { String(format: "%.0f %%", $0) })
+                            Dato(nombre: "Estrés", valor: reloj.ultimos["estres"].map { String(format: "%.0f", $0) })
+                        }
+                        Text("Descifradas: \(reloj.descifradas) tramas")
+                            .font(Jura.fuente(11)).foregroundStyle(Tema.Color.textoTenue)
+                    } else {
+                        Text("Sin cuenta Carbinox: Ajustes › Reloj Carbinox para descifrar los datos.")
+                            .font(Jura.fuente(11)).foregroundStyle(Tema.Color.aviso)
                     }
                     ForEach(reloj.caracteristicas) { c in
                         VStack(alignment: .leading, spacing: 2) {
@@ -238,43 +289,6 @@ struct SaludView: View {
                     Button("BUSCAR RELOJ") { reloj.encender() }.buttonStyle(BotonKepler())
                     Text("Si el reloj ya está conectado a Carbinox Max aparece en verde: KEPLER escucha la misma conexión.")
                         .font(Jura.fuente(11)).foregroundStyle(Tema.Color.textoTenue)
-                }
-            }
-        }
-    }
-}
-
-private struct Dato: View {
-    let nombre: String
-    let valor: String?
-
-    var body: some View {
-        HStack {
-            Text(nombre).font(Jura.fuente(Tema.Tamano.pequeno)).foregroundStyle(Tema.Color.textoTenue)
-            Spacer()
-            Text(valor ?? "—").font(Jura.fuente(Tema.Tamano.cuerpo, .semibold)).foregroundStyle(Tema.Color.texto)
-        }
-    }
-}
-
-/// Sensores del iPhone (se observan aparte: viven en la sesión).
-private struct TarjetaSensores: View {
-    @ObservedObject var sensores: Sensores
-
-    var body: some View {
-        Tarjeta {
-            VStack(alignment: .leading, spacing: Tema.Espacio.md) {
-                Etiqueta(texto: "Sensores del iPhone")
-                Dato(nombre: "Presión", valor: sensores.altitud.presion.map { String(format: "%.1f hPa", $0) })
-                Dato(nombre: "Altitud", valor: sensores.altitud.absoluta.map {
-                    String(format: "%.0f m ± %.0f", $0, sensores.altitud.precision ?? 0)
-                })
-                Dato(nombre: "Desnivel desde que abriste", valor: sensores.altitud.relativa.map { String(format: "%+.1f m", $0) })
-                Dato(nombre: "Pasos hoy", valor: sensores.hoy.map { "\($0.pasos)" })
-                Dato(nombre: "Distancia hoy", valor: sensores.hoy?.distancia.map { String(format: "%.2f km", $0 / 1000) })
-                Dato(nombre: "Pisos hoy", valor: sensores.hoy.map { "↑\($0.pisosSubidos ?? 0) ↓\($0.pisosBajados ?? 0)" })
-                if let e = sensores.error {
-                    Text(e).font(Jura.fuente(11)).foregroundStyle(Tema.Color.aviso)
                 }
             }
         }

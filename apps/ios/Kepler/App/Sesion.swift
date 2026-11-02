@@ -42,6 +42,8 @@ final class Sesion: ObservableObject {
     let salud = Salud()
     /// Barómetro y podómetro del iPhone.
     let sensores = Sensores()
+    /// Reloj Carbinox por Bluetooth (escucha pasiva, ver Reloj.swift).
+    let reloj = Reloj()
     var ultimaSalud: Date?
     var ultimaPresion: Date?
     private(set) var nucleo: Nucleo

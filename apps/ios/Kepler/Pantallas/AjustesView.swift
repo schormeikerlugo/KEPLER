@@ -48,6 +48,7 @@ struct AjustesView: View {
                             }
                         }
                     }
+                    if sesion.fase == .dentro { TarjetaCarbinox() }
                     Tarjeta {
                         VStack(alignment: .leading, spacing: 6) {
                             Etiqueta(texto: "Acerca de")
@@ -64,5 +65,73 @@ struct AjustesView: View {
             }
         }
         .onAppear { url = sesion.servidor }
+    }
+}
+
+/// Cuenta Carbinox: de ella sale la clave para descifrar el reloj. La contraseña
+/// solo se envía a api.amazwear.com y no se guarda; la clave va al Llavero.
+private struct TarjetaCarbinox: View {
+    @EnvironmentObject private var sesion: Sesion
+    @State private var correo = ""
+    @State private var contrasena = ""
+    @State private var ocupada = false
+    @State private var mensaje: String?
+    @State private var mac = ClavesReloj.mac
+    @State private var vinculado = ClavesReloj.vinculo != nil
+
+    var body: some View {
+        Tarjeta {
+            VStack(alignment: .leading, spacing: Tema.Espacio.md) {
+                Etiqueta(texto: "Reloj Carbinox")
+                if vinculado {
+                    Text("Reloj vinculado\(mac.map { " · \($0)" } ?? "")")
+                        .font(Jura.fuente(Tema.Tamano.cuerpo)).foregroundStyle(Tema.Color.exito)
+                    Text("KEPLER descifra lo que el reloj envía a Carbinox Max, sin interferir.")
+                        .font(Jura.fuente(Tema.Tamano.pequeno)).foregroundStyle(Tema.Color.textoTenue)
+                    Button("OLVIDAR RELOJ") {
+                        ClavesReloj.olvidar()
+                        sesion.reloj.cargarClaves()
+                        vinculado = false
+                        mac = nil
+                    }
+                    .buttonStyle(BotonKepler(principal: false))
+                } else {
+                    CampoKepler(etiqueta: "Correo de Carbinox Max", texto: $correo, marcador: "correo@ejemplo.com")
+                        .keyboardType(.emailAddress)
+                    CampoKepler(etiqueta: "Contraseña", texto: $contrasena, secreto: true)
+                    Button(ocupada ? "CONECTANDO…" : "VINCULAR RELOJ") { Task { await vincular() } }
+                        .buttonStyle(BotonKepler())
+                        .disabled(ocupada || correo.isEmpty || contrasena.isEmpty)
+                    Text("La contraseña solo se envía a Carbinox (api.amazwear.com) y no se guarda.")
+                        .font(Jura.fuente(Tema.Tamano.pequeno)).foregroundStyle(Tema.Color.textoTenue)
+                }
+                if let mensaje {
+                    Text(mensaje).font(Jura.fuente(Tema.Tamano.pequeno)).foregroundStyle(Tema.Color.aviso)
+                }
+            }
+        }
+    }
+
+    private func vincular() async {
+        ocupada = true
+        defer { ocupada = false }
+        do {
+            let relojes = try await carbinoxRelojes(correo: correo, contrasena: contrasena)
+            contrasena = ""
+            guard let r = relojes.first(where: { $0.claveVinculo != nil }) else {
+                mensaje = relojes.isEmpty ? "La cuenta no tiene relojes vinculados."
+                    : "La cuenta no guarda la clave del reloj (\(relojes.count) reloj/es)."
+                return
+            }
+            ClavesReloj.vinculo = r.claveVinculo
+            ClavesReloj.sesion = nil
+            ClavesReloj.mac = r.mac
+            mac = r.mac
+            vinculado = true
+            mensaje = "Listo. Para obtener la clave de sesión, cierra y abre Carbinox Max con KEPLER abierto."
+            sesion.conectarReloj()
+        } catch {
+            mensaje = Sesion.mensaje(error)
+        }
     }
 }

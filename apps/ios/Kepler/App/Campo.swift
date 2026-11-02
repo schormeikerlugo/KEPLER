@@ -11,6 +11,7 @@ extension Sesion {
     func alEntrar() async {
         mision = try? await nucleo.misionEnCurso()
         if mision != nil { seguirRastro() }
+        conectarReloj()
         iniciarBucleSync()
         await sincronizar()
         await cargar()
@@ -56,6 +57,14 @@ extension Sesion {
         let antes = mision
         mision = try? await nucleo.misionEnCurso()
         if antes != nil, mision == nil { dejarDeSeguir() }
+    }
+
+    /// Con la cuenta Carbinox vinculada, escucha el reloj y guarda lo que manda.
+    func conectarReloj() {
+        let n = nucleo
+        reloj.alMuestras = { _ = try? n.biometriaGuardar(muestras: $0) }
+        reloj.cargarClaves()
+        if reloj.tieneClave { reloj.encender() }
     }
 
     /// Muestras nuevas de Apple Salud al almacén (cada 5 min o si `ya`).

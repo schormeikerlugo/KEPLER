@@ -90,3 +90,60 @@ enum ErrorLlavero: LocalizedError {
     case sinSesion
     var errorDescription: String? { "No hay una sesión guardada en este iPhone" }
 }
+
+/// Claves del reloj Carbinox (vínculo y sesión). Sin Face ID: el reloj se
+/// escucha también en segundo plano. Solo en este iPhone.
+enum ClavesReloj {
+    private static let servicio = "dev.schormeiker.kepler.reloj"
+
+    static var vinculo: String? {
+        get { leer("vinculo") }
+        set { guardar("vinculo", newValue) }
+    }
+
+    static var sesion: String? {
+        get { leer("sesion") }
+        set { guardar("sesion", newValue) }
+    }
+
+    /// MAC del reloj vinculado (no es secreta).
+    static var mac: String? {
+        get { UserDefaults.standard.string(forKey: "kepler.reloj.mac") }
+        set { UserDefaults.standard.set(newValue, forKey: "kepler.reloj.mac") }
+    }
+
+    static func olvidar() {
+        vinculo = nil
+        sesion = nil
+        mac = nil
+    }
+
+    private static func leer(_ cuenta: String) -> String? {
+        let consulta: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: servicio,
+            kSecAttrAccount as String: cuenta,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+        var resultado: AnyObject?
+        guard SecItemCopyMatching(consulta as CFDictionary, &resultado) == errSecSuccess,
+              let datos = resultado as? Data else { return nil }
+        return String(data: datos, encoding: .utf8)
+    }
+
+    private static func guardar(_ cuenta: String, _ valor: String?) {
+        let clave: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: servicio,
+            kSecAttrAccount as String: cuenta,
+        ]
+        SecItemDelete(clave as CFDictionary)
+        guard let valor else { return }
+        var atributos = clave
+        atributos[kSecValueData as String] = Data(valor.utf8)
+        atributos[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        let estado = SecItemAdd(atributos as CFDictionary, nil)
+        if estado != errSecSuccess { registro.error("No se pudo guardar la clave del reloj: \(estado)") }
+    }
+}

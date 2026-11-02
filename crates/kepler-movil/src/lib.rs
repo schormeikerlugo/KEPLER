@@ -21,6 +21,7 @@ mod centinela;
 mod cortex;
 mod mapa;
 mod panel;
+mod reloj;
 mod seguimiento;
 mod vision;
 
@@ -34,6 +35,7 @@ pub use captura::{CapturaGuardada, NuevaCaptura, TipoCaptura};
 pub use centinela::{Centinela, ModoCentinela};
 pub use cortex::{ChatResumen, FinCortex, ImagenCortex, MensajeCortex, OyenteCortex};
 pub use mapa::{ProgresoDescarga, RegionMapa};
+pub use reloj::{RelojCarbinox, RelojCuenta, ReporteReloj};
 pub use seguimiento::{Rastreada, Seguidor};
 pub use vision::Deteccion;
 
