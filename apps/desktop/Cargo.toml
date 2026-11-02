@@ -16,6 +16,7 @@ path = "src/main.rs"
 [dependencies]
 kepler-cliente.workspace = true
 kepler-core.workspace = true
+kepler-mapa.workspace = true
 kepler-proto.workspace = true
 
 # Mapa: MapLibre Native (C++, se compila la primera vez; necesita cmake). OpenGL/EGL como Slint

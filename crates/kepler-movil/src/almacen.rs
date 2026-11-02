@@ -209,6 +209,28 @@ impl Almacen {
         .collect()
     }
 
+    /// Todo el rastro de una misión (enviado o no), en orden.
+    pub fn puntos(&self, mision: &str) -> rusqlite::Result<Vec<Punto>> {
+        let c = self.c();
+        let mut q = c.prepare(
+            "select id, lat, lng, altitud, velocidad, rumbo, precision_m, registrado_en from rastro
+             where mision = ?1 order by registrado_en",
+        )?;
+        q.query_map([mision], |f| {
+            Ok(Punto {
+                id: f.get(0)?,
+                lat: f.get(1)?,
+                lng: f.get(2)?,
+                altitud: f.get(3)?,
+                velocidad: f.get(4)?,
+                rumbo: f.get(5)?,
+                precision_m: f.get(6)?,
+                registrado_en: f.get(7)?,
+            })
+        })?
+        .collect()
+    }
+
     pub fn marcar_enviados(&self, ids: &[String]) -> rusqlite::Result<()> {
         let mut c = self.c();
         let tx = c.transaction()?;

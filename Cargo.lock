@@ -3655,6 +3655,7 @@ dependencies = [
  "image",
  "kepler-cliente",
  "kepler-core",
+ "kepler-mapa",
  "kepler-proto",
  "maplibre_native",
  "reqwest 0.13.5",
@@ -3670,6 +3671,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "kepler-mapa"
+version = "0.8.0"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
 name = "kepler-movil"
 version = "0.8.0"
 dependencies = [
@@ -3677,6 +3685,7 @@ dependencies = [
  "chrono",
  "kepler-cliente",
  "kepler-core",
+ "kepler-mapa",
  "rusqlite",
  "serde",
  "serde_json",

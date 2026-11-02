@@ -11,7 +11,7 @@ struct PrincipalView: View {
             MisionView()
                 .tabItem { Label("Misión", systemImage: "scope") }
                 .tag(1)
-            Pendiente(titulo: "Mapa", detalle: "Mapa offline con POIs, alertas y rutas.", fase: "F5")
+            MapaView()
                 .tabItem { Label("Mapa", systemImage: "map") }
                 .tag(2)
             AjustesView()
@@ -20,30 +20,10 @@ struct PrincipalView: View {
         }
         #if DEBUG
         .onAppear {
-            if ProcessInfo.processInfo.environment["KEPLER_DEMO_SECCION"]?.hasPrefix("mision") == true { pestana = 1 }
+            let s = ProcessInfo.processInfo.environment["KEPLER_DEMO_SECCION"] ?? ""
+            if s.hasPrefix("mision") { pestana = 1 }
+            if s.hasPrefix("mapa") { pestana = 2 }
         }
         #endif
-    }
-}
-
-/// Pestañas que llegan en fases siguientes del paso 7.
-struct Pendiente: View {
-    let titulo: String
-    let detalle: String
-    let fase: String
-
-    var body: some View {
-        ZStack {
-            FondoKepler()
-            VStack(spacing: Tema.Espacio.md) {
-                Titulo(texto: titulo)
-                Text(detalle)
-                    .font(Jura.fuente(Tema.Tamano.cuerpo))
-                    .foregroundStyle(Tema.Color.textoTenue)
-                    .multilineTextAlignment(.center)
-                Pastilla(texto: "En desarrollo · \(fase)", tono: Tema.Color.aviso)
-            }
-            .padding(Tema.Espacio.xl)
-        }
     }
 }

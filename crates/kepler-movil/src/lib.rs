@@ -15,11 +15,13 @@ use serde_json::Value;
 mod almacen;
 mod campo;
 mod captura;
+mod mapa;
 mod panel;
 mod vision;
 
 pub use campo::{EstadoSync, MisionEnCurso, PuntoGps};
 pub use captura::{CapturaGuardada, NuevaCaptura, TipoCaptura};
+pub use mapa::{ProgresoDescarga, RegionMapa};
 pub use vision::Deteccion;
 
 pub use panel::{
@@ -404,6 +406,83 @@ impl Nucleo {
                 compartidos: 0,
             })
             .collect())
+    }
+
+    // --- mapa offline -------------------------------------------------------------
+
+    /// Regiones de mapa del servidor y si ya están en el iPhone.
+    pub async fn regiones_mapa(&self) -> Result<Vec<RegionMapa>, ErrorKepler> {
+        let v: Vec<Value> = self.cliente.get("/v1/mapas").await?;
+        Ok(v.iter()
+            .map(|r| {
+                let id = r["id"].as_str().unwrap_or("mapa").to_owned();
+                let tamano_mb = r["tamano_mb"].as_f64().unwrap_or(0.0);
+                let local = std::fs::metadata(mapa::archivo(&self.directorio, &id))
+                    .map(|m| m.len() as f64 / 1_048_576.0);
+                RegionMapa {
+                    descargada: local.is_ok_and(|mb| (mb - tamano_mb).abs() < 0.2),
+                    id,
+                    tamano_mb,
+                }
+            })
+            .collect())
+    }
+
+    /// Ruta del estilo listo para MapLibre si hay un mapa descargado (sin red también).
+    pub fn estilo_mapa(&self) -> Option<String> {
+        let pmtiles = mapa::local(&self.directorio)?;
+        mapa::escribir_estilo(&self.directorio, &pmtiles)
+            .ok()
+            .map(|r| r.display().to_string())
+    }
+
+    /// Descarga (o termina de descargar) la región y devuelve la ruta del estilo.
+    pub async fn descargar_mapa(
+        &self,
+        region: String,
+        progreso: Arc<dyn ProgresoDescarga>,
+    ) -> Result<String, ErrorKepler> {
+        let regiones: Vec<Value> = self.cliente.get("/v1/mapas").await?;
+        let r = regiones
+            .iter()
+            .find(|r| r["id"] == region.as_str())
+            .ok_or_else(|| ErrorKepler::Servidor {
+                mensaje: format!("no hay mapa «{region}»"),
+            })?;
+        let url = r["url"].as_str().unwrap_or_default().to_owned();
+        let destino = mapa::archivo(&self.directorio, &region);
+        let _ = std::fs::create_dir_all(mapa::carpeta(&self.directorio));
+        let remoto = self.cliente.tamano_remoto(&url).await?;
+        if std::fs::metadata(&destino).map(|m| m.len()).ok() != Some(remoto) {
+            self.cliente
+                .descargar(&url, &destino, |hecho, total| progreso.avance(hecho, total))
+                .await?;
+        }
+        mapa::escribir_estilo(&self.directorio, &destino)
+            .map(|r| r.display().to_string())
+            .map_err(|mensaje| ErrorKepler::Servidor { mensaje })
+    }
+
+    /// GeoJSON de POIs, alertas, hallazgos y rutas; sin red, el último guardado.
+    pub async fn elementos_mapa(&self) -> Result<String, ErrorKepler> {
+        let a = self.almacen()?;
+        match self.cliente.get::<Value>("/v1/mapa/elementos").await {
+            Ok(v) => {
+                mapa::guardar_elementos(&a, &v);
+                Ok(v.to_string())
+            }
+            Err(_) => Ok(mapa::elementos_guardados(&a).to_string()),
+        }
+    }
+
+    /// GeoJSON del rastro de la misión en curso (desde el almacén local).
+    pub fn rastro_mision(&self) -> Result<String, ErrorKepler> {
+        let a = self.almacen()?;
+        Ok(match campo::mision(&a) {
+            Some(m) => mapa::rastro(&a, &m.id),
+            None => serde_json::json!({ "type": "FeatureCollection", "features": [] }),
+        }
+        .to_string())
     }
 
     /// Bytes de una foto de Storage (`imagen_path`, `avatar_path`).

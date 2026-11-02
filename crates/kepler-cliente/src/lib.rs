@@ -244,22 +244,37 @@ impl Cliente {
         use tokio::io::AsyncWriteExt;
         self.renovar_si_toca().await?;
         let token = self.token().await?;
-        let mut r = self
+        let parcial = destino.with_extension("part");
+        let io = |e: std::io::Error| Error::Servidor(format!("{}: {e}", parcial.display()));
+        // Reanuda una descarga cortada (el servidor admite Range)
+        let previo = tokio::fs::metadata(&parcial)
+            .await
+            .map(|m| m.len())
+            .unwrap_or(0);
+        let mut peticion = self
             .http
             .get(format!("{}{ruta}", self.base))
             .bearer_auth(token)
-            .timeout(Duration::from_secs(3600))
-            .send()
-            .await
-            .map_err(red)?;
+            .timeout(Duration::from_secs(3600));
+        if previo > 0 {
+            peticion = peticion.header("range", format!("bytes={previo}-"));
+        }
+        let mut r = peticion.send().await.map_err(red)?;
         if !r.status().is_success() {
             return Err(Error::Servidor(r.status().to_string()));
         }
-        let total = r.content_length().unwrap_or(0);
-        let parcial = destino.with_extension("part");
-        let io = |e: std::io::Error| Error::Servidor(format!("{}: {e}", parcial.display()));
-        let mut archivo = tokio::fs::File::create(&parcial).await.map_err(io)?;
-        let mut hecho = 0u64;
+        let reanuda = r.status() == StatusCode::PARTIAL_CONTENT;
+        let mut hecho = if reanuda { previo } else { 0 };
+        let total = hecho + r.content_length().unwrap_or(0);
+        let mut archivo = if reanuda {
+            tokio::fs::OpenOptions::new()
+                .append(true)
+                .open(&parcial)
+                .await
+                .map_err(io)?
+        } else {
+            tokio::fs::File::create(&parcial).await.map_err(io)?
+        };
         while let Some(trozo) = r.chunk().await.map_err(red)? {
             archivo.write_all(&trozo).await.map_err(io)?;
             hecho += trozo.len() as u64;

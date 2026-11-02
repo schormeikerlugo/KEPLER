@@ -13,6 +13,10 @@ settings:
     MARKETING_VERSION: "0.8.0"
     CURRENT_PROJECT_VERSION: "1"
     TARGETED_DEVICE_FAMILY: "1"
+packages:
+  MapLibre:
+    url: https://github.com/maplibre/maplibre-gl-native-distribution
+    exactVersion: 6.31.0
 targets:
   Kepler:
     type: application
@@ -34,6 +38,7 @@ targets:
       # Núcleo Rust (scripts/ios.sh nucleo)
       - framework: build/KeplerMovil.xcframework
         embed: false
+      - package: MapLibre
       - sdk: Security.framework
       - sdk: SystemConfiguration.framework
       - sdk: LocalAuthentication.framework
