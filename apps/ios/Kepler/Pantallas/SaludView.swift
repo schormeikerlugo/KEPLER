@@ -255,10 +255,7 @@ private struct TarjetaReloj: View {
                         Text("Registro: Archivos › KEPLER › reloj › \(r.lastPathComponent)")
                             .font(Jura.fuente(11)).foregroundStyle(Tema.Color.textoTenue)
                     }
-                    HStack(spacing: Tema.Espacio.md) {
-                        Button("PROBAR PROTOCOLO") { reloj.probarProtocolo() }.buttonStyle(BotonKepler())
-                        Button("DESCONECTAR") { reloj.desconectar() }.buttonStyle(BotonKepler(principal: false))
-                    }
+                    Button("DESCONECTAR") { reloj.desconectar() }.buttonStyle(BotonKepler(principal: false))
                     ForEach(reloj.lineas.suffix(12), id: \.self) { l in
                         Text(l.dropFirst(11)).font(.system(size: 9, design: .monospaced))
                             .foregroundStyle(Tema.Color.textoTenue).lineLimit(2)

@@ -77,24 +77,6 @@ final class Reloj: NSObject, ObservableObject {
         return nil
     }
 
-    /// Consultas de solo lectura del protocolo JX (característica 34F1).
-    static let consultasJX: [(String, String)] = [
-        ("batería", "01 A4 AA 16"),
-        ("resumen de hoy", "01 C3 AA AA"),
-    ]
-
-    /// Envía las consultas JX de prueba y registra las respuestas.
-    func probarProtocolo() {
-        guard let c = caracteristicas.first(where: { $0.uuid == "34F1" }) else {
-            escribirLinea("SIN 34F1: el reloj no expone el canal JX")
-            return
-        }
-        for (nombre, hex) in Reloj.consultasJX {
-            escribirLinea("PRUEBA \(nombre)")
-            escribir(hex: hex, en: c, conRespuesta: true)
-        }
-    }
-
     func encender() {
         if central == nil {
             central = CBCentralManager(delegate: self, queue: .main)
@@ -109,6 +91,16 @@ final class Reloj: NSObject, ObservableObject {
         // Los que ya tiene conectados el sistema (el reloj con Carbinox Max)
         for p in central.retrieveConnectedPeripherals(withServices: Reloj.serviciosConocidos) {
             anotar(p, rssi: nil, conectado: true, servicios: [])
+        }
+        // Con clave: el reloj de la última vez, aunque ahora no esté conectado
+        // (la conexión queda pendiente y se completa en cuanto vuelve, a tiempo
+        // de ver la autenticación de Carbinox Max)
+        if descifrador != nil, actual == nil,
+           let s = UserDefaults.standard.string(forKey: "kepler.reloj.periferico"), let uuid = UUID(uuidString: s),
+           let p = central.retrievePeripherals(withIdentifiers: [uuid]).first {
+            anotar(p, rssi: nil, conectado: false, servicios: [])
+            if let v = vistos.first(where: { $0.id == uuid }) { conectar(v) }
+            return
         }
         // Con clave: se engancha solo al reloj Carbinox que ya usa el iPhone
         if descifrador != nil, actual == nil,
@@ -273,6 +265,9 @@ extension Reloj: CBCentralManagerDelegate, CBPeripheralDelegate {
     nonisolated func centralManager(_ central: CBCentralManager, didConnect p: CBPeripheral) {
         MainActor.assumeIsolated {
             conectado = vistos.first { $0.id == p.identifier }
+            if descifrador != nil, conectado?.nombre.contains("Carbinox") == true || conectado?.nombre.contains("Edge") == true {
+                UserDefaults.standard.set(p.identifier.uuidString, forKey: "kepler.reloj.periferico")
+            }
             estado = "Conectado · descubriendo servicios"
             escribirLinea("CONECTADO mtu_sin_respuesta=\(p.maximumWriteValueLength(for: .withoutResponse))")
             p.discoverServices(nil)
@@ -292,6 +287,11 @@ extension Reloj: CBCentralManagerDelegate, CBPeripheralDelegate {
             if actual?.identifier == p.identifier {
                 estado = "Desconectado"
                 conectado = nil
+                // Con clave, se vuelve a pedir la conexión: iOS la completa cuando el reloj regresa
+                if descifrador != nil {
+                    estado = "Esperando al reloj…"
+                    central.connect(p)
+                }
             }
         }
     }
