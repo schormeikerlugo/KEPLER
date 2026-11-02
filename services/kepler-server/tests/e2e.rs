@@ -1334,6 +1334,37 @@ async fn punta_a_punta() {
         ajenas.len()
     ));
 
+    // --- misión registrada sin conexión: acciones con la hora del dispositivo
+    let hace = |min: i64| (chrono::Utc::now() - chrono::Duration::minutes(min)).to_rfc3339();
+    let id_off = Uuid::now_v7();
+    let cuerpo_off = json!({ "id": id_off, "titulo": "Sin cobertura", "iniciar": true, "lat": 10.5, "lng": -66.9, "en": hace(120) });
+    let (s, m) = api.post(&yo, "/v1/misiones", cuerpo_off.clone()).await;
+    assert_eq!(s, StatusCode::CREATED, "{m}");
+    let (s, _) = api.post(&yo, "/v1/misiones", cuerpo_off).await;
+    assert_eq!(s, StatusCode::CONFLICT, "reenviar la creación: ya existe");
+    let (s, _) = api
+        .post(
+            &yo,
+            &format!("/v1/misiones/{id_off}/completar"),
+            json!({ "en": (chrono::Utc::now() + chrono::Duration::hours(1)).to_rfc3339() }),
+        )
+        .await;
+    assert_eq!(s, StatusCode::UNPROCESSABLE_ENTITY, "hora en el futuro");
+    let (s, m) = api
+        .post(
+            &yo,
+            &format!("/v1/misiones/{id_off}/completar"),
+            json!({ "en": hace(60) }),
+        )
+        .await;
+    assert_eq!(s, StatusCode::OK, "{m}");
+    let inicio: chrono::DateTime<chrono::Utc> = m["inicio_en"].as_str().unwrap().parse().unwrap();
+    let fin: chrono::DateTime<chrono::Utc> = m["fin_en"].as_str().unwrap().parse().unwrap();
+    assert_eq!((fin - inicio).num_minutes(), 60, "{m}");
+    ok(
+        "misión sin conexión: creación e inicio de hace 2 h, cierre de hace 1 h, reenvío → 409, futuro → 422",
+    );
+
     // --- etiquetas
     let (s, et) = api
         .post(

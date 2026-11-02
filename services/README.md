@@ -34,7 +34,7 @@ Solo el autor edita; los demás suben `confirmaciones` (`vigente` / `no_vigente`
 | GET | `/v1/catalogos` | Taxonomía y categorías de POI |
 | GET / POST | `/v1/misiones` | Listar (`?estado=&limite=`) / crear (`"iniciar": true` = Quick Launch) |
 | GET | `/v1/misiones/{id}` | Detalle |
-| POST | `/v1/misiones/{id}/iniciar` · `/completar` · `/abortar` | Ciclo de vida (409 si la transición no vale o cambió en otro dispositivo) |
+| POST | `/v1/misiones/{id}/iniciar` · `/completar` · `/abortar` | Ciclo de vida (409 si la transición no vale o cambió en otro dispositivo). `en` opcional (también al crear): la hora del dispositivo para acciones guardadas sin conexión (hasta 30 días atrás) |
 | GET / POST | `/v1/misiones/{id}/rastro` | Rastro GPS (lotes de hasta 1000 puntos, idempotente) |
 | GET | `/v1/sync/cambios?desde=&embeddings=` | Cambios desde el cursor (incluye borrados lógicos) |
 | POST | `/v1/sync/subir` | `{ "<tabla>": [filas] }` con resolución de conflictos |

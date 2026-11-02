@@ -78,6 +78,8 @@ pub struct NuevaMision {
     iniciar: bool,
     lat: Option<f64>,
     lng: Option<f64>,
+    /// Cuándo ocurrió en el dispositivo (acciones guardadas sin conexión).
+    en: Option<DateTime<Utc>>,
 }
 
 /// `POST /v1/misiones` — crea una misión (y opcionalmente la inicia).
@@ -86,7 +88,7 @@ pub async fn crear(
     sesion: Sesion,
     Json(n): Json<NuevaMision>,
 ) -> ApiResult<(StatusCode, Json<Mision>)> {
-    let ahora = Utc::now();
+    let ahora = momento(n.en)?;
     let mut m = Mision::nueva(sesion.user_id, ahora);
     if let Some(id) = n.id {
         m.id = id;
@@ -131,6 +133,34 @@ pub async fn crear(
 pub struct Inicio {
     lat: Option<f64>,
     lng: Option<f64>,
+    en: Option<DateTime<Utc>>,
+}
+
+/// Cuerpo opcional de completar/abortar: la hora del dispositivo.
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Momento {
+    en: Option<DateTime<Utc>>,
+}
+
+/// Margen para la hora que manda el dispositivo: hasta 30 días atrás (una
+/// misión larga sin cobertura) y 5 minutos adelante (reloj desajustado).
+const ATRAS_MAX_DIAS: i64 = 30;
+const ADELANTE_MAX_S: i64 = 300;
+
+/// La hora de la acción: la del dispositivo si es razonable, si no, ahora.
+fn momento(en: Option<DateTime<Utc>>) -> ApiResult<DateTime<Utc>> {
+    let ahora = Utc::now();
+    match en {
+        None => Ok(ahora),
+        Some(t) if t > ahora + chrono::Duration::seconds(ADELANTE_MAX_S) => {
+            Err(ApiError::Invalido("en: hora en el futuro".into()))
+        }
+        Some(t) if t < ahora - chrono::Duration::days(ATRAS_MAX_DIAS) => Err(ApiError::Invalido(
+            format!("en: más de {ATRAS_MAX_DIAS} días atrás"),
+        )),
+        Some(t) => Ok(t.min(ahora)),
+    }
 }
 
 /// `POST /v1/misiones/{id}/iniciar`
@@ -141,12 +171,14 @@ pub async fn iniciar(
     cuerpo: Option<Json<Inicio>>,
 ) -> ApiResult<Json<Mision>> {
     let inicio = cuerpo.map(|Json(i)| i).unwrap_or_default();
+    let en = momento(inicio.en)?;
     let coord = coordenada(inicio.lat, inicio.lng)?;
     let clima = instantanea_clima(&estado, coord).await;
     transicion(
         estado,
         sesion,
         id,
+        en,
         TipoEventoMision::Iniciada,
         |m, ahora, _| {
             m.iniciar(ahora, coord)?;
@@ -164,11 +196,14 @@ pub async fn completar(
     State(estado): State<Estado>,
     sesion: Sesion,
     Path(id): Path<Uuid>,
+    cuerpo: Option<Json<Option<Momento>>>,
 ) -> ApiResult<Json<Mision>> {
+    let en = momento(cuerpo.and_then(|Json(m)| m).and_then(|m| m.en))?;
     transicion(
         estado,
         sesion,
         id,
+        en,
         TipoEventoMision::Completada,
         |m, ahora, rastro| m.completar(ahora, &ResumenRastro::calcular(rastro)),
     )
@@ -180,11 +215,14 @@ pub async fn abortar(
     State(estado): State<Estado>,
     sesion: Sesion,
     Path(id): Path<Uuid>,
+    cuerpo: Option<Json<Option<Momento>>>,
 ) -> ApiResult<Json<Mision>> {
+    let en = momento(cuerpo.and_then(|Json(m)| m).and_then(|m| m.en))?;
     transicion(
         estado,
         sesion,
         id,
+        en,
         TipoEventoMision::Abortada,
         |m, ahora, _| m.abortar(ahora),
     )
@@ -195,6 +233,7 @@ async fn transicion(
     estado: Estado,
     sesion: Sesion,
     id: Uuid,
+    en: DateTime<Utc>,
     evento: TipoEventoMision,
     aplicar: impl FnOnce(&mut Mision, DateTime<Utc>, &[PuntoRastro]) -> kepler_core::Resultado<()>,
 ) -> ApiResult<Json<Mision>> {
@@ -206,7 +245,7 @@ async fn transicion(
     } else {
         Vec::new()
     };
-    aplicar(&mut m, Utc::now(), &rastro)?;
+    aplicar(&mut m, en, &rastro)?;
 
     // Concurrencia optimista: si otro dispositivo la cambió entretanto, 409.
     let cambiadas = sqlx::query(
