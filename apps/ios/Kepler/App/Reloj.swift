@@ -62,6 +62,44 @@ final class Reloj: NSObject, ObservableObject {
     /// Identificador para que iOS restaure el Bluetooth de KEPLER en segundo plano.
     static let restauracion = "dev.schormeiker.kepler.reloj"
 
+    /// La clave de sesión acaba de descifrar un mensaje del reloj (se puede pedirle datos).
+    @Published private(set) var claveValida = false
+    private var ultimaPeticion: Date?
+    private var bucle: Task<Void, Never>?
+    /// Cada cuánto KEPLER pide al reloj su historial de salud.
+    static let intervaloPeticion: TimeInterval = 10 * 60
+
+    /// KEPLER pide los datos al reloj por su cuenta (solo lectura). Activado por defecto.
+    static var pedir: Bool {
+        get { UserDefaults.standard.object(forKey: "kepler.reloj.pedir") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "kepler.reloj.pedir") }
+    }
+
+    /// Pide al reloj su historial de pulso, SpO2, estrés, ánimo, pasos y sueño.
+    /// Solo con una clave de sesión que ya ha funcionado: si no, no se envía nada.
+    func pedirDatos() {
+        guard claveValida, let descifrador, let p = actual, p.state == .connected,
+              let escritura = p.services?.first(where: { $0.uuid.uuidString == "FFF0" })?
+                  .characteristics?.first(where: { $0.uuid.uuidString == "FFF2" }) else { return }
+        if let u = ultimaPeticion, Date().timeIntervalSince(u) < 10 { return }
+        ultimaPeticion = Date()
+        let peticiones = descifrador.peticionesSalud()
+        escribirLinea("PEDIR \(peticiones.count) consultas de historial")
+        Task {
+            for d in peticiones {
+                p.writeValue(Data(d), for: escritura, type: .withResponse)
+                try? await Task.sleep(for: .milliseconds(400))
+            }
+        }
+    }
+
+    /// Pide si toca (al llegar mensajes del reloj, también en segundo plano).
+    private func pedirSiToca() {
+        guard Reloj.pedir else { return }
+        if let u = ultimaPeticion, Date().timeIntervalSince(u) < Reloj.intervaloPeticion { return }
+        pedirDatos()
+    }
+
     private func entregarPendientes() {
         guard !pendientes.isEmpty, let alMuestras, alMuestras(pendientes) else { return }
         guardadas += pendientes.count
@@ -81,6 +119,14 @@ final class Reloj: NSObject, ObservableObject {
         guard descifrador != nil else { return }
         escuchando = true
         Reloj.siempre = true
+        if bucle == nil {
+            bucle = Task { [weak self] in
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(60))
+                    self?.pedirSiToca()
+                }
+            }
+        }
         situacion = descifrador?.claveSesion() == nil
             ? "Esperando la autenticación del reloj: cierra Carbinox Max del todo y vuelve a abrirla"
             : "Escuchando con la clave de sesión guardada"
@@ -90,6 +136,8 @@ final class Reloj: NSObject, ObservableObject {
     func parar() {
         escuchando = false
         Reloj.siempre = false
+        bucle?.cancel()
+        bucle = nil
         desconectar()
         situacion = ""
     }
@@ -442,10 +490,12 @@ extension Reloj {
         let deVinculo = r.habilidad == 0xFFFF && (r.comando == 0x0049 || r.comando == 0x004C)
         if let claro = r.claro {
             descifradas += 1
+            if !deVinculo { claveValida = true }
             situacion = "Leyendo el reloj · \(guardadas) datos guardados"
             escribirLinea("CLARO \(cabecera) \(claro) \(r.descripcion)")
         } else if !r.descripcion.isEmpty {
             escribirLinea("SIN_DESCIFRAR \(cabecera) \(r.descripcion)")
+            claveValida = false
             situacion = deVinculo
                 ? "Clave del reloj antigua: actualízala en Ajustes › Reloj Carbinox"
                 : (descifrador.claveSesion() == nil
@@ -455,7 +505,11 @@ extension Reloj {
         if r.sesionNueva {
             ClavesReloj.sesion = descifrador.claveSesion()
             situacion = "Clave de sesión obtenida: descifrando"
+            // Se confirma con el siguiente mensaje del reloj; entonces se piden los datos
+            claveValida = false
+            ultimaPeticion = nil
         }
+        pedirSiToca()
         guard !r.muestras.isEmpty else { return }
         for m in r.muestras { ultimos[m.tipo] = m.valor }
         if let p = ultimos["pulso"] { pulso = Int(p) }

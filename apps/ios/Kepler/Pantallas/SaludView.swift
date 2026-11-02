@@ -255,6 +255,15 @@ private struct TarjetaReloj: View {
                         Text("Sin cuenta Carbinox: Ajustes › Reloj Carbinox para descifrar los datos.")
                             .font(Jura.fuente(11)).foregroundStyle(Tema.Color.aviso)
                     }
+                    if reloj.tieneClave {
+                        Button("PEDIR DATOS AHORA") { reloj.pedirDatos() }
+                            .buttonStyle(BotonKepler())
+                            .disabled(!reloj.claveValida)
+                        Text(reloj.claveValida
+                             ? "KEPLER pide los datos al reloj cada 10 min, sin abrir Carbinox Max."
+                             : "Para pedir datos hace falta la clave de sesión: si no llega, abre Carbinox Max una vez.")
+                            .font(Jura.fuente(11)).foregroundStyle(Tema.Color.textoTenue)
+                    }
                     Button("PARAR") { reloj.parar() }.buttonStyle(BotonKepler(principal: false))
                     DisclosureGroup {
                         VStack(alignment: .leading, spacing: 4) {

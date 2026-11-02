@@ -5,8 +5,9 @@
 //! (big-endian) con los datos cifrados en AES-128-CBC (IV fijo, PKCS7) y un
 //! CRC32 little-endian al final. La clave del vínculo (`transferKey1`) viene
 //! de la cuenta Carbinox; con ella se descifra el aleatorio que el reloj manda
-//! al autenticarse (`FFFF/004C`) y se deriva la clave de la sesión. KEPLER solo
-//! escucha: no envía nada al reloj y Carbinox Max sigue funcionando igual.
+//! al autenticarse (`FFFF/004C`) y se deriva la clave de la sesión. KEPLER no
+//! se vincula ni se autentica (eso lo hace Carbinox Max); con la clave de sesión
+//! solo envía consultas de lectura del historial de salud (`peticiones_salud`).
 //! Protocolo completo en Obsidian: KEPLER/Reloj/Protocolo BLE Carbinox Edge.
 
 use std::sync::{Arc, Mutex};
@@ -37,7 +38,35 @@ const RESUMEN_DIARIO: u16 = 0xA0B8;
 const RECIENTE_PULSO: u16 = 0xA0B9;
 const RECIENTE_OXIGENO: u16 = 0xA0BA;
 const RECIENTE_ESTRES: u16 = 0xA0BB;
+const RECIENTE_ANIMO: u16 = 0xA0BC;
 const NTY: u16 = 0x0008;
+/// Consultas «valor reciente» de la app al reloj (A2D; el reloj responde con `A0xx`).
+const PEDIR_RESUMEN: u16 = 0x90B8;
+const PEDIR_PULSO: u16 = 0x90B9;
+const PEDIR_OXIGENO: u16 = 0x90BA;
+const PEDIR_ESTRES: u16 = 0x90BB;
+const PEDIR_ANIMO: u16 = 0x90BC;
+
+type Cifrador = cbc::Encryptor<aes::Aes128>;
+
+/// Trama app → reloj: `datos ‖ CRC32 LE`, cifrado AES-128-CBC PKCS7 con la clave de sesión.
+pub fn peticion(habilidad: u16, comando: u16, datos: &[u8], clave: &[u8; 16]) -> Vec<u8> {
+    use aes::cipher::BlockEncryptMut;
+    let mut claro = datos.to_vec();
+    claro.extend(crc32fast::hash(datos).to_le_bytes());
+    let n = claro.len();
+    claro.resize(n + 16 - n % 16, 0);
+    let cifrado = Cifrador::new(clave.into(), &IV.into())
+        .encrypt_padded_mut::<Pkcs7>(&mut claro, n)
+        .map(<[u8]>::to_vec)
+        .unwrap_or_default();
+    let mut t = vec![INICIO, 0, 1, 0, 1];
+    t.extend(habilidad.to_be_bytes());
+    t.extend(comando.to_be_bytes());
+    t.extend((cifrado.len() as u16).to_be_bytes());
+    t.extend(cifrado);
+    t
+}
 
 /// Marcas de tiempo aceptadas (2024 … 2040): fuera de eso el dato no es fiable.
 const TS_MIN: u32 = 1_704_067_200;
@@ -210,6 +239,12 @@ pub fn interpretar(habilidad: u16, comando: u16, d: &[u8]) -> (Vec<MuestraBio>, 
             RECIENTE_PULSO => reciente("pulso", "lpm", 25..=240, d),
             RECIENTE_OXIGENO => reciente("spo2", "%", 70..=100, d),
             RECIENTE_ESTRES => reciente("estres", "nivel", 0..=100, d),
+            // Como en las notificaciones de ánimo: la app guarda 3 − valor
+            RECIENTE_ANIMO => {
+                let (mut m, texto) = reciente("animo_reloj", "nivel", 0..=3, d);
+                m.iter_mut().for_each(|x| x.valor = 3.0 - x.valor);
+                (m, texto)
+            }
             RESUMEN_DIARIO if d.len() >= 17 => {
                 let (ts, pasos, metros, kcal) =
                     (u32_le(d, 1), u32_le(d, 5), u32_le(d, 9), u16_le(d, 13));
@@ -374,6 +409,26 @@ impl RelojCarbinox {
         self.claves.lock().expect("reloj").sesion.map(hex::encode)
     }
 
+    /// Peticiones de solo lectura para escribir en `FFF2`: el último pulso,
+    /// SpO2, estrés, ánimo y el resumen del día, como las que Carbinox Max hace
+    /// cada 5 min. No se pide el historial (`GET`): el reloj lo entrega una sola
+    /// vez y se lo quitaría a Carbinox Max. Vacío sin clave de sesión.
+    pub fn peticiones_salud(&self) -> Vec<Vec<u8>> {
+        let Some(sesion) = self.claves.lock().expect("reloj").sesion else {
+            return Vec::new();
+        };
+        [
+            PEDIR_PULSO,
+            PEDIR_OXIGENO,
+            PEDIR_ESTRES,
+            PEDIR_ANIMO,
+            PEDIR_RESUMEN,
+        ]
+        .into_iter()
+        .map(|c| peticion(COMUN, c, &[0], &sesion))
+        .collect()
+    }
+
     pub fn recibir(&self, datos: Vec<u8>) -> Option<ReporteReloj> {
         let t = leer_trama(&datos)?;
         let mut claves = self.claves.lock().expect("reloj");
@@ -524,29 +579,27 @@ pub async fn carbinox_relojes(
 
 #[cfg(test)]
 mod tests {
-    use aes::cipher::BlockEncryptMut;
-
     use super::*;
 
-    type Cifrador = cbc::Encryptor<aes::Aes128>;
-
-    /// Trama como la del reloj: datos ‖ CRC32 LE, AES-CBC PKCS7.
+    /// El reloj cifra igual que la app: datos ‖ CRC32 LE, AES-CBC PKCS7.
     fn trama(habilidad: u16, comando: u16, datos: &[u8], clave: &[u8; 16]) -> Vec<u8> {
-        let mut claro = datos.to_vec();
-        claro.extend(crc32fast::hash(datos).to_le_bytes());
-        let n = claro.len();
-        let mut buf = claro.clone();
-        buf.resize(n + 16 - n % 16, 0);
-        let cifrado = Cifrador::new(clave.into(), &IV.into())
-            .encrypt_padded_mut::<Pkcs7>(&mut buf, n)
-            .unwrap()
-            .to_vec();
-        let mut t = vec![INICIO, 0, 1, 0, 1];
-        t.extend(habilidad.to_be_bytes());
-        t.extend(comando.to_be_bytes());
-        t.extend((cifrado.len() as u16).to_be_bytes());
-        t.extend(cifrado);
-        t
+        peticion(habilidad, comando, datos, clave)
+    }
+
+    #[test]
+    fn peticiones_de_historial() {
+        let sin = RelojCarbinox::new(hex::encode([7u8; 16]), None).unwrap();
+        assert!(sin.peticiones_salud().is_empty());
+        let sesion = [9u8; 16];
+        let reloj = RelojCarbinox::new(hex::encode([7u8; 16]), Some(hex::encode(sesion))).unwrap();
+        let p = reloj.peticiones_salud();
+        assert_eq!(p.len(), 5);
+        let t = leer_trama(&p[0]).unwrap();
+        assert_eq!(
+            (t.habilidad, t.comando, t.datos.len()),
+            (COMUN, PEDIR_PULSO, 16)
+        );
+        assert_eq!(descifrar(&t.datos, &sesion), Some(vec![0]));
     }
 
     #[test]
