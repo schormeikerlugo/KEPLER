@@ -49,6 +49,27 @@ final class Reloj: NSObject, ObservableObject {
     /// ¿Hay clave del reloj (cuenta Carbinox vinculada en Ajustes)?
     var tieneClave: Bool { descifrador != nil }
 
+    /// El explorador pulsó «Escuchar reloj»: solo entonces se conecta (y se
+    /// reconecta) al reloj. Nunca se escribe nada en él.
+    @Published private(set) var escuchando = false
+    /// Situación del descifrado, para mostrarla en pantalla.
+    @Published private(set) var situacion = ""
+
+    func escuchar() {
+        guard descifrador != nil else { return }
+        escuchando = true
+        situacion = descifrador?.claveSesion() == nil
+            ? "Esperando la autenticación del reloj: apaga y enciende el Bluetooth y abre Carbinox Max"
+            : "Escuchando con la clave de sesión guardada"
+        encender()
+    }
+
+    func parar() {
+        escuchando = false
+        desconectar()
+        situacion = ""
+    }
+
     /// Carga las claves del Llavero (tras vincular la cuenta Carbinox).
     func cargarClaves() {
         descifrador = ClavesReloj.vinculo.flatMap { try? RelojCarbinox(claveVinculo: $0, claveSesion: ClavesReloj.sesion) }
@@ -95,7 +116,7 @@ final class Reloj: NSObject, ObservableObject {
         // Con clave: el reloj de la última vez, aunque ahora no esté conectado
         // (la conexión queda pendiente y se completa en cuanto vuelve, a tiempo
         // de ver la autenticación de Carbinox Max)
-        if descifrador != nil, actual == nil,
+        if escuchando, descifrador != nil, actual == nil,
            let s = UserDefaults.standard.string(forKey: "kepler.reloj.periferico"), let uuid = UUID(uuidString: s),
            let p = central.retrievePeripherals(withIdentifiers: [uuid]).first {
             anotar(p, rssi: nil, conectado: false, servicios: [])
@@ -103,7 +124,7 @@ final class Reloj: NSObject, ObservableObject {
             return
         }
         // Con clave: se engancha solo al reloj Carbinox que ya usa el iPhone
-        if descifrador != nil, actual == nil,
+        if escuchando, descifrador != nil, actual == nil,
            let v = vistos.first(where: { $0.conectado && ($0.nombre.contains("Carbinox") || $0.nombre.contains("Edge")) }) {
             conectar(v)
             return
@@ -288,7 +309,7 @@ extension Reloj: CBCentralManagerDelegate, CBPeripheralDelegate {
                 estado = "Desconectado"
                 conectado = nil
                 // Con clave, se vuelve a pedir la conexión: iOS la completa cuando el reloj regresa
-                if descifrador != nil {
+                if escuchando {
                     estado = "Esperando al reloj…"
                     central.connect(p)
                 }
@@ -373,13 +394,23 @@ extension Reloj {
     fileprivate func descifrar(_ datos: Data) {
         guard let descifrador, let r = descifrador.recibir(datos: datos) else { return }
         let cabecera = String(format: "%04X/%04X", r.habilidad, r.comando)
+        let deVinculo = r.habilidad == 0xFFFF && (r.comando == 0x0049 || r.comando == 0x004C)
         if let claro = r.claro {
             descifradas += 1
+            situacion = "Descifrando"
             escribirLinea("CLARO \(cabecera) \(claro) \(r.descripcion)")
         } else if !r.descripcion.isEmpty {
             escribirLinea("SIN_DESCIFRAR \(cabecera) \(r.descripcion)")
+            situacion = deVinculo
+                ? "Clave del reloj antigua: actualízala en Ajustes › Reloj Carbinox"
+                : (descifrador.claveSesion() == nil
+                    ? "Esperando la autenticación del reloj: apaga y enciende el Bluetooth y abre Carbinox Max"
+                    : "La clave de sesión ya no vale: espera la próxima reconexión del reloj")
         }
-        if r.sesionNueva { ClavesReloj.sesion = descifrador.claveSesion() }
+        if r.sesionNueva {
+            ClavesReloj.sesion = descifrador.claveSesion()
+            situacion = "Clave de sesión obtenida: descifrando"
+        }
         guard !r.muestras.isEmpty else { return }
         for m in r.muestras { ultimos[m.tipo] = m.valor }
         if let p = ultimos["pulso"] { pulso = Int(p) }

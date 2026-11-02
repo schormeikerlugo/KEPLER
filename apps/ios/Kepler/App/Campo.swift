@@ -59,12 +59,12 @@ extension Sesion {
         if antes != nil, mision == nil { dejarDeSeguir() }
     }
 
-    /// Con la cuenta Carbinox vinculada, escucha el reloj y guarda lo que manda.
+    /// Con la cuenta Carbinox vinculada, prepara el reloj para guardar lo que manda.
     func conectarReloj() {
         let n = nucleo
         reloj.alMuestras = { _ = try? n.biometriaGuardar(muestras: $0) }
+        // Solo carga las claves: se escucha al reloj cuando el explorador lo pide
         reloj.cargarClaves()
-        if reloj.tieneClave { reloj.encender() }
     }
 
     /// Muestras nuevas de Apple Salud al almacén (cada 5 min o si `ya`).

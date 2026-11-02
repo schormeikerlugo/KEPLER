@@ -224,6 +224,15 @@ private struct TarjetaReloj: View {
                     Spacer()
                     Pastilla(texto: reloj.estado, tono: reloj.conectado != nil ? Tema.Color.exito : Tema.Color.acento)
                 }
+                if !reloj.situacion.isEmpty {
+                    Text(reloj.situacion).font(Jura.fuente(Tema.Tamano.pequeno)).foregroundStyle(Tema.Color.acento)
+                }
+                if reloj.tieneClave && reloj.conectado == nil {
+                    Button(reloj.escuchando ? "PARAR" : "ESCUCHAR RELOJ") {
+                        if reloj.escuchando { reloj.parar() } else { reloj.escuchar() }
+                    }
+                    .buttonStyle(BotonKepler(principal: !reloj.escuchando))
+                }
                 if let c = reloj.conectado {
                     Text(c.nombre).font(Jura.fuente(Tema.Tamano.tituloTarjeta, .semibold)).foregroundStyle(Tema.Color.texto)
                     HStack(spacing: Tema.Espacio.lg) {
@@ -255,12 +264,12 @@ private struct TarjetaReloj: View {
                         Text("Registro: Archivos › KEPLER › reloj › \(r.lastPathComponent)")
                             .font(Jura.fuente(11)).foregroundStyle(Tema.Color.textoTenue)
                     }
-                    Button("DESCONECTAR") { reloj.desconectar() }.buttonStyle(BotonKepler(principal: false))
+                    Button("PARAR") { reloj.parar() }.buttonStyle(BotonKepler(principal: false))
                     ForEach(reloj.lineas.suffix(12), id: \.self) { l in
                         Text(l.dropFirst(11)).font(.system(size: 9, design: .monospaced))
                             .foregroundStyle(Tema.Color.textoTenue).lineLimit(2)
                     }
-                } else {
+                } else if !reloj.tieneClave {
                     ForEach(reloj.vistos.prefix(25)) { v in
                         Button { reloj.conectar(v) } label: {
                             HStack {

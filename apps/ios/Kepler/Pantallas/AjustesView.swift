@@ -78,15 +78,21 @@ private struct TarjetaCarbinox: View {
     @State private var mensaje: String?
     @State private var mac = ClavesReloj.mac
     @State private var vinculado = ClavesReloj.vinculo != nil
+    /// Pidiendo de nuevo la clave (el reloj se volvió a vincular en Carbinox Max).
+    @State private var actualizando = false
 
     var body: some View {
         Tarjeta {
             VStack(alignment: .leading, spacing: Tema.Espacio.md) {
                 Etiqueta(texto: "Reloj Carbinox")
-                if vinculado {
+                if vinculado && !actualizando {
                     Text("Reloj vinculado\(mac.map { " · \($0)" } ?? "")")
                         .font(Jura.fuente(Tema.Tamano.cuerpo)).foregroundStyle(Tema.Color.exito)
                     Text("KEPLER descifra lo que el reloj envía a Carbinox Max, sin interferir.")
+                        .font(Jura.fuente(Tema.Tamano.pequeno)).foregroundStyle(Tema.Color.textoTenue)
+                    Button("ACTUALIZAR CLAVE") { actualizando = true; mensaje = nil }
+                        .buttonStyle(BotonKepler())
+                    Text("Hazlo si volviste a vincular el reloj en Carbinox Max.")
                         .font(Jura.fuente(Tema.Tamano.pequeno)).foregroundStyle(Tema.Color.textoTenue)
                     Button("OLVIDAR RELOJ") {
                         ClavesReloj.olvidar()
@@ -104,6 +110,11 @@ private struct TarjetaCarbinox: View {
                         .disabled(ocupada || correo.isEmpty || contrasena.isEmpty)
                     Text("La contraseña solo se envía a Carbinox (api.amazwear.com) y no se guarda.")
                         .font(Jura.fuente(Tema.Tamano.pequeno)).foregroundStyle(Tema.Color.textoTenue)
+                    Text("Aviso: esto puede cerrar la sesión de Carbinox Max. Vuelve a entrar en ella después; el reloj no se desvincula.")
+                        .font(Jura.fuente(Tema.Tamano.pequeno)).foregroundStyle(Tema.Color.aviso)
+                    if actualizando {
+                        Button("CANCELAR") { actualizando = false }.buttonStyle(BotonKepler(principal: false))
+                    }
                 }
                 if let mensaje {
                     Text(mensaje).font(Jura.fuente(Tema.Tamano.pequeno)).foregroundStyle(Tema.Color.aviso)
@@ -123,12 +134,15 @@ private struct TarjetaCarbinox: View {
                     : "La cuenta no guarda la clave del reloj (\(relojes.count) reloj/es)."
                 return
             }
+            let misma = ClavesReloj.vinculo == r.claveVinculo
             ClavesReloj.vinculo = r.claveVinculo
             ClavesReloj.sesion = nil
             ClavesReloj.mac = r.mac
             mac = r.mac
             vinculado = true
-            mensaje = "Listo. Para obtener la clave de sesión, cierra y abre Carbinox Max con KEPLER abierto."
+            actualizando = false
+            mensaje = (misma ? "La clave no ha cambiado. " : "Clave nueva guardada. ")
+                + "Ahora entra en Carbinox Max si te lo pide, comprueba que sincroniza y luego usa ESCUCHAR RELOJ en Base › Salud y reloj."
             sesion.conectarReloj()
         } catch {
             mensaje = Sesion.mensaje(error)
