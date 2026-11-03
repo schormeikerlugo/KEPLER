@@ -38,16 +38,6 @@ DerivedData/
 *.log
 
 # ── Legacy v0.7 (congelado) ──
-legacy/**/node_modules/
-legacy/**/venv/
-legacy/**/__pycache__/
-legacy/**/*.py[cod]
-legacy/**/*.egg-info/
-legacy/**/dist/
-legacy/**/build/
-legacy/**/.vite/
-legacy/.docker-data/
-legacy/apps/desktop/src-tauri/target/
 supabase-docker/
 ollama_data/
 uploads/
@@ -60,3 +50,6 @@ apps/ios/Kepler/Nucleo/kepler_movil.swift
 
 # Paquetes del escritorio (scripts/empaquetar-escritorio.sh)
 /dist/
+
+# v0.7 (JS/Python): fuera del repositorio, solo en local como referencia (tag v0.7.0-legacy)
+/legacy/

@@ -3,7 +3,8 @@
 Modelos de IA exportados para cada plataforma. Los `.onnx` no se versionan; se generan con el script de exportación (Python solo como herramienta, nunca en producción).
 
 ```bash
-legacy/backend/venv/bin/python models/export/exportar.py --yolo yolo26s.pt
+# En un entorno de Python con ultralytics, torch, onnx y open_clip instalados
+python models/export/exportar.py --yolo yolo26s.pt
 ```
 
 | Archivo (`models/onnx/`) | Contenido |
