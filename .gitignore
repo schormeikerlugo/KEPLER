@@ -57,3 +57,6 @@ temp/
 apps/ios/build/
 apps/ios/Kepler.xcodeproj/
 apps/ios/Kepler/Nucleo/kepler_movil.swift
+
+# Paquetes del escritorio (scripts/empaquetar-escritorio.sh)
+/dist/
