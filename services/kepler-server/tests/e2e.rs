@@ -14,8 +14,8 @@ use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
 use kepler_proto::v1::{
-    Caja, Deteccion, Detecciones, Fotograma, Hola, MuestraGps, OrigenDeteccion, Suscripcion,
-    TipoCliente, TipoEventoMision,
+    Caja, CodigoError, Deteccion, Detecciones, Fotograma, Hola, MuestraGps, OrigenDeteccion,
+    Renovar, Suscripcion, TipoCliente, TipoEventoMision,
 };
 use kepler_proto::{Contenido, Emisor, Envoltura, codificar, decodificar, uuid_a_bytes};
 use reqwest::{Client, StatusCode};
@@ -27,6 +27,26 @@ use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 use uuid::Uuid;
 
 type Ws = WebSocketStream<MaybeTlsStream<TcpStream>>;
+
+/// El mismo usuario que `token`, firmado con el secreto del stack, caducado hace `hace_s`.
+fn token_caducado(token: &str, hace_s: i64) -> String {
+    use base64::Engine;
+    let cuerpo = token.split('.').nth(1).unwrap();
+    let claims: Value = serde_json::from_slice(
+        &base64::engine::general_purpose::URL_SAFE_NO_PAD
+            .decode(cuerpo)
+            .unwrap(),
+    )
+    .unwrap();
+    let nuevos = json!({ "sub": claims["sub"], "role": "authenticated", "aud": "authenticated",
+                         "exp": chrono::Utc::now().timestamp() - hace_s });
+    jsonwebtoken::encode(
+        &jsonwebtoken::Header::default(),
+        &nuevos,
+        &jsonwebtoken::EncodingKey::from_secret(var("KEPLER_E2E_JWT_SECRET").as_bytes()),
+    )
+    .unwrap()
+}
 
 fn var(k: &str) -> String {
     std::env::var(k).unwrap_or_else(|_| panic!("falta {k}"))
@@ -229,6 +249,50 @@ async fn punta_a_punta() {
     let (mut cc, _) = conectar_ws(&yo, TipoCliente::CentroControl, &mut e_cc).await;
     let (mut campo, sesion_campo) = conectar_ws(&yo, TipoCliente::UnidadCampo, &mut e_campo).await;
     let (mut ajeno, _) = conectar_ws(&otro, TipoCliente::CentroControl, &mut e_ajeno).await;
+
+    // Caducidad del JWT en el socket: Renovar con un token del mismo usuario se
+    // acepta, de otro no; sin renovar, el servidor avisa y cierra
+    let ack = enviar(
+        &mut cc,
+        &mut e_cc,
+        Renovar {
+            jwt: yo.token.clone(),
+        },
+    )
+    .await;
+    assert!(
+        matches!(recibir(&mut cc).await.and_then(|e| e.contenido), Some(Contenido::Ack(a)) if a.secuencia == ack)
+    );
+    enviar(
+        &mut cc,
+        &mut e_cc,
+        Renovar {
+            jwt: otro.token.clone(),
+        },
+    )
+    .await;
+    let Some(Contenido::Error(e)) = recibir(&mut cc).await.and_then(|e| e.contenido) else {
+        panic!("Renovar con el token de otro usuario debía fallar")
+    };
+    assert_eq!(e.codigo(), CodigoError::NoAutorizado);
+    // Caducado hace 25 s (dentro del margen de 30 s): entra, y a los ~5 s se cierra
+    let casi = Cuenta {
+        token: token_caducado(&yo.token, 25),
+        refresh: String::new(),
+    };
+    let mut e_casi = Emisor::default();
+    let (mut ws_casi, _) = conectar_ws(&casi, TipoCliente::CentroControl, &mut e_casi).await;
+    let mut cerrado = None;
+    for _ in 0..4 {
+        if let Some(Contenido::Error(e)) = recibir(&mut ws_casi).await.and_then(|e| e.contenido) {
+            cerrado = Some(e.codigo());
+            break;
+        }
+    }
+    assert_eq!(cerrado, Some(CodigoError::TokenCaducado));
+    ok(
+        "en vivo: Renovar del mismo usuario aceptado, de otro rechazado; token caducado → aviso y cierre",
+    );
     enviar(
         &mut cc,
         &mut e_cc,

@@ -36,6 +36,7 @@ message Envoltura {
     Pong pong = 21;
     Suscripcion suscripcion = 22;
     ReporteCompartido reporte = 23;
+    Renovar renovar = 24;
   }
 }
 
@@ -83,6 +84,13 @@ message Pong {
   uint64 nonce = 1;
 }
 
+// Cliente → servidor: JWT nuevo del mismo usuario antes de que caduque el
+// actual. El servidor responde con Ack; si el token caduca sin renovarse,
+// envía Error(TOKEN_CADUCADO) y cierra.
+message Renovar {
+  string jwt = 1;
+}
+
 message Ack {
   uint64 secuencia = 1;
 }
@@ -95,6 +103,7 @@ enum CodigoError {
   CODIGO_ERROR_DEMASIADO_GRANDE = 4;
   CODIGO_ERROR_LIMITE_EXCEDIDO = 5;
   CODIGO_ERROR_INTERNO = 6;
+  CODIGO_ERROR_TOKEN_CADUCADO = 7;
 }
 
 message Error {

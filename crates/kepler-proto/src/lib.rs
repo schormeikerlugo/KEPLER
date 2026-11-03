@@ -98,6 +98,7 @@ en_contenido! {
     Detecciones => Detecciones,
     CapturaProcesada => Captura,
     EventoMision => Mision,
+    Renovar => Renovar,
     Ack => Ack,
     Error => Error,
     Ping => Ping,

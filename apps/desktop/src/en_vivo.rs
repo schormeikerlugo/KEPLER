@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
-use kepler_proto::v1::{Hola, Ping, Suscripcion, TipoCliente};
+use kepler_proto::v1::{Hola, Ping, Renovar, Suscripcion, TipoCliente};
 use kepler_proto::{Contenido, Emisor, bytes_a_uuid, codificar, decodificar};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::watch;
@@ -21,6 +21,8 @@ const CADA_PING: Duration = Duration::from_secs(20);
 /// Sin recibir nada (ni el Pong) en este tiempo, la conexión se da por muerta.
 const SILENCIO_MAX: Duration = Duration::from_secs(50);
 const ESPERA_MAX: Duration = Duration::from_secs(30);
+/// Cada cuánto se comprueba si el cliente renovó el JWT (y se manda al servidor).
+const CADA_RENOVAR: Duration = Duration::from_secs(60);
 
 #[derive(Debug)]
 pub enum Evento {
@@ -62,7 +64,7 @@ async fn conectar(
     eventos: &UnboundedSender<Evento>,
     fotogramas: &mut watch::Receiver<bool>,
 ) -> Result<(), String> {
-    let token = cliente.token_vigente().await.map_err(|e| e.to_string())?;
+    let mut token = cliente.token_vigente().await.map_err(|e| e.to_string())?;
     let url = format!("{}/v1/en-vivo", cliente.base().replacen("http", "ws", 1));
     let mut req = url.into_client_request().map_err(|e| e.to_string())?;
     req.headers_mut().insert(
@@ -93,6 +95,7 @@ async fn conectar(
         .map_err(|e| e.to_string())?;
 
     let mut ping = tokio::time::interval(CADA_PING);
+    let mut renovar = tokio::time::interval(CADA_RENOVAR);
     let mut nonce = 0u64;
     let mut bienvenida = false;
     loop {
@@ -102,6 +105,14 @@ async fn conectar(
                 let s = Suscripcion { sesion_id: Vec::new(), fotogramas: *fotogramas.borrow_and_update() };
                 let e = emisor.envolver(s, ahora());
                 salida.send(Message::Binary(codificar(&e).into())).await.map_err(|e| e.to_string())?;
+            }
+            // El servidor cierra el socket cuando caduca el JWT: se le manda el nuevo antes
+            _ = renovar.tick(), if bienvenida => {
+                if let Ok(nuevo) = cliente.token_vigente().await && nuevo != token {
+                    let e = emisor.envolver(Renovar { jwt: nuevo.clone() }, ahora());
+                    salida.send(Message::Binary(codificar(&e).into())).await.map_err(|e| e.to_string())?;
+                    token = nuevo;
+                }
             }
             _ = ping.tick() => {
                 nonce += 1;

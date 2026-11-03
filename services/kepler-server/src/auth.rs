@@ -14,6 +14,7 @@ use crate::estado::Estado;
 struct Claims {
     sub: Uuid,
     role: String,
+    exp: i64,
 }
 
 /// Usuario autenticado de la petición.
@@ -24,6 +25,8 @@ pub struct Sesion {
     pub claims_json: String,
     /// JWT original, para actuar como el usuario ante Storage.
     pub token: String,
+    /// Caducidad del JWT (segundos Unix): el WebSocket en vivo la vigila.
+    pub expira: i64,
 }
 
 #[derive(Clone)]
@@ -56,6 +59,7 @@ impl Verificador {
             user_id: claims.sub,
             claims_json: datos.claims.to_string(),
             token: token.to_owned(),
+            expira: claims.exp,
         })
     }
 }

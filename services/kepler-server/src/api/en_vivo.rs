@@ -37,6 +37,8 @@ use crate::difusor::{Clase, Relevo};
 use crate::estado::Estado;
 
 const ESPERA_HOLA: Duration = Duration::from_secs(10);
+/// Mismo margen que el verificador de JWT.
+const MARGEN_CADUCIDAD_S: i64 = 30;
 /// Confianza mínima de YOLO para pasar al rastreador (ByteTrack usa también las bajas).
 const UMBRAL_DETECCION: f32 = 0.25;
 
@@ -130,7 +132,16 @@ impl Conexion {
 
         let mut relevos = c.estado.difusor.suscribir(c.sesion.user_id);
         loop {
+            // El JWT caduca: sin un Renovar a tiempo, se cierra (con el margen del verificador)
+            let restante =
+                (c.sesion.expira + MARGEN_CADUCIDAD_S - chrono::Utc::now().timestamp()).max(0);
             tokio::select! {
+                () = tokio::time::sleep(Duration::from_secs(restante as u64)) => {
+                    let _ = enviar_error(&mut salida, &mut c.emisor, CodigoError::TokenCaducado,
+                                         "la sesión caducó: reconecta con un token nuevo", 0).await;
+                    tracing::info!(sesion = %c.id, "en vivo: token caducado");
+                    break;
+                }
                 mensaje = entrada.next() => match mensaje {
                     Some(Ok(Message::Binary(bytes))) => {
                         if c.recibir(&mut salida, &bytes).await.is_err() { break; }
@@ -190,6 +201,23 @@ impl Conexion {
 
         match envoltura.contenido.as_ref() {
             Some(Contenido::Ping(p)) => self.enviar(salida, Pong { nonce: p.nonce }).await,
+            // Token nuevo del mismo usuario: la sesión sigue sin reconectar
+            Some(Contenido::Renovar(r)) => match self.estado.verificador.verificar(&r.jwt) {
+                Ok(nueva) if nueva.user_id == self.sesion.user_id => {
+                    self.sesion = nueva;
+                    self.enviar(salida, Ack { secuencia }).await
+                }
+                _ => {
+                    enviar_error(
+                        salida,
+                        &mut self.emisor,
+                        CodigoError::NoAutorizado,
+                        "token de renovación inválido",
+                        secuencia,
+                    )
+                    .await
+                }
+            },
             Some(Contenido::Suscripcion(s)) if !es_campo => {
                 self.seguir = if s.sesion_id.is_empty() {
                     None
