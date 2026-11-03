@@ -14,6 +14,7 @@ mod misiones;
 mod modelos;
 mod panel;
 mod perfil;
+mod salud;
 mod tarjetas;
 mod vista_mapa;
 mod vivo;

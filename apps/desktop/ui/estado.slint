@@ -3,6 +3,13 @@ import { DatoIndicador } from "componentes.slint";
 
 export { DatoIndicador }
 
+// Factor de la Preparación (sueño, pulso en reposo…) con lo que suma o resta
+export struct FactorPrep {
+    texto: string,
+    puntos: string,
+    negativo: bool,
+}
+
 export struct Atencion {
     cantidad: int,
     resaltado: string,
@@ -246,6 +253,18 @@ export global Estado {
     in property <string> semana-linea;
     in property <float> semana-max: 1;
     in property <string> consejo;
+    // Preparación del explorador (F8): puntuación 0-100, nivel alta/media/baja
+    in property <bool> prep-hay;
+    in property <int> prep-puntuacion;
+    in property <string> prep-nivel;
+    in property <string> prep-resumen;
+    in property <[FactorPrep]> prep-factores;
+    in property <string> prep-sueno;
+    in property <string> prep-reposo;
+    in property <string> prep-estres;
+    in property <string> prep-pasos;
+    in property <string> prep-base;
+    in property <string> prep-ultima;
     in property <[FilaObjeto]> objetos-frecuentes;
     in property <string> radar-poligono;
     in property <string> radar-rejilla;

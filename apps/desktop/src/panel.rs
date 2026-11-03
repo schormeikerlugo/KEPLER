@@ -528,6 +528,8 @@ fn vigilar_inactividad(ui: &AppWindow, ctx: &Arc<Contexto>) {
 async fn cargar(c: &Arc<Contexto>) {
     c.ui.upgrade_in_event_loop(|ui| ui.global::<Estado>().set_cargando(true))
         .ok();
+    let c_salud = c.clone();
+    tokio::spawn(async move { crate::salud::cargar(&c_salud).await });
 
     let ubicacion = c.ubicacion().await;
     let posicion = ubicacion
