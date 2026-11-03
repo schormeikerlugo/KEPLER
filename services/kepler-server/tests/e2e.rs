@@ -900,6 +900,8 @@ async fn punta_a_punta() {
             "/v1/capturas",
             json!([
                 captura("persona", json!({ "nombre": "Conductor" })),
+                // Misma persona en el mismo lote: Re-ID con la captura anterior
+                captura("persona", json!({ "nombre": "Persona 20:40" })),
                 captura(
                     "objeto",
                     json!({ "nombre": "Autobús", "clase_yolo": "bus", "confianza": 0.93 })
@@ -914,7 +916,7 @@ async fn punta_a_punta() {
     assert_eq!(s, StatusCode::OK, "{r}");
     assert_eq!(r["vision"], true);
     let procesadas = r["procesadas"].as_array().unwrap();
-    assert_eq!(procesadas.len(), 3, "{}", r["rechazadas"]);
+    assert_eq!(procesadas.len(), 4, "{}", r["rechazadas"]);
     assert!(
         procesadas
             .iter()
@@ -926,7 +928,11 @@ async fn punta_a_punta() {
             .all(|p| p["fila"].get("embedding").is_none())
     );
     let persona_1 = procesadas[0]["id"].clone();
-    let poi_1 = procesadas[2]["id"].clone();
+    let persona_2 = procesadas[1]["id"].clone();
+    assert_eq!(procesadas[1]["reid"]["id"], persona_1, "{r}");
+    assert_eq!(procesadas[1]["fila"]["identidad_id"], persona_1);
+    assert_eq!(procesadas[1]["fila"]["nombre"], "Conductor");
+    let poi_1 = procesadas[3]["id"].clone();
     let mut fotos_capturas: Vec<String> = procesadas
         .iter()
         .map(|p| p["imagen_path"].as_str().unwrap().to_owned())
@@ -942,7 +948,7 @@ async fn punta_a_punta() {
         .await
         .unwrap();
     assert_eq!(foto_guardada.bytes().await.unwrap().len(), foto.len());
-    ok("capturas: persona, objeto y POI guardados con foto en Storage y embedding");
+    ok("capturas: persona, objeto y POI guardados con foto en Storage y embedding; Re-ID dentro del lote");
 
     let (_, r) = api
         .post(
@@ -952,7 +958,7 @@ async fn punta_a_punta() {
         )
         .await;
     let p = &r["procesadas"][0];
-    assert_eq!(p["reid"]["id"], persona_1, "{r}");
+    assert!(p["reid"]["id"] == persona_1 || p["reid"]["id"] == persona_2, "{r}");
     assert!(p["reid"]["similitud"].as_f64().unwrap() > 0.99);
     assert_eq!(p["fila"]["identidad_id"], persona_1);
     assert_eq!(p["fila"]["nombre"], "Conductor");

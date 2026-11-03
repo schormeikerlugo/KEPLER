@@ -139,12 +139,17 @@ pub async fn procesar(
         pendientes = conservar;
     }
 
-    // Re-ID
+    // Re-ID: con lo ya guardado y, si no, con las capturas anteriores del mismo lote
     let mut tx = estado.db.como_usuario(&sesion).await?;
-    for p in &mut pendientes {
-        if let Some(e) = &p.embedding {
-            p.reid = buscar(&mut tx, p.entidad, p.id, e).await?;
+    for i in 0..pendientes.len() {
+        let Some(e) = pendientes[i].embedding.clone() else {
+            continue;
+        };
+        let mut reid = buscar(&mut tx, pendientes[i].entidad, pendientes[i].id, &e).await?;
+        if reid.is_none() {
+            reid = en_el_lote(&pendientes[..i], &pendientes[i], &e);
         }
+        pendientes[i].reid = reid;
     }
     tx.commit().await?;
 
@@ -327,6 +332,31 @@ async fn buscar(
     .await?;
     // Un reenvío de la misma captura se encontraría a sí misma
     Ok(candidatos.into_iter().find(|c| c.id != propio))
+}
+
+/// Coincidencia con una captura anterior del mismo lote (aún no guardada: se
+/// guardan en orden, así que existirá al guardar esta). Un POI que ya era
+/// duplicado no se guarda y no cuenta.
+fn en_el_lote(anteriores: &[Pendiente], p: &Pendiente, e: &[f32]) -> Option<Coincidencia> {
+    anteriores
+        .iter()
+        .filter(|q| q.entidad == p.entidad && q.id != p.id && !es_duplicado(q))
+        .filter_map(|q| {
+            let s = kepler_core::reid::similitud_coseno(e, q.embedding.as_deref()?)?;
+            (s >= UMBRAL_REID).then_some((q, s))
+        })
+        .max_by(|a, b| a.1.total_cmp(&b.1))
+        .map(|(q, s)| Coincidencia {
+            id: q.id,
+            // Si la anterior ya era alguien conocido, esta también
+            nombre: q
+                .reid
+                .as_ref()
+                .map(|c| c.nombre.clone())
+                .or_else(|| q.fila["nombre"].as_str().map(str::to_owned))
+                .unwrap_or_default(),
+            similitud: f64::from(s),
+        })
 }
 
 /// Entrada de bitácora cuando la captura coincide con algo ya registrado.
