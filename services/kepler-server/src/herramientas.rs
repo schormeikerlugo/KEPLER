@@ -73,6 +73,23 @@ pub fn definiciones() -> Vec<Value> {
             } }),
         ),
         herramienta(
+            "preparacion",
+            "Preparación física del explorador HOY (0-100) frente a su propia normalidad: sueño de anoche, \
+             pulso en reposo, estrés, ánimo, SpO2 y carga de las últimas semanas, con el porqué de cada factor; \
+             también sus zonas de pulso. Úsala antes de recomendar una misión o una ruta.",
+            json!({ "type": "object", "properties": {} }),
+        ),
+        herramienta(
+            "rendimiento_mision",
+            "Rendimiento físico en una misión (código o título): distancia, desnivel, velocidad, pulso medio y \
+             máximo, minutos por zona de pulso, carga (TRIMP), SpO2, Preparación al salir y la valoración del \
+             explorador (esfuerzo 1-10). Sin misión: las últimas misiones para comparar.",
+            json!({ "type": "object", "properties": {
+                "mision": { "type": "string", "description": "Código o título (opcional)" },
+                "limite": { "type": "integer", "description": "Sin misión: cuántas (1-20, por defecto 5)" }
+            } }),
+        ),
+        herramienta(
             "clima",
             "Clima actual en unas coordenadas: temperatura, lluvia, viento, UV y la categoría de KEPLER.",
             json!({ "type": "object", "required": ["lat", "lng"], "properties": {
@@ -155,6 +172,26 @@ async fn ejecutar_o_fallar(
         .bind(entero("limite", 10, 50))
         .fetch_one(&mut *tx)
         .await,
+        "preparacion" => {
+            let d = args["_desfase_min"].as_i64().map_or(crate::api::rendimiento::DESFASE_POR_DEFECTO, |m| m as i32);
+            crate::api::rendimiento::estado_fisico(&mut tx, sesion.user_id, d).await
+        }
+        "rendimiento_mision" => {
+            let d = args["_desfase_min"].as_i64().map_or(crate::api::rendimiento::DESFASE_POR_DEFECTO, |m| m as i32);
+            match texto("mision") {
+                Some(m) => match mision_id(&mut tx, &m).await.map_err(|e| e.to_string())? {
+                    Some(id) => crate::api::rendimiento::calcular(&mut tx, sesion.user_id, id, d)
+                        .await
+                        .map(|v| v.unwrap_or_else(|| json!({ "error": "la misión no ha empezado" }))),
+                    None => return Ok(json!({ "error": format!("no hay ninguna misión parecida a «{m}»") })),
+                },
+                None => crate::api::rendimiento::lista(&mut tx, entero("limite", 5, 20)).await,
+            }
+            .map(|mut v| {
+                sin_zonas_min(&mut v);
+                v
+            })
+        }
         "salud_explorador" => {
             let dias = entero("dias", 7, 90);
             let mision = match texto("mision") {
@@ -265,6 +302,8 @@ async fn detalle_mision(tx: &mut crate::db::Tx<'_>, busqueda: &str) -> Result<Va
             'duracion_min', round(m.duracion_s / 60.0),
             'clima_al_despegar', m.clima - 'consultado_en',
             'puntos_gps', (select count(*) from public.rastro_gps r where r.mision_id = m.id),
+            'rendimiento_fisico', (select jsonb_strip_nulls((r.metricas - 'zonas_min') || jsonb_build_object('esfuerzo_percibido', r.esfuerzo,
+                                   'sensacion', r.sensacion)) from public.rendimiento_mision r where r.mision_id = m.id),
             'objetos', (select coalesce(jsonb_agg(o.nombre), '[]') from public.objetos o where o.mision_id = m.id and o.eliminado_en is null),
             'personas', (select coalesce(jsonb_agg(p.nombre || ' (' || p.hostilidad || ')'), '[]') from public.personas p where p.mision_id = m.id and p.eliminado_en is null),
             'pois', (select coalesce(jsonb_agg(x.nombre || ' (riesgo ' || x.nivel_riesgo || ')'), '[]') from public.puntos_interes x where x.mision_id = m.id and x.eliminado_en is null))
@@ -569,6 +608,19 @@ pub fn imagenes(resultado: &Value) -> Vec<Value> {
                     "imagen_path": f["imagen_path"], "capturado_en": f["capturado_en"] })
         })
         .collect()
+}
+
+/// Quita `zonas_min` (lista sin nombres, para las pantallas): el modelo la lee
+/// mal; tiene `minutos_por_zona` con nombre y rango.
+fn sin_zonas_min(v: &mut Value) {
+    match v {
+        Value::Object(o) => {
+            o.remove("zonas_min");
+            o.values_mut().for_each(sin_zonas_min);
+        }
+        Value::Array(a) => a.iter_mut().for_each(sin_zonas_min),
+        _ => {}
+    }
 }
 
 /// Id de una misión por código o título (exacto sin tildes o, si no, el más parecido).

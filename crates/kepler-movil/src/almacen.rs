@@ -18,6 +18,8 @@ pub enum Clase {
     CrearMision,
     Transicion,
     Captura,
+    /// Cualquier otra petición (valoración de una misión…): se reintenta si falla.
+    Generica,
 }
 
 impl Clase {
@@ -26,6 +28,7 @@ impl Clase {
             Self::CrearMision => "crear_mision",
             Self::Transicion => "transicion",
             Self::Captura => "captura",
+            Self::Generica => "generica",
         }
     }
 
@@ -33,6 +36,7 @@ impl Clase {
         match s {
             "crear_mision" => Self::CrearMision,
             "transicion" => Self::Transicion,
+            "generica" => Self::Generica,
             _ => Self::Captura,
         }
     }

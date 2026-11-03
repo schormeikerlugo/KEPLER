@@ -48,7 +48,10 @@ struct AjustesView: View {
                             }
                         }
                     }
-                    if sesion.fase == .dentro { TarjetaCarbinox() }
+                    if sesion.fase == .dentro {
+                        TarjetaPerfilFisico()
+                        TarjetaCarbinox()
+                    }
                     Tarjeta {
                         VStack(alignment: .leading, spacing: 6) {
                             Etiqueta(texto: "Acerca de")

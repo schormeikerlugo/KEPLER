@@ -15,6 +15,7 @@ mod mapas;
 mod misiones;
 mod notificaciones;
 mod perfil;
+pub mod rendimiento;
 mod rutas;
 mod salud;
 mod sesion;
@@ -75,6 +76,10 @@ pub fn router(estado: Estado) -> Router {
         )
         .route("/biometria", get(biometria::serie).post(biometria::subir))
         .route("/biometria/resumen", get(biometria::resumen))
+        .route("/biometria/preparacion", get(rendimiento::preparacion))
+        .route("/rendimiento", get(rendimiento::listar))
+        .route("/misiones/{id}/rendimiento", get(rendimiento::obtener))
+        .route("/misiones/{id}/valoracion", post(rendimiento::valorar))
         .route("/sync/cambios", get(sync::cambios))
         .route("/sync/subir", post(sync::subir))
         .route("/notificaciones", get(notificaciones::listar))

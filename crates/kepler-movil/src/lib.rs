@@ -22,6 +22,7 @@ mod cortex;
 mod mapa;
 mod panel;
 mod reloj;
+mod rendimiento;
 mod seguimiento;
 mod vision;
 
@@ -36,6 +37,9 @@ pub use centinela::{Centinela, ModoCentinela};
 pub use cortex::{ChatResumen, FinCortex, ImagenCortex, MensajeCortex, OyenteCortex};
 pub use mapa::{ProgresoDescarga, RegionMapa};
 pub use reloj::{RelojCarbinox, RelojCuenta, ReporteReloj};
+pub use rendimiento::{
+    DiaSalud, EstadoFisico, FactorPreparacion, PerfilFisicoMovil, RendimientoMision,
+};
 pub use seguimiento::{Rastreada, Seguidor};
 pub use vision::Deteccion;
 
@@ -302,6 +306,81 @@ impl Nucleo {
             }
         };
         estado_desde_salud(&salud, latencia)
+    }
+
+    /// Preparación de hoy, zonas de pulso y los últimos 14 días.
+    pub async fn estado_fisico(&self, desfase_min: i32) -> Result<EstadoFisico, ErrorKepler> {
+        let v: Value = self
+            .cliente
+            .get(&format!(
+                "/v1/biometria/preparacion?desfase_min={desfase_min}"
+            ))
+            .await?;
+        Ok(rendimiento::estado(&v))
+    }
+
+    pub async fn fisico(&self) -> Result<PerfilFisicoMovil, ErrorKepler> {
+        let p: Value = self.cliente.get("/v1/yo").await?;
+        Ok(rendimiento::fisico(&p))
+    }
+
+    pub async fn guardar_fisico(
+        &self,
+        fisico: PerfilFisicoMovil,
+    ) -> Result<PerfilFisicoMovil, ErrorKepler> {
+        let p: Value = self
+            .cliente
+            .patch("/v1/yo", &rendimiento::cuerpo_fisico(&fisico))
+            .await?;
+        Ok(rendimiento::fisico(&p))
+    }
+
+    /// Rendimiento de una misión (el servidor lo recalcula con la biometría que haya).
+    pub async fn rendimiento(
+        &self,
+        mision: String,
+        desfase_min: i32,
+    ) -> Result<RendimientoMision, ErrorKepler> {
+        let v: Value = self
+            .cliente
+            .get(&format!(
+                "/v1/misiones/{mision}/rendimiento?desfase_min={desfase_min}"
+            ))
+            .await?;
+        Ok(rendimiento::rendimiento(&v))
+    }
+
+    /// Últimas misiones con rendimiento, la más reciente primero.
+    pub async fn rendimientos(&self, limite: u32) -> Result<Vec<RendimientoMision>, ErrorKepler> {
+        let v: Value = self
+            .cliente
+            .get(&format!("/v1/rendimiento?limite={}", limite.clamp(1, 100)))
+            .await?;
+        Ok(v["items"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(rendimiento::rendimiento)
+            .collect())
+    }
+
+    /// Valoración al terminar una misión (esfuerzo 1–10): va a la cola, también sin conexión.
+    pub fn valorar_mision(
+        &self,
+        mision: String,
+        esfuerzo: u8,
+        sensacion: Option<String>,
+    ) -> Result<(), ErrorKepler> {
+        let a = self.almacen()?;
+        let cuerpo =
+            serde_json::json!({ "esfuerzo": esfuerzo.clamp(1, 10), "sensacion": sensacion });
+        a.encolar(
+            almacen::Clase::Generica,
+            &format!("/v1/misiones/{mision}/valoracion"),
+            &cuerpo,
+            Some(&mision),
+        )
+        .map_err(almacen_err)
     }
 
     pub async fn perfil(&self) -> Result<PerfilMovil, ErrorKepler> {

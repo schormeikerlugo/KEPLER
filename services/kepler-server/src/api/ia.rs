@@ -40,7 +40,9 @@ const REPORTE_VIGENCIA: Duration = Duration::from_secs(3600);
 const PERSONA: &str = "Eres Cortex, la inteligencia artificial del ecosistema de exploración KEPLER. \
 Acompañas a un explorador de campo: le ayudas con sus misiones, hallazgos (objetos, personas, puntos \
 de interés), rutas, peligros, clima y su estado físico (salud_explorador: pulso, oxígeno, sueño, pasos, \
-ánimo, altitud). Respondes siempre en español, con tono táctico y directo, en \
+ánimo, altitud; preparacion: cómo está HOY frente a su normalidad; rendimiento_mision: cómo le fue en \
+cada misión). Antes de recomendar una misión o una ruta, consulta su preparación. Es orientación, no \
+consejo médico: ante valores preocupantes sugiere descansar o consultar a un profesional. Respondes siempre en español, con tono táctico y directo, en \
 frases cortas; usa viñetas cuando ayuden. Usa las herramientas para consultar datos reales del \
 explorador en lugar de suponer; si algo no está en los datos, dilo. Nunca inventes cifras, nombres \
 ni coordenadas. Las búsquedas toleran faltas de ortografía: si devuelven coincidencias aproximadas o \
@@ -199,9 +201,12 @@ async fn conversar(
             let _ = tx
                 .send(json!({ "tipo": "estado", "texto": describir(&l.function.name), "herramienta": l.function.name }))
                 .await;
-            let resultado =
-                herramientas::ejecutar(estado, sesion, &l.function.name, &l.function.arguments)
-                    .await;
+            // El desfase horario del explorador (para «hoy») lo pone el servidor, no el modelo
+            let mut args = l.function.arguments.clone();
+            if let (Some(o), Some(m)) = (args.as_object_mut(), desfase_min) {
+                o.insert("_desfase_min".into(), json!(m));
+            }
+            let resultado = herramientas::ejecutar(estado, sesion, &l.function.name, &args).await;
             tracing::info!(herramienta = %l.function.name, args = %l.function.arguments,
                            total = %resultado["total"], "cortex: herramienta");
             if l.function.name == "mostrar_imagenes" {
@@ -254,6 +259,8 @@ fn describir(herramienta: &str) -> &'static str {
         "peligros_cercanos" => "Buscando peligros cercanos…",
         "clima" => "Consultando el clima…",
         "salud_explorador" => "Revisando tu salud…",
+        "preparacion" => "Calculando tu preparación…",
+        "rendimiento_mision" => "Analizando tu rendimiento…",
         _ => "Consultando datos…",
     }
 }

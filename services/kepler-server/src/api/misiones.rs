@@ -199,7 +199,8 @@ pub async fn completar(
     cuerpo: Option<Json<Option<Momento>>>,
 ) -> ApiResult<Json<Mision>> {
     let en = momento(cuerpo.and_then(|Json(m)| m).and_then(|m| m.en))?;
-    transicion(
+    let (estado2, sesion2) = (estado.clone(), sesion.clone());
+    let r = transicion(
         estado,
         sesion,
         id,
@@ -207,7 +208,24 @@ pub async fn completar(
         TipoEventoMision::Completada,
         |m, ahora, rastro| m.completar(ahora, &ResumenRastro::calcular(rastro)),
     )
-    .await
+    .await?;
+    // Rendimiento de la misión (se recalcula si llega biometría más tarde)
+    let calculo = async {
+        let mut tx = estado2.db.como_usuario(&sesion2).await?;
+        super::rendimiento::calcular(
+            &mut tx,
+            sesion2.user_id,
+            id,
+            super::rendimiento::DESFASE_POR_DEFECTO,
+        )
+        .await?;
+        tx.commit().await?;
+        Ok::<_, ApiError>(())
+    };
+    if let Err(e) = calculo.await {
+        tracing::warn!(mision = %id, error = %e, "rendimiento: no se pudo calcular");
+    }
+    Ok(r)
 }
 
 /// `POST /v1/misiones/{id}/abortar`

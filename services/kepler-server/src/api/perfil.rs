@@ -34,6 +34,7 @@ pub struct CambiosPerfil {
     bio: Option<String>,
     ubicacion: Option<String>,
     preferencias: Option<Value>,
+    fisico: Option<kepler_core::fisiologia::PerfilFisico>,
 }
 
 /// `PATCH /v1/yo` — solo se actualizan los campos presentes.
@@ -50,7 +51,8 @@ pub async fn actualizar(
             avatar_ia      = coalesce($4, avatar_ia),
             bio            = coalesce($5, bio),
             ubicacion      = coalesce($6, ubicacion),
-            preferencias   = coalesce($7, preferencias)
+            preferencias   = coalesce($7, preferencias),
+            fisico         = coalesce($8, fisico)
          where id = $1",
     )
     .bind(sesion.user_id)
@@ -60,6 +62,10 @@ pub async fn actualizar(
     .bind(c.bio)
     .bind(c.ubicacion)
     .bind(c.preferencias)
+    .bind(
+        c.fisico
+            .map(|f| serde_json::to_value(f).unwrap_or_default()),
+    )
     .execute(&mut *tx)
     .await?;
     let fila: Value = sqlx::query_scalar(SQL_PERFIL)

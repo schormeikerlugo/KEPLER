@@ -18,6 +18,8 @@ struct MasView: View {
                                detalle: "¿Es la misma persona? Confirma los parecidos")
                         Opcion(destino: BitacoraView(), simbolo: "list.bullet.rectangle", titulo: "Bitácora",
                                detalle: "Avisos y eventos · Deep-Dive con Cortex", globo: sesion.noLeidas)
+                        Opcion(destino: RendimientoView(), simbolo: "figure.hiking", titulo: "Rendimiento",
+                               detalle: "Preparación, zonas de pulso y cómo te fue en cada misión")
                         Opcion(destino: SaludView(), simbolo: "heart.text.square", titulo: "Salud y reloj",
                                detalle: "Apple Salud, sensores del iPhone y el reloj")
                         Opcion(destino: AjustesView(), simbolo: "gearshape", titulo: "Ajustes",
@@ -34,6 +36,7 @@ struct MasView: View {
                 case "base-archivos": ArchivosView()
                 case "base-identidades": IdentidadesView()
                 case "base-salud": SaludView()
+                case "base-rendimiento": RendimientoView()
                 default: BitacoraView()
                 }
             }

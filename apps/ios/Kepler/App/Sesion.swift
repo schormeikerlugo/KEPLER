@@ -14,6 +14,8 @@ final class Sesion: ObservableObject {
     }
 
     static let servidorPorDefecto = "http://192.168.68.117:8000"
+    /// Desfase horario del iPhone en minutos (Caracas: −240).
+    static var desfaseMin: Int32 { Int32(TimeZone.current.secondsFromGMT() / 60) }
     /// Tiempo en segundo plano tras el que hay que volver a usar Face ID.
     static let bloqueoTras: TimeInterval = 15 * 60
 
@@ -31,6 +33,10 @@ final class Sesion: ObservableObject {
     @Published internal(set) var sync: EstadoSync?
     /// Sesión abierta sin conexión con la base (Face ID sin red).
     @Published internal(set) var sinConexion = false
+    /// Preparación de hoy y últimos días (F8).
+    @Published var estadoFisico: EstadoFisico?
+    /// Misión recién completada a la espera de la valoración del explorador.
+    @Published var porValorar: String?
     /// Entradas de la bitácora sin leer (globo de la pestaña «Base»).
     @Published var noLeidas: UInt32 = 0
 
@@ -174,6 +180,7 @@ final class Sesion: ObservableObject {
     /// Panel con la ubicación del GPS si hay permiso (si no, el núcleo la aproxima por IP).
     func cargarPanel() async {
         let posicion = await ubicacion.actual()
+        if let e = try? await nucleo.estadoFisico(desfaseMin: Sesion.desfaseMin) { estadoFisico = e }
         do {
             panel = try await nucleo.panel(lat: posicion?.latitude, lng: posicion?.longitude)
             errorPanel = nil

@@ -23,6 +23,9 @@ pub struct Perfil {
     /// Último cambio de calzado: el desgaste se cuenta desde aquí.
     #[serde(default)]
     pub calzado_reset_en: Option<DateTime<Utc>>,
+    /// Edad, peso, pulsos… para zonas, carga y Preparación.
+    #[serde(default)]
+    pub fisico: crate::fisiologia::PerfilFisico,
     pub creado_en: DateTime<Utc>,
     pub actualizado_en: DateTime<Utc>,
     pub version: i64,

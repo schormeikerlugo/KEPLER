@@ -22,6 +22,7 @@ struct PanelView: View {
                         if let p = sesion.panel {
                             TarjetaTelemetria(panel: p)
                             TarjetaConsejo(texto: p.consejo)
+                            if let e = sesion.estadoFisico { TarjetaPreparacion(estado: e).id("preparacion") }
                             if !p.atenciones.isEmpty { TarjetaAtencion(atenciones: p.atenciones) }
                             TarjetaExplorador(panel: p)
                             TarjetaMisiones(misiones: p.misiones, resumen: p.resumen).id("misiones")

@@ -9,6 +9,7 @@ pub mod entorno;
 mod enums;
 mod error;
 pub mod explorador;
+pub mod fisiologia;
 mod geo;
 pub mod modelos;
 pub mod reid;

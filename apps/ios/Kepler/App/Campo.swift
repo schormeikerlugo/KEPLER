@@ -31,8 +31,11 @@ extension Sesion {
     /// Completa (`true`) o aborta la misión en curso.
     func terminarMision(completar: Bool) async {
         do {
+            let id = mision?.id
             _ = try nucleo.terminarMision(completar: completar)
             mision = nil
+            // Al completar: ¿cómo de duro fue? (alimenta el rendimiento y la memoria de Cortex)
+            if completar, let id { porValorar = id }
             dejarDeSeguir()
             await sincronizar()
             await cargarPanel()

@@ -23,6 +23,8 @@ struct PrincipalView: View {
                 .badge(Int(sesion.noLeidas))
                 .tag(4)
         }
+        .sheet(item: Binding(get: { sesion.porValorar.map(MisionPorValorar.init) },
+                             set: { sesion.porValorar = $0?.id })) { ValoracionView(mision: $0.id) }
         #if DEBUG
         .onAppear {
             let s = ProcessInfo.processInfo.environment["KEPLER_DEMO_SECCION"] ?? ""
@@ -30,7 +32,12 @@ struct PrincipalView: View {
             if s.hasPrefix("mapa") { pestana = 2 }
             if s.hasPrefix("cortex") { pestana = 3 }
             if s.hasPrefix("base") { pestana = 4 }
+            if s == "valoracion" { sesion.porValorar = "demo" }
         }
         #endif
     }
+}
+
+private struct MisionPorValorar: Identifiable {
+    let id: String
 }
