@@ -20,6 +20,7 @@ mod rutas;
 mod salud;
 mod sesion;
 mod sync;
+mod zona;
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -97,6 +98,7 @@ pub fn router(estado: Estado) -> Router {
         )
         .route("/ia/reporte", get(ia::reporte))
         .route("/ia/analizar", post(ia::analizar))
+        .route("/ia/zona", post(zona::zona))
         .route("/ia/documentar/{id}", post(ia::documentar))
         .route("/dashboard", get(dashboard::resumen))
         .route("/explorador", get(explorador::estado))

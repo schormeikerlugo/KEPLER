@@ -224,6 +224,15 @@ pub async fn procesar(
 
     for p in &procesadas {
         publicar(&estado, &sesion, p);
+        // Objeto nuevo sin descripción: la escribe Cortex (prompt de la v0.7)
+        if p.entidad == Entidad::Objeto
+            && p.accion == "creada"
+            && p.fila["descripcion"]
+                .as_str()
+                .is_none_or(|d| d.trim().is_empty())
+        {
+            super::zona::describir_objeto(estado.clone(), sesion.clone(), p.id);
+        }
     }
     for (tabla, fila) in avisos {
         avisar(

@@ -125,6 +125,12 @@ pub async fn crear(
     if n.iniciar {
         publicar_evento(&estado, &sesion, &m, TipoEventoMision::Iniciada);
     }
+    // Zona, terreno y dificultad que falten, en segundo plano (prompt de la v0.7)
+    if let (Some(lat), Some(lng)) = (m.lat_inicio, m.lng_inicio)
+        && (m.zona.is_none() || m.tipo_terreno.is_none() || m.dificultad.is_none())
+    {
+        super::zona::completar_mision(estado.clone(), sesion.clone(), m.id, lat, lng);
+    }
     Ok((StatusCode::CREATED, Json(m)))
 }
 

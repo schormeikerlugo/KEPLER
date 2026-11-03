@@ -948,7 +948,9 @@ async fn punta_a_punta() {
         .await
         .unwrap();
     assert_eq!(foto_guardada.bytes().await.unwrap().len(), foto.len());
-    ok("capturas: persona, objeto y POI guardados con foto en Storage y embedding; Re-ID dentro del lote");
+    ok(
+        "capturas: persona, objeto y POI guardados con foto en Storage y embedding; Re-ID dentro del lote",
+    );
 
     let (_, r) = api
         .post(
@@ -958,7 +960,10 @@ async fn punta_a_punta() {
         )
         .await;
     let p = &r["procesadas"][0];
-    assert!(p["reid"]["id"] == persona_1 || p["reid"]["id"] == persona_2, "{r}");
+    assert!(
+        p["reid"]["id"] == persona_1 || p["reid"]["id"] == persona_2,
+        "{r}"
+    );
     assert!(p["reid"]["similitud"].as_f64().unwrap() > 0.99);
     assert_eq!(p["fila"]["identidad_id"], persona_1);
     assert_eq!(p["fila"]["nombre"], "Conductor");
