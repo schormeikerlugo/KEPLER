@@ -409,6 +409,7 @@ mod tests {
         let e = Explorador {
             desgaste_calzado: 85.0,
             resistencia: 90.0,
+            recuperacion_h: 0.0,
             misiones_completadas: 0,
             distancia_total_km: 0.0,
             clima: None,

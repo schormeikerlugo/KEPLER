@@ -82,6 +82,8 @@ pub struct Explorador {
     pub desgaste_calzado: f64,
     pub resistencia: f64,
     #[serde(default)]
+    pub recuperacion_h: f64,
+    #[serde(default)]
     pub misiones_completadas: u64,
     #[serde(default)]
     pub distancia_total_km: f64,

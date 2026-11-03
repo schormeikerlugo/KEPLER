@@ -627,7 +627,7 @@ struct Vista {
     perfil: Option<(String, String, String, String)>,
     indicadores: Option<Vec<DatoIndicador>>,
     dashboard: Option<VistaDashboard>,
-    explorador: Option<(f32, f32)>,
+    explorador: Option<(f32, f32, f64)>,
     clima: Option<(String, bool)>,
     ubicacion: String,
     actualizado: String,
@@ -682,6 +682,7 @@ impl Vista {
                 (
                     (1.0 - e.desgaste_calzado / 100.0) as f32,
                     (e.resistencia / 100.0) as f32,
+                    e.recuperacion_h,
                 )
             }),
             clima: clima.map(|c| (nombre_categoria(c.categoria).to_owned(), c.es_dia)),
@@ -714,9 +715,18 @@ impl Vista {
             e.set_semana_linea(d.semana_linea.into());
             e.set_semana_max(d.semana_max);
         }
-        if let Some((calzado, resistencia)) = self.explorador {
+        if let Some((calzado, resistencia, recuperacion)) = self.explorador {
             e.set_calzado(calzado);
             e.set_resistencia(resistencia);
+            e.set_recuperacion(if recuperacion >= 1.0 {
+                format!(
+                    "Recuperado en ~{} h (sin nuevas misiones)",
+                    recuperacion.round()
+                )
+                .into()
+            } else {
+                "".into()
+            });
         }
         match self.clima {
             Some((texto, dia)) => {

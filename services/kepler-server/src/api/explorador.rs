@@ -15,6 +15,8 @@ use crate::externo::Clima;
 pub struct Params {
     lat: Option<f64>,
     lng: Option<f64>,
+    /// Desfase horario del cliente (para la Preparación de «hoy»).
+    desfase_min: Option<i32>,
 }
 
 /// Misión completada, tal como se lee para el cálculo.
@@ -24,6 +26,9 @@ struct FilaRecorrido {
     tipo_terreno: Option<String>,
     fin_en: DateTime<Utc>,
     multiplicador_fatiga: Option<f64>,
+    desnivel_pos_m: Option<f64>,
+    desnivel_neg_m: Option<f64>,
+    trimp: Option<f64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -56,10 +61,15 @@ pub async fn estado(
 
     let mut tx = estado.db.como_usuario(&sesion).await?;
     let filas: Vec<FilaRecorrido> = sqlx::query_as(
-        "select distancia_m, tipo_terreno, fin_en,
-                (clima ->> 'multiplicador_fatiga')::float8 as multiplicador_fatiga
-         from public.misiones
-         where estado = 'completada' and eliminado_en is null and fin_en is not null",
+        "select m.distancia_m, m.tipo_terreno, m.fin_en,
+                (m.clima ->> 'multiplicador_fatiga')::float8 as multiplicador_fatiga,
+                (r.metricas ->> 'desnivel_pos_m')::float8 as desnivel_pos_m,
+                (r.metricas ->> 'desnivel_neg_m')::float8 as desnivel_neg_m,
+                -- Sin pulso el TRIMP es 0: entonces se estima con distancia y desnivel
+                nullif((r.metricas ->> 'trimp')::float8, 0) as trimp
+         from public.misiones m
+         left join public.rendimiento_mision r on r.mision_id = m.id
+         where m.estado = 'completada' and m.eliminado_en is null and m.fin_en is not null",
     )
     .fetch_all(&mut *tx)
     .await?;
@@ -69,6 +79,9 @@ pub async fn estado(
             .fetch_optional(&mut *tx)
             .await?
             .flatten();
+    let preparacion = super::rendimiento::preparacion_hoy(&mut tx, p.desfase_min)
+        .await
+        .ok();
     tx.commit().await?;
 
     let recorridos: Vec<Recorrido> = filas
@@ -78,6 +91,9 @@ pub async fn estado(
             terreno: f.tipo_terreno.and_then(|t| t.parse::<TipoTerreno>().ok()),
             fin: f.fin_en,
             clima: f.multiplicador_fatiga.unwrap_or(1.0),
+            desnivel_pos_m: f.desnivel_pos_m.unwrap_or(0.0),
+            desnivel_neg_m: f.desnivel_neg_m.unwrap_or(0.0),
+            carga: f.trimp,
         })
         .collect();
 
@@ -87,7 +103,7 @@ pub async fn estado(
     };
 
     Ok(Json(Explorador {
-        fisico: estado_fisico(&recorridos, reset, Utc::now()),
+        fisico: estado_fisico(&recorridos, reset, Utc::now(), preparacion),
         misiones_completadas: recorridos.len(),
         distancia_total_km: (recorridos.iter().map(|r| r.distancia_km).sum::<f64>() * 10.0).round()
             / 10.0,

@@ -227,6 +227,10 @@ struct TarjetaExplorador: View {
                 }
                 Barra(etiqueta: "Calzado", valor: panel.desgasteCalzado.map { 100 - $0 }, umbralAviso: 30, umbralPeligro: 15)
                 Barra(etiqueta: "Resistencia", valor: panel.resistencia, umbralAviso: 40, umbralPeligro: 20)
+                if let h = panel.recuperacionH, h >= 1 {
+                    Text("Recuperado en ~\(Int(h.rounded())) h (sin nuevas misiones)")
+                        .font(Jura.fuente(11)).foregroundStyle(Tema.Color.textoTenue)
+                }
             }
         }
     }

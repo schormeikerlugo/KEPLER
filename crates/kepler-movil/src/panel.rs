@@ -105,6 +105,8 @@ pub struct Panel {
     /// Desgaste del calzado y resistencia, en %.
     pub desgaste_calzado: Option<f64>,
     pub resistencia: Option<f64>,
+    /// Horas hasta volver al 90 % de resistencia (0 si ya está recuperado).
+    pub recuperacion_h: Option<f64>,
     pub misiones_completadas: u32,
     pub distancia_total_km: f64,
     pub resumen: crate::Resumen,
@@ -179,6 +181,10 @@ pub(crate) fn construir(f: &Fuentes, consejo: impl FnOnce(&Situacion) -> String)
         atenciones: atenciones(a),
         desgaste_calzado: situacion.desgaste_calzado,
         resistencia: situacion.resistencia,
+        recuperacion_h: f
+            .explorador
+            .as_ref()
+            .and_then(|e| e["recuperacion_h"].as_f64()),
         misiones_completadas: f
             .explorador
             .as_ref()

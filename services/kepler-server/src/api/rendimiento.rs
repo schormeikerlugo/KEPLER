@@ -155,6 +155,13 @@ async fn preparacion_en(
     Ok((fisiologia::preparacion(&hoy, &lista), lista))
 }
 
+/// Puntuación de la Preparación de hoy (para la resistencia del explorador).
+pub async fn preparacion_hoy(tx: &mut Tx<'_>, desfase_min: Option<i32>) -> Result<u8, sqlx::Error> {
+    let d = desfase(desfase_min);
+    let (prep, _) = preparacion_en(tx, hoy_local(d), d).await?;
+    Ok(prep.puntuacion)
+}
+
 /// Preparación de hoy, pulsos y zonas, y los últimos 14 días. También para Cortex.
 pub async fn estado_fisico(
     tx: &mut Tx<'_>,

@@ -294,6 +294,7 @@ component TarjetaExplorador inherits Tarjeta {
         }
         Barra { titulo: "Estado del Calzado"; icono: "👟"; valor: Estado.calzado; }
         Barra { titulo: "Resistencia Física"; icono: "⚡"; valor: Estado.resistencia; }
+        if Estado.recuperacion != "": Text { text: Estado.recuperacion; color: Tema.texto-tenue; font-size: 11px; }
         Rectangle {
             height: 38px;
             border-radius: 8px;
